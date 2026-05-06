@@ -63,6 +63,8 @@ from learning.demonstration_recorder import record_user_demonstration, summarize
 from memory.semantic_vector.vector_store import search_tfidf
 from self_improvement.pipeline import run_improvement_pipeline
 from tools.admin_executor import launch_elevated_powershell
+from core.paths import ENTITIES_MEMORY_DIR
+from memory.entity_memory import list_base_memory_files, list_entities, relate_entities, remember_entity, search_entities
 
 SECRETS_DIR = EVE_ROOT / "secrets"
 LOG_DIR = EVE_ROOT / "logs"
@@ -469,11 +471,14 @@ def ask(prompt: str) -> str:
     config = load_config()
     model = config.get("model") or DEFAULT_MODEL
     memory_context = context_bundle()
+    entity_context = search_tfidf(prompt, limit=4)
     instructions = (
         "You are Eve, a local personal agent running on Sandro's Windows PC. "
         "Be concise, practical, and safe. Respect Eve's constitution and permissions. "
         "Use the local memory context as persistent background, but do not claim actions you did not perform.\n\n"
-        f"LOCAL MEMORY CONTEXT:\n{memory_context}"
+        f"LOCAL MEMORY CONTEXT:\n{memory_context}\n\n"
+        f"ENTITY BASE MEMORY ROOT: {ENTITIES_MEMORY_DIR}\n"
+        f"RELEVANT ENTITY MEMORY:\n{json.dumps(entity_context, ensure_ascii=False)[:5000]}"
     )
     append_chat("user", prompt)
     body = {
@@ -508,7 +513,7 @@ def ask(prompt: str) -> str:
 
 def chat() -> None:
     print("Eve chat. Escreve /sair para sair.")
-    print("Comandos: /menu, /dashboard, /modelo, /estado, /seguranca, /modo-seguranca, /liberdade-total, /seguranca-safe, /monitores, /ocr-status, /ecra, /ecra-monitor, /ver-texto, /centro-texto, /clicar-texto, /visual-click, /vector-index, /vector-search, /vector-search2, /win-agendar, /win-tarefas, /daemon-tick, /daemon-stop, /watch-tech, /notify, /speak, /mobile, /mobile-msg, /app-profile, /app-profiles, /demo-record, /demo-summary, /pipeline, /admin-elevado, /app, /browser, /pesquisar, /email-draft, /mouse, /mover, /clicar, /tecla, /hotkey, /escrever, /agenda, /agendar, /proativo, /workspace-scan, /preferencia, /preferencias, /falha-skill, /licao, /skill-note, /experiencia, /experiencia-result, /melhoria, /melhorias-erros, /patch-proposta, /sandbox, /admin, /aprovar-admin, /rsi, /lock, /unlock, /diario, /consolidar, /sonhar, /lembrar, /world, /tech, /lab, /workspace, /ls, /ler, /nota, /cmd, /aprovar-cmd, /erros, /skills, /skill-run, /skill-promote, /skill-demo")
+    print("Comandos: /menu, /dashboard, /modelo, /estado, /seguranca, /modo-seguranca, /liberdade-total, /seguranca-safe, /entidades-path, /entidades-files, /entidades, /entidade, /relacao, /entidades-search, /monitores, /ocr-status, /ecra, /ecra-monitor, /ver-texto, /centro-texto, /clicar-texto, /visual-click, /vector-index, /vector-search, /vector-search2, /win-agendar, /win-tarefas, /daemon-tick, /daemon-stop, /watch-tech, /notify, /speak, /mobile, /mobile-msg, /app-profile, /app-profiles, /demo-record, /demo-summary, /pipeline, /admin-elevado, /app, /browser, /pesquisar, /email-draft, /mouse, /mover, /clicar, /tecla, /hotkey, /escrever, /agenda, /agendar, /proativo, /workspace-scan, /preferencia, /preferencias, /falha-skill, /licao, /skill-note, /experiencia, /experiencia-result, /melhoria, /melhorias-erros, /patch-proposta, /sandbox, /admin, /aprovar-admin, /rsi, /lock, /unlock, /diario, /consolidar, /sonhar, /lembrar, /world, /tech, /lab, /workspace, /ls, /ler, /nota, /cmd, /aprovar-cmd, /erros, /skills, /skill-run, /skill-promote, /skill-demo")
     print()
     while True:
         try:
@@ -522,6 +527,39 @@ def chat() -> None:
             return
         if prompt.lower() == "/dashboard":
             print(render_dashboard())
+            continue
+        if prompt.lower() == "/entidades-path":
+            print(ENTITIES_MEMORY_DIR)
+            continue
+        if prompt.lower() == "/entidades-files":
+            files = list_base_memory_files()
+            print(json.dumps({"root": str(ENTITIES_MEMORY_DIR), "count": len(files), "files": files[:80]}, indent=2, ensure_ascii=False)[:8000])
+            continue
+        if prompt.lower() == "/entidades":
+            print(json.dumps(list_entities(), indent=2, ensure_ascii=False)[:5000])
+            continue
+        if prompt.lower().startswith("/entidade "):
+            try:
+                parts = [part.strip() for part in prompt.split(None, 1)[1].split("|", 2)]
+                if len(parts) != 3:
+                    raise ValueError("Formato: /entidade nome | tipo | nota")
+                print(f"Entidade guardada em: {remember_entity(parts[0], parts[1], parts[2])}")
+                print(f"Indice atualizado em: {rebuild_memory_index()}")
+            except Exception as exc:
+                print(f"Erro a guardar entidade: {exc}")
+            continue
+        if prompt.lower().startswith("/relacao "):
+            try:
+                parts = [part.strip() for part in prompt.split(None, 1)[1].split("|", 3)]
+                if len(parts) != 4:
+                    raise ValueError("Formato: /relacao origem | relacao | destino | nota")
+                print(f"Relacao guardada em: {relate_entities(parts[0], parts[1], parts[2], parts[3])}")
+                print(f"Indice atualizado em: {rebuild_memory_index()}")
+            except Exception as exc:
+                print(f"Erro a guardar relacao: {exc}")
+            continue
+        if prompt.lower().startswith("/entidades-search "):
+            print(json.dumps(search_entities(prompt.split(None, 1)[1]), indent=2, ensure_ascii=False)[:8000])
             continue
         if prompt.lower() == "/menu":
             print(render_menu())

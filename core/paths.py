@@ -13,6 +13,7 @@ STATE_DIR = EVE_ROOT / "state"
 BACKUPS_DIR = EVE_ROOT / "backups"
 LAB_DIR = EVE_ROOT / "lab"
 SECURITY_DIR = EVE_ROOT / "security"
+ENTITIES_MEMORY_DIR = Path(r"D:\entities\memoria para  as entidades")
 
 
 def ensure_project_dirs() -> None:
@@ -55,5 +56,9 @@ def ensure_project_dirs() -> None:
         BACKUPS_DIR,
         BACKUPS_DIR / "files",
         EVE_ROOT / "mobile_bridge",
+        ENTITIES_MEMORY_DIR,
+        ENTITIES_MEMORY_DIR / "entities",
+        ENTITIES_MEMORY_DIR / "relations",
+        ENTITIES_MEMORY_DIR / "indexes",
     ):
         path.mkdir(parents=True, exist_ok=True)

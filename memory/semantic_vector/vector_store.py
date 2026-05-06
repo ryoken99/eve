@@ -14,11 +14,12 @@ except Exception:  # pragma: no cover - fallback handled at runtime
     TfidfVectorizer = None
     cosine_similarity = None
 
-from core.paths import MEMORY_DIR, ensure_project_dirs
+from core.paths import ENTITIES_MEMORY_DIR, MEMORY_DIR, ensure_project_dirs
 
 
 INDEX_PATH = MEMORY_DIR / "semantic_vector" / "index.json"
 TOKEN_RE = re.compile(r"[\wÀ-ÿ]+", re.IGNORECASE)
+INDEXABLE_SUFFIXES = {".md", ".txt", ".json", ".jsonl", ".yaml", ".yml", ".py", ".csv"}
 
 
 def _tokens(text: str) -> list[str]:
@@ -70,7 +71,7 @@ def add_document(source: str, content: str, metadata: dict | None = None) -> Pat
 def rebuild_memory_index() -> Path:
     ensure_project_dirs()
     items: list[dict] = []
-    roots = [MEMORY_DIR]
+    roots = [MEMORY_DIR, ENTITIES_MEMORY_DIR]
     excluded_parts = {"semantic_vector", "__pycache__"}
     for root in roots:
         if not root.exists():
@@ -78,15 +79,21 @@ def rebuild_memory_index() -> Path:
         for path in root.rglob("*"):
             if any(part in excluded_parts for part in path.parts):
                 continue
-            if path.is_file() and path.suffix.lower() in {".md", ".txt", ".json", ".jsonl", ".yaml", ".yml"}:
+            if path.is_file() and path.suffix.lower() in INDEXABLE_SUFFIXES:
                 try:
                     content = path.read_text(encoding="utf-8", errors="replace")
                 except Exception:
                     continue
                 if content.strip():
+                    if root == MEMORY_DIR:
+                        source = f"eve_memory/{path.relative_to(MEMORY_DIR)}"
+                    elif root == ENTITIES_MEMORY_DIR:
+                        source = f"entities/{path.relative_to(ENTITIES_MEMORY_DIR)}"
+                    else:
+                        source = str(path)
                     items.append(
                         {
-                            "source": str(path.relative_to(MEMORY_DIR)),
+                            "source": str(source).replace("\\", "/"),
                             "content": content[:20000],
                             "metadata": {"path": str(path)},
                             "vector": _vector(content),
