@@ -1,0 +1,27 @@
+{
+  "name": "chrome_open_x",
+  "description": "Abre o X.com no Google Chrome usando o perfil Eve.",
+  "risk_level": "low",
+  "permissions": [
+    "control_browser"
+  ],
+  "steps": [
+    {
+      "action": "browser_open_url",
+      "url": "https://x.com"
+    }
+  ],
+  "success_check": [
+    "chrome_profile_eve_used",
+    "x_com_visible"
+  ],
+  "version": 1,
+  "status": "trusted",
+  "created_at": "2026-05-06T00:00:00Z",
+  "updated_at": "2026-05-06T00:00:00Z",
+  "notes": [
+    "O navegador humano da Eve e o Google Chrome com profile_directory=Profile 2 e nome de perfil eve.",
+    "Para abrir o X, executar browser_open_url com https://x.com; a ferramenta tira screenshot antes e depois e regista em logs/ui_actions.",
+    "Testado em 2026-05-06: abrir https://x.com com Google Chrome profile_directory=Profile 2 abriu a janela \"Home / X - Google Chrome\" e OCR confirmou Home, For you e Profile da conta Eve."
+  ]
+}
