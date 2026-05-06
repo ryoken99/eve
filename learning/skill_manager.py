@@ -10,6 +10,7 @@ from tools.filesystem import append_file, read_file, write_file
 from tools.terminal import run_command
 from tools.browser_human import open_url, search_web
 from tools.email_human import create_gmail_draft
+from tools.x_human import publish_current_x_composer
 from computer.visual_executor import click_text_and_verify
 from computer.vision import find_text_on_screen
 from security.permission_manager import check_action
@@ -129,6 +130,11 @@ def run_skill(skill_ref: str, *, args: dict | None = None, approved: bool = Fals
             found["status"] = "needs_human_review"
             found["note"] = "Verificacao final de publicacao online ainda exige distinguir feed publicado de compositor/draft."
             results.append({"action": action, "result": found})
+        elif action == "x_publish_current_composer":
+            text = args.get("text") or step.get("text")
+            if not text:
+                raise ValueError("x_publish_current_composer precisa de text")
+            results.append({"action": action, "result": publish_current_x_composer(text, approved=approved)})
         else:
             raise ValueError(f"Acao de skill desconhecida: {action}")
     payload = {"skill": skill.get("name"), "status": skill.get("status"), "results": results}

@@ -42,7 +42,7 @@ class EveCoreTests(unittest.TestCase):
 
     def test_publish_skill_requires_approval(self):
         with self.assertRaises(PermissionError):
-            run_skill("draft/x_publish_text_learning")
+            run_skill("trusted/x_publish_text_learning")
 
 
 if __name__ == "__main__":
