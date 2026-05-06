@@ -7,6 +7,8 @@ from core.paths import SKILLS_DIR, WORKSPACE_DIR
 from core.personality_engine import score_options
 from learning.skill_learning_loop import run_skill_learning_loop, skill_result_successful
 from app.eve_codex import natural_browser_target, relevant_entity_memory
+from memory.memory_manager import context_bundle
+from memory.sandro_profile_builder import build_sandro_core_memory
 from memory.semantic_vector.vector_store import add_document, search
 from security.permission_manager import check_action, check_command
 from security.safety_modes import set_safety_mode
@@ -110,6 +112,13 @@ class EveCoreTests(unittest.TestCase):
         self.assertEqual(natural_browser_target("abre o navegador"), "https://www.google.com")
         self.assertEqual(natural_browser_target("abre o x.com"), "x.com")
         self.assertIsNone(natural_browser_target("/browser https://x.com"))
+
+    def test_sandro_core_memory_enters_context(self):
+        build_sandro_core_memory()
+        bundle = context_bundle(20000)
+        self.assertIn("Sandro Core Memory", bundle)
+        self.assertIn("Sandro tem 26 anos", bundle)
+        self.assertIn("faixa azul em ambos", bundle)
 
 
 if __name__ == "__main__":

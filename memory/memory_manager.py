@@ -49,6 +49,9 @@ def context_bundle(max_chars: int = 12000) -> str:
     diary = read_diary().strip()
     if diary:
         pieces.append(f"## diary/{today_key()}.md\n{diary[-4000:]}")
+    sandro_core = read_memory_file("long_term", "sandro_core_memory.md").strip()
+    if sandro_core:
+        pieces.append(f"## memory/long_term/sandro_core_memory.md\n{sandro_core[:8000]}")
     bundle = "\n\n".join(pieces)
     return bundle[-max_chars:]
 

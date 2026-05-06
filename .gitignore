@@ -11,6 +11,8 @@ memory/diary/**
 memory/medium_term/daily_summary_*.md
 memory/medium_term/remembered_facts.md
 memory/long_term/candidate_memories.md
+memory/long_term/sandro_core_memory.md
+memory/long_term/sandro_core_memory_sources.json
 lab/**/__pycache__/
 lab/candidate_improvements/*.json
 !lab/candidate_improvements/.gitkeep
