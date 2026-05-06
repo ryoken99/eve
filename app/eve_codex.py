@@ -48,6 +48,14 @@ from self_improvement.recursive_self_improvement import run_controlled_rsi_cycle
 from self_improvement.sandbox_tester import run_python_compile
 from tools.admin_executor import run_admin_command
 from security.safety_modes import SAFETY_MODES, describe_safety, set_safety_mode
+from memory.semantic_vector.vector_store import rebuild_memory_index, search as vector_search
+from tools.windows_scheduler import create_daily_task, list_eve_tasks
+from computer.visual_executor import click_text_and_verify
+from tools.notification import notify
+from tools.voice import speak
+from tools.mobile_bridge import bridge_status, queue_mobile_message
+from research.technology_watcher import run_technology_watch
+from app.dashboard import render_dashboard
 
 SECRETS_DIR = EVE_ROOT / "secrets"
 LOG_DIR = EVE_ROOT / "logs"
@@ -493,7 +501,7 @@ def ask(prompt: str) -> str:
 
 def chat() -> None:
     print("Eve chat. Escreve /sair para sair.")
-    print("Comandos: /modelo, /estado, /seguranca, /modo-seguranca, /liberdade-total, /seguranca-safe, /monitores, /ocr-status, /ecra, /ecra-monitor, /ver-texto, /centro-texto, /clicar-texto, /app, /browser, /pesquisar, /email-draft, /mouse, /mover, /clicar, /tecla, /hotkey, /escrever, /agenda, /agendar, /proativo, /workspace-scan, /preferencia, /preferencias, /falha-skill, /licao, /skill-note, /experiencia, /experiencia-result, /melhoria, /melhorias-erros, /patch-proposta, /sandbox, /admin, /aprovar-admin, /rsi, /lock, /unlock, /diario, /consolidar, /sonhar, /lembrar, /world, /tech, /lab, /workspace, /ls, /ler, /nota, /cmd, /aprovar-cmd, /erros, /skills, /skill-run, /skill-promote, /skill-demo")
+    print("Comandos: /dashboard, /modelo, /estado, /seguranca, /modo-seguranca, /liberdade-total, /seguranca-safe, /monitores, /ocr-status, /ecra, /ecra-monitor, /ver-texto, /centro-texto, /clicar-texto, /visual-click, /vector-index, /vector-search, /win-agendar, /win-tarefas, /watch-tech, /notify, /speak, /mobile, /mobile-msg, /app, /browser, /pesquisar, /email-draft, /mouse, /mover, /clicar, /tecla, /hotkey, /escrever, /agenda, /agendar, /proativo, /workspace-scan, /preferencia, /preferencias, /falha-skill, /licao, /skill-note, /experiencia, /experiencia-result, /melhoria, /melhorias-erros, /patch-proposta, /sandbox, /admin, /aprovar-admin, /rsi, /lock, /unlock, /diario, /consolidar, /sonhar, /lembrar, /world, /tech, /lab, /workspace, /ls, /ler, /nota, /cmd, /aprovar-cmd, /erros, /skills, /skill-run, /skill-promote, /skill-demo")
     print()
     while True:
         try:
@@ -505,6 +513,9 @@ def chat() -> None:
             continue
         if prompt.lower() in {"/sair", "/exit", "exit", "quit"}:
             return
+        if prompt.lower() == "/dashboard":
+            print(render_dashboard())
+            continue
         if prompt.lower() == "/modelo":
             print_model()
             continue
@@ -685,6 +696,55 @@ def chat() -> None:
                     print(json.dumps(click(int(target["x"]), int(target["y"])), indent=2, ensure_ascii=False)[:4000])
             except Exception as exc:
                 print(f"Erro a clicar texto: {exc}")
+            continue
+        if prompt.lower().startswith("/visual-click "):
+            try:
+                payload = prompt.split(None, 1)[1]
+                if "|" in payload:
+                    target_text, verify_text = [part.strip() for part in payload.split("|", 1)]
+                else:
+                    target_text, verify_text = payload.strip(), None
+                print(json.dumps(click_text_and_verify(target_text, verify_text), indent=2, ensure_ascii=False)[:7000])
+            except Exception as exc:
+                print(f"Erro visual executor: {exc}")
+            continue
+        if prompt.lower() == "/vector-index":
+            print(f"Indice vetorial reconstruido em: {rebuild_memory_index()}")
+            continue
+        if prompt.lower().startswith("/vector-search "):
+            print(json.dumps(vector_search(prompt.split(None, 1)[1]), indent=2, ensure_ascii=False)[:6000])
+            continue
+        if prompt.lower().startswith("/win-agendar "):
+            try:
+                parts = [part.strip() for part in prompt.split(None, 1)[1].split("|", 1)]
+                if len(parts) != 2:
+                    raise ValueError("Formato: /win-agendar nome | HH:MM")
+                print(json.dumps(create_daily_task(parts[0], parts[1]), indent=2, ensure_ascii=False)[:5000])
+            except Exception as exc:
+                print(f"Erro a criar tarefa Windows: {exc}")
+            continue
+        if prompt.lower() == "/win-tarefas":
+            print(json.dumps(list_eve_tasks(), indent=2, ensure_ascii=False)[:5000])
+            continue
+        if prompt.lower() == "/watch-tech":
+            print(f"Technology watch guardado em: {run_technology_watch()}")
+            continue
+        if prompt.lower().startswith("/notify "):
+            payload = prompt.split(None, 1)[1]
+            if "|" in payload:
+                title, message = [part.strip() for part in payload.split("|", 1)]
+            else:
+                title, message = "Eve", payload
+            print(json.dumps(notify(title, message), indent=2, ensure_ascii=False)[:3000])
+            continue
+        if prompt.lower().startswith("/speak "):
+            print(json.dumps(speak(prompt.split(None, 1)[1]), indent=2, ensure_ascii=False)[:3000])
+            continue
+        if prompt.lower() == "/mobile":
+            print(json.dumps(bridge_status(), indent=2, ensure_ascii=False))
+            continue
+        if prompt.lower().startswith("/mobile-msg "):
+            print(f"Mensagem mobile em fila: {queue_mobile_message(prompt.split(None, 1)[1])}")
             continue
         if prompt.lower().startswith("/browser "):
             try:

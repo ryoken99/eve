@@ -7,6 +7,7 @@ CONFIG_DIR = EVE_ROOT / "config"
 MEMORY_DIR = EVE_ROOT / "memory"
 LOGS_DIR = EVE_ROOT / "logs"
 WORKSPACE_DIR = EVE_ROOT / "workspace"
+SCRIPTS_DIR = EVE_ROOT / "scripts"
 SKILLS_DIR = EVE_ROOT / "skills"
 STATE_DIR = EVE_ROOT / "state"
 BACKUPS_DIR = EVE_ROOT / "backups"
@@ -27,6 +28,7 @@ def ensure_project_dirs() -> None:
         MEMORY_DIR / "world",
         MEMORY_DIR / "technology",
         MEMORY_DIR / "personality",
+        MEMORY_DIR / "semantic_vector",
         LOGS_DIR / "chat",
         LOGS_DIR / "terminal",
         LOGS_DIR / "errors",
@@ -37,6 +39,7 @@ def ensure_project_dirs() -> None:
         LOGS_DIR / "browser",
         LOGS_DIR / "email_drafts",
         WORKSPACE_DIR,
+        SCRIPTS_DIR,
         SKILLS_DIR / "draft",
         SKILLS_DIR / "trusted",
         SKILLS_DIR / "app_specific",
@@ -51,5 +54,6 @@ def ensure_project_dirs() -> None:
         STATE_DIR,
         BACKUPS_DIR,
         BACKUPS_DIR / "files",
+        EVE_ROOT / "mobile_bridge",
     ):
         path.mkdir(parents=True, exist_ok=True)

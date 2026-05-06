@@ -11,10 +11,25 @@ from computer.screen_capture import take_screenshot
 from computer.ui_action_log import log_ui_action
 
 
+COMMON_TESSERACT_PATHS = [
+    Path(r"C:\Program Files\Tesseract-OCR\tesseract.exe"),
+    Path(r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe"),
+]
+
+
+def configure_tesseract() -> str | None:
+    for path in COMMON_TESSERACT_PATHS:
+        if path.exists():
+            pytesseract.pytesseract.tesseract_cmd = str(path)
+            return str(path)
+    return None
+
+
 def ocr_status() -> dict:
+    configured = configure_tesseract()
     try:
         version = str(pytesseract.get_tesseract_version())
-        return {"available": True, "version": version, "error": None}
+        return {"available": True, "version": version, "path": configured or pytesseract.pytesseract.tesseract_cmd, "error": None}
     except TesseractNotFoundError:
         return {
             "available": False,
@@ -27,6 +42,7 @@ def ocr_status() -> dict:
 
 
 def ocr_image(path: str | Path) -> str:
+    configure_tesseract()
     image_path = Path(path)
     try:
         text = pytesseract.image_to_string(Image.open(image_path), lang="eng+por")
@@ -45,6 +61,7 @@ def ocr_screen() -> dict:
 
 
 def ocr_image_data(path: str | Path, *, origin: dict | None = None) -> list[dict]:
+    configure_tesseract()
     image_path = Path(path)
     origin = origin or {"left": 0, "top": 0}
     try:
