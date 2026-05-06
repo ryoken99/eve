@@ -2,6 +2,7 @@ import argparse
 import base64
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -77,6 +78,16 @@ CODEX_OAUTH_TOKEN_URL = "https://auth.openai.com/oauth/token"
 CODEX_BASE_URL = "https://chatgpt.com/backend-api/codex"
 DEFAULT_MODEL = "gpt-5.4"
 KNOWN_MODELS = ["gpt-5.5", "gpt-5.4", "gpt-5.4-mini", "gpt-5.3-codex", "gpt-5.2"]
+
+
+PERSONAL_MEMORY_EXPANSIONS = {
+    "idade": ["24-year-old", "24 anos", "idade", "nascimento", "birth", "year-old"],
+    "anos": ["24-year-old", "24 anos", "idade", "nascimento", "birth", "year-old"],
+    "karate": ["karate", "karaté", "faixa branca", "cinto", "belt", "jiu-jitsu"],
+    "karaté": ["karate", "karaté", "faixa branca", "cinto", "belt", "jiu-jitsu"],
+    "faixa": ["faixa branca", "karate", "karaté", "cinto", "belt", "jiu-jitsu"],
+    "cinto": ["faixa branca", "karate", "karaté", "cinto", "belt", "jiu-jitsu"],
+}
 
 
 def ensure_dirs() -> None:
@@ -465,17 +476,44 @@ def extract_stream_delta(event: dict) -> str:
     return ""
 
 
+def relevant_entity_memory(prompt: str, limit: int = 8) -> list[dict]:
+    results: list[dict] = []
+    seen: set[str] = set()
+
+    def add_rows(rows: list[dict], reason: str) -> None:
+        for row in rows:
+            key = f"{row.get('source') or row.get('path')}|{row.get('excerpt', '')[:80]}"
+            if key in seen:
+                continue
+            seen.add(key)
+            item = dict(row)
+            item["reason"] = reason
+            results.append(item)
+
+    lowered = prompt.lower()
+    expanded_terms: list[str] = []
+    for trigger, terms in PERSONAL_MEMORY_EXPANSIONS.items():
+        if trigger in lowered:
+            expanded_terms.extend(terms)
+    for term in expanded_terms:
+        add_rows(search_entities(term, limit=3), f"literal:{term}")
+    add_rows(search_tfidf(prompt, limit=limit), "tfidf_prompt")
+    return results[:limit]
+
+
 def ask(prompt: str) -> str:
     auth = refresh_if_needed(load_auth())
     token = auth["tokens"]["access_token"]
     config = load_config()
     model = config.get("model") or DEFAULT_MODEL
     memory_context = context_bundle()
-    entity_context = search_tfidf(prompt, limit=4)
+    entity_context = relevant_entity_memory(prompt, limit=8)
     instructions = (
         "You are Eve, a local personal agent running on Sandro's Windows PC. "
         "Be concise, practical, and safe. Respect Eve's constitution and permissions. "
-        "Use the local memory context as persistent background, but do not claim actions you did not perform.\n\n"
+        "Use the local memory context as persistent background, but do not claim actions you did not perform. "
+        "When answering personal facts, use RELEVANT ENTITY MEMORY. Distinguish stable real-profile facts from fictional, roleplay, or simulated-story sources. "
+        "If the memory only suggests a fact from roleplay/simulation, say it is uncertain instead of presenting it as confirmed.\n\n"
         f"LOCAL MEMORY CONTEXT:\n{memory_context}\n\n"
         f"ENTITY BASE MEMORY ROOT: {ENTITIES_MEMORY_DIR}\n"
         f"RELEVANT ENTITY MEMORY:\n{json.dumps(entity_context, ensure_ascii=False)[:5000]}"
@@ -511,6 +549,42 @@ def ask(prompt: str) -> str:
         return text
 
 
+def natural_browser_target(prompt: str) -> str | None:
+    lowered = prompt.lower().strip()
+    if lowered.startswith("/"):
+        return None
+    if not any(word in lowered for word in ("abre", "abrir", "navegador", "browser", "chrome", "site", "x.com", "twitter", "google")):
+        return None
+    url_match = re.search(r"(https?://\S+|(?:[a-z0-9-]+\.)+[a-z]{2,}(?:/\S*)?)", prompt, re.IGNORECASE)
+    if url_match:
+        return url_match.group(1).rstrip(".,)")
+    if "x.com" in lowered or "twitter" in lowered:
+        return "https://x.com"
+    if "google" in lowered or "navegador" in lowered or "browser" in lowered or "chrome" in lowered:
+        return "https://www.google.com"
+    return None
+
+
+def handle_natural_tool_request(prompt: str) -> bool:
+    browser_target = natural_browser_target(prompt)
+    if browser_target:
+        append_chat("user", prompt)
+        try:
+            result = open_url(browser_target)
+            text = (
+                f"Abri o navegador da Eve em {result['url']} "
+                f"com o perfil {result['profile_name']} ({result['profile_directory']})."
+            )
+            print(text)
+            append_chat("assistant", text, tags=["tool", "browser"])
+        except Exception as exc:
+            text = f"Erro ao abrir o navegador: {exc}"
+            print(text)
+            append_chat("error", text, tags=["tool_error", "browser"])
+        return True
+    return False
+
+
 def chat() -> None:
     print("Eve chat. Escreve /sair para sair.")
     print("Comandos: /menu, /dashboard, /modelo, /estado, /seguranca, /modo-seguranca, /liberdade-total, /seguranca-safe, /entidades-path, /entidades-files, /entidades, /entidade, /relacao, /entidades-search, /monitores, /ocr-status, /ecra, /ecra-monitor, /ver-texto, /centro-texto, /clicar-texto, /visual-click, /vector-index, /vector-search, /vector-search2, /win-agendar, /win-tarefas, /daemon-tick, /daemon-stop, /watch-tech, /notify, /speak, /mobile, /mobile-msg, /app-profile, /app-profiles, /demo-record, /demo-summary, /pipeline, /admin-elevado, /app, /browser, /pesquisar, /email-draft, /mouse, /mover, /clicar, /tecla, /hotkey, /escrever, /agenda, /agendar, /proativo, /workspace-scan, /preferencia, /preferencias, /falha-skill, /licao, /skill-note, /experiencia, /experiencia-result, /melhoria, /melhorias-erros, /patch-proposta, /sandbox, /admin, /aprovar-admin, /rsi, /lock, /unlock, /diario, /consolidar, /sonhar, /lembrar, /world, /tech, /lab, /workspace, /ls, /ler, /nota, /cmd, /aprovar-cmd, /erros, /skills, /skill-run, /skill-promote, /skill-demo")
@@ -525,6 +599,8 @@ def chat() -> None:
             continue
         if prompt.lower() in {"/sair", "/exit", "exit", "quit"}:
             return
+        if handle_natural_tool_request(prompt):
+            continue
         if prompt.lower() == "/dashboard":
             print(render_dashboard())
             continue

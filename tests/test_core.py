@@ -6,6 +6,7 @@ from computer.monitors import virtual_bounds
 from core.paths import SKILLS_DIR, WORKSPACE_DIR
 from core.personality_engine import score_options
 from learning.skill_learning_loop import run_skill_learning_loop, skill_result_successful
+from app.eve_codex import natural_browser_target, relevant_entity_memory
 from memory.semantic_vector.vector_store import add_document, search
 from security.permission_manager import check_action, check_command
 from security.safety_modes import set_safety_mode
@@ -98,6 +99,17 @@ class EveCoreTests(unittest.TestCase):
     def test_skill_result_success_detects_nested_failure(self):
         self.assertFalse(skill_result_successful({"result": {"status": "needs_review"}}))
         self.assertTrue(skill_result_successful({"result": {"status": "published"}}))
+
+    def test_personal_memory_expands_age_and_karate_queries(self):
+        age_rows = relevant_entity_memory("qual e a minha idade?", limit=8)
+        self.assertTrue(any("24-year-old" in row.get("excerpt", "") or "24 anos" in row.get("excerpt", "") for row in age_rows))
+        karate_rows = relevant_entity_memory("que faixa sou no karate?", limit=8)
+        self.assertTrue(any("karate" in row.get("excerpt", "").lower() or "faixa branca" in row.get("excerpt", "").lower() for row in karate_rows))
+
+    def test_natural_browser_target(self):
+        self.assertEqual(natural_browser_target("abre o navegador"), "https://www.google.com")
+        self.assertEqual(natural_browser_target("abre o x.com"), "x.com")
+        self.assertIsNone(natural_browser_target("/browser https://x.com"))
 
 
 if __name__ == "__main__":
