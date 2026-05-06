@@ -1,9 +1,21 @@
 goals:
   - id: eve_v0_1
     title: "Construir nucleo seguro da Eve"
-    status: active
+    status: done
     priority: high
   - id: memory_foundation
     title: "Diario, memoria curta/media/longa e consolidacao"
-    status: active
+    status: done
+    priority: high
+  - id: executable_skills
+    title: "Skills executaveis e learn-mode inicial"
+    status: done
+    priority: high
+  - id: basic_awareness
+    title: "Awareness basica de sistema e janela ativa"
+    status: done
+    priority: high
+  - id: visual_control_foundation
+    title: "Visao do ecra, OCR e controlo humano do PC"
+    status: next
     priority: high
