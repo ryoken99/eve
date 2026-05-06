@@ -27,6 +27,10 @@ from research.research_notes import append_research_candidate, append_technology
 from lab.lab_manager import create_candidate, list_candidates
 from memory.errors.error_memory import recent_errors
 from core.awareness_engine import describe_awareness
+from computer.vision import describe_screen, find_text_on_screen
+from computer.emergency_stop import clear_emergency_lock, enable_emergency_lock, emergency_locked
+from computer.mouse_control import click, mouse_position, move_mouse
+from computer.keyboard_control import hotkey, press_key, type_text
 
 SECRETS_DIR = EVE_ROOT / "secrets"
 LOG_DIR = EVE_ROOT / "logs"
@@ -472,7 +476,7 @@ def ask(prompt: str) -> str:
 
 def chat() -> None:
     print("Eve chat. Escreve /sair para sair.")
-    print("Comandos: /modelo, /estado, /diario, /consolidar, /sonhar, /lembrar, /world, /tech, /lab, /workspace, /ls, /ler, /nota, /cmd, /aprovar-cmd, /erros, /skills, /skill-run, /skill-promote, /skill-demo")
+    print("Comandos: /modelo, /estado, /ecra, /ver-texto, /mouse, /mover, /clicar, /tecla, /hotkey, /escrever, /lock, /unlock, /diario, /consolidar, /sonhar, /lembrar, /world, /tech, /lab, /workspace, /ls, /ler, /nota, /cmd, /aprovar-cmd, /erros, /skills, /skill-run, /skill-promote, /skill-demo")
     print()
     while True:
         try:
@@ -595,6 +599,65 @@ def chat() -> None:
             continue
         if prompt.lower() in ("/estado", "/awareness"):
             print(describe_awareness())
+            continue
+        if prompt.lower() == "/ecra":
+            try:
+                print(json.dumps(describe_screen(), indent=2, ensure_ascii=False)[:6000])
+            except Exception as exc:
+                print(f"Erro a observar ecra: {exc}")
+            continue
+        if prompt.lower().startswith("/ver-texto "):
+            try:
+                print(json.dumps(find_text_on_screen(prompt.split(None, 1)[1]), indent=2, ensure_ascii=False)[:6000])
+            except Exception as exc:
+                print(f"Erro a procurar texto no ecra: {exc}")
+            continue
+        if prompt.lower() == "/mouse":
+            print(json.dumps(mouse_position(), indent=2, ensure_ascii=False))
+            continue
+        if prompt.lower().startswith("/mover "):
+            try:
+                _, x, y = prompt.split(None, 2)
+                print(json.dumps(move_mouse(int(x), int(y)), indent=2, ensure_ascii=False)[:4000])
+            except Exception as exc:
+                print(f"Erro a mover rato: {exc}")
+            continue
+        if prompt.lower().startswith("/clicar "):
+            try:
+                _, x, y = prompt.split(None, 2)
+                print(json.dumps(click(int(x), int(y)), indent=2, ensure_ascii=False)[:4000])
+            except Exception as exc:
+                print(f"Erro a clicar: {exc}")
+            continue
+        if prompt.lower().startswith("/tecla "):
+            try:
+                print(json.dumps(press_key(prompt.split(None, 1)[1]), indent=2, ensure_ascii=False)[:4000])
+            except Exception as exc:
+                print(f"Erro na tecla: {exc}")
+            continue
+        if prompt.lower().startswith("/hotkey "):
+            try:
+                keys = [part.strip() for part in prompt.split(None, 1)[1].split("+") if part.strip()]
+                print(json.dumps(hotkey(*keys), indent=2, ensure_ascii=False)[:4000])
+            except Exception as exc:
+                print(f"Erro no hotkey: {exc}")
+            continue
+        if prompt.lower().startswith("/escrever "):
+            try:
+                print(json.dumps(type_text(prompt.split(None, 1)[1]), indent=2, ensure_ascii=False)[:4000])
+            except Exception as exc:
+                print(f"Erro a escrever: {exc}")
+            continue
+        if prompt.lower().startswith("/lock"):
+            reason = prompt.split(None, 1)[1] if " " in prompt else "manual"
+            print(f"Emergency lock ativo: {enable_emergency_lock(reason)}")
+            continue
+        if prompt.lower() == "/unlock":
+            clear_emergency_lock()
+            print("Emergency lock limpo.")
+            continue
+        if prompt.lower() == "/lock-status":
+            print("Emergency lock: " + ("ativo" if emergency_locked() else "inativo"))
             continue
         if prompt.lower().startswith("/skill-run "):
             try:

@@ -31,6 +31,8 @@ def ensure_project_dirs() -> None:
         LOGS_DIR / "errors",
         LOGS_DIR / "approvals",
         LOGS_DIR / "audit",
+        LOGS_DIR / "ui_actions",
+        LOGS_DIR / "ui_actions" / "screenshots",
         WORKSPACE_DIR,
         SKILLS_DIR / "draft",
         SKILLS_DIR / "trusted",

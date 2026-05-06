@@ -5,6 +5,7 @@ secrets/
 logs/**
 !logs/**/
 !logs/**/.gitkeep
+logs/ui_actions/**
 memory/diary/**
 !memory/diary/.gitkeep
 memory/medium_term/daily_summary_*.md
