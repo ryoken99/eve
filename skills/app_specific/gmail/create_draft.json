@@ -1,0 +1,23 @@
+{
+  "name": "gmail_create_draft",
+  "description": "Cria um rascunho no Gmail sem enviar.",
+  "risk_level": "medium",
+  "permissions": [
+    "control_browser",
+    "create_email_draft"
+  ],
+  "steps": [
+    {
+      "action": "gmail_create_draft",
+      "to_from_user": true,
+      "subject_from_user": true,
+      "body_from_user": true
+    }
+  ],
+  "success_check": [
+    "draft_opened",
+    "not_sent"
+  ],
+  "version": 1,
+  "status": "draft"
+}

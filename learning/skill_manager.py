@@ -8,6 +8,8 @@ from core.paths import SKILLS_DIR, ensure_project_dirs
 from security.audit_log import log_event
 from tools.filesystem import append_file, read_file, write_file
 from tools.terminal import run_command
+from tools.browser_human import open_url, search_web
+from tools.email_human import create_gmail_draft
 
 
 def now_iso() -> str:
@@ -39,16 +41,15 @@ def list_skills(status: str | None = None) -> list[str]:
     roots = [SKILLS_DIR / status] if status else [p for p in SKILLS_DIR.iterdir() if p.is_dir()]
     found = []
     for root in roots:
-        for path in root.glob("*.json"):
-            found.append(f"{root.name}/{path.stem}")
+        for path in root.rglob("*.json"):
+            found.append(str(path.relative_to(SKILLS_DIR).with_suffix("")).replace("\\", "/"))
     return sorted(found)
 
 
 def load_skill(skill_ref: str) -> dict:
     ensure_project_dirs()
     if "/" in skill_ref:
-        status, name = skill_ref.split("/", 1)
-        path = SKILLS_DIR / status / f"{name}.json"
+        path = SKILLS_DIR / f"{skill_ref}.json"
     else:
         candidates = list(SKILLS_DIR.glob(f"*/{skill_ref}.json"))
         if not candidates:
@@ -85,6 +86,23 @@ def run_skill(skill_ref: str, *, args: dict | None = None, approved: bool = Fals
             if not command:
                 raise ValueError("run_command skill step precisa de command")
             results.append({"action": action, "result": run_command(command, approved=approved)})
+        elif action == "browser_open_url":
+            url = args.get("url") or step.get("url")
+            if not url:
+                raise ValueError("browser_open_url skill step precisa de url")
+            results.append({"action": action, "result": open_url(url)})
+        elif action == "browser_search_web":
+            query = args.get("query") or step.get("query")
+            if not query:
+                raise ValueError("browser_search_web skill step precisa de query")
+            results.append({"action": action, "result": search_web(query)})
+        elif action == "gmail_create_draft":
+            to = args.get("to") or step.get("to")
+            subject = args.get("subject") or step.get("subject")
+            body = args.get("body") or step.get("body")
+            if not to or not subject or not body:
+                raise ValueError("gmail_create_draft precisa de to, subject e body")
+            results.append({"action": action, "result": create_gmail_draft(to, subject, body)})
         else:
             raise ValueError(f"Acao de skill desconhecida: {action}")
     payload = {"skill": skill.get("name"), "status": skill.get("status"), "results": results}

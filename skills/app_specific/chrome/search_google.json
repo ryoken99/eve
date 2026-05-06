@@ -1,0 +1,19 @@
+{
+  "name": "chrome_search_google",
+  "description": "Pesquisa no Google através do browser visivel.",
+  "risk_level": "low",
+  "permissions": [
+    "control_browser"
+  ],
+  "steps": [
+    {
+      "action": "browser_search_web",
+      "query_from_user": true
+    }
+  ],
+  "success_check": [
+    "search_results_visible"
+  ],
+  "version": 1,
+  "status": "draft"
+}

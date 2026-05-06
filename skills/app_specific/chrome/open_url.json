@@ -1,0 +1,19 @@
+{
+  "name": "chrome_open_url",
+  "description": "Abre um URL no browser visivel usando o perfil humano autorizado.",
+  "risk_level": "low",
+  "permissions": [
+    "control_browser"
+  ],
+  "steps": [
+    {
+      "action": "browser_open_url",
+      "url_from_user": true
+    }
+  ],
+  "success_check": [
+    "browser_window_changed"
+  ],
+  "version": 1,
+  "status": "draft"
+}

@@ -31,6 +31,8 @@ from computer.vision import describe_screen, find_text_on_screen
 from computer.emergency_stop import clear_emergency_lock, enable_emergency_lock, emergency_locked
 from computer.mouse_control import click, mouse_position, move_mouse
 from computer.keyboard_control import hotkey, press_key, type_text
+from tools.browser_human import open_url, search_web
+from tools.email_human import create_gmail_draft
 
 SECRETS_DIR = EVE_ROOT / "secrets"
 LOG_DIR = EVE_ROOT / "logs"
@@ -476,7 +478,7 @@ def ask(prompt: str) -> str:
 
 def chat() -> None:
     print("Eve chat. Escreve /sair para sair.")
-    print("Comandos: /modelo, /estado, /ecra, /ver-texto, /mouse, /mover, /clicar, /tecla, /hotkey, /escrever, /lock, /unlock, /diario, /consolidar, /sonhar, /lembrar, /world, /tech, /lab, /workspace, /ls, /ler, /nota, /cmd, /aprovar-cmd, /erros, /skills, /skill-run, /skill-promote, /skill-demo")
+    print("Comandos: /modelo, /estado, /ecra, /ver-texto, /browser, /pesquisar, /email-draft, /mouse, /mover, /clicar, /tecla, /hotkey, /escrever, /lock, /unlock, /diario, /consolidar, /sonhar, /lembrar, /world, /tech, /lab, /workspace, /ls, /ler, /nota, /cmd, /aprovar-cmd, /erros, /skills, /skill-run, /skill-promote, /skill-demo")
     print()
     while True:
         try:
@@ -611,6 +613,27 @@ def chat() -> None:
                 print(json.dumps(find_text_on_screen(prompt.split(None, 1)[1]), indent=2, ensure_ascii=False)[:6000])
             except Exception as exc:
                 print(f"Erro a procurar texto no ecra: {exc}")
+            continue
+        if prompt.lower().startswith("/browser "):
+            try:
+                print(json.dumps(open_url(prompt.split(None, 1)[1]), indent=2, ensure_ascii=False)[:4000])
+            except Exception as exc:
+                print(f"Erro no browser: {exc}")
+            continue
+        if prompt.lower().startswith("/pesquisar "):
+            try:
+                print(json.dumps(search_web(prompt.split(None, 1)[1]), indent=2, ensure_ascii=False)[:4000])
+            except Exception as exc:
+                print(f"Erro na pesquisa: {exc}")
+            continue
+        if prompt.lower().startswith("/email-draft "):
+            try:
+                parts = [part.strip() for part in prompt.split(None, 1)[1].split("|", 2)]
+                if len(parts) != 3:
+                    raise ValueError("Formato: /email-draft para | assunto | corpo")
+                print(json.dumps(create_gmail_draft(parts[0], parts[1], parts[2]), indent=2, ensure_ascii=False)[:5000])
+            except Exception as exc:
+                print(f"Erro a criar rascunho: {exc}")
             continue
         if prompt.lower() == "/mouse":
             print(json.dumps(mouse_position(), indent=2, ensure_ascii=False))
