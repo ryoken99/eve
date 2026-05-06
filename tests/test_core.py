@@ -3,9 +3,11 @@ from __future__ import annotations
 import unittest
 
 from computer.monitors import virtual_bounds
+from core.personality_engine import score_options
 from memory.semantic_vector.vector_store import add_document, search
 from security.permission_manager import check_action, check_command
 from security.safety_modes import set_safety_mode
+from research.technology_watcher import classify_research_item
 
 
 class EveCoreTests(unittest.TestCase):
@@ -28,6 +30,14 @@ class EveCoreTests(unittest.TestCase):
         add_document("unit-test", "A Eve controla rato teclado e browser por visao.")
         rows = search("rato teclado browser", limit=1)
         self.assertTrue(rows)
+
+    def test_research_classifier(self):
+        result = classify_research_item("New agent benchmark", "Tool using agents and automation")
+        self.assertTrue(result["useful"])
+
+    def test_personality_scoring(self):
+        rows = score_options(["melhorar OCR", "limpar ficheiros"])
+        self.assertEqual(rows[0]["option"], "melhorar OCR")
 
 
 if __name__ == "__main__":

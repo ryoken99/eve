@@ -4,8 +4,10 @@ import os
 import urllib.parse
 from pathlib import Path
 
+from computer.keyboard_control import hotkey, press_key, type_text
 from computer.screen_capture import take_screenshot
 from computer.ui_action_log import log_ui_action
+from computer.visual_executor import run_visual_steps
 from core.paths import LOGS_DIR, ensure_project_dirs
 
 
@@ -32,6 +34,22 @@ def open_url(url: str) -> dict:
 def search_web(query: str) -> dict:
     encoded = urllib.parse.urlencode({"q": query.strip()})
     return open_url(f"https://www.google.com/search?{encoded}")
+
+
+def navigate_address_bar(url: str) -> dict:
+    normalized = _normalize_url(url)
+    before = take_screenshot("before_navigate_address_bar", scope="all")
+    hotkey("ctrl", "l")
+    type_text(normalized)
+    press_key("enter")
+    after = take_screenshot("after_navigate_address_bar", scope="all")
+    payload = {"url": normalized, "before": str(before), "after": str(after)}
+    log_ui_action("browser_navigate_address_bar", payload)
+    return payload
+
+
+def browser_visual_task(steps: list[dict]) -> dict:
+    return run_visual_steps(steps)
 
 
 def log_browser_note(kind: str, content: str) -> Path:

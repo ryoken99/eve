@@ -1,5 +1,7 @@
 pyautogui
 pillow
 pytesseract
+pynput
+scikit-learn
 # chromadb
 # playwright

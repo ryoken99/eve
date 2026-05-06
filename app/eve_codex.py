@@ -56,6 +56,13 @@ from tools.voice import speak
 from tools.mobile_bridge import bridge_status, queue_mobile_message
 from research.technology_watcher import run_technology_watch
 from app.dashboard import render_dashboard
+from app.terminal_ui import render_menu
+from autonomy.daemon import daemon_tick, request_daemon_stop
+from computer.app_profiles import capture_app_profile, list_app_profiles
+from learning.demonstration_recorder import record_user_demonstration, summarize_demonstration
+from memory.semantic_vector.vector_store import search_tfidf
+from self_improvement.pipeline import run_improvement_pipeline
+from tools.admin_executor import launch_elevated_powershell
 
 SECRETS_DIR = EVE_ROOT / "secrets"
 LOG_DIR = EVE_ROOT / "logs"
@@ -501,7 +508,7 @@ def ask(prompt: str) -> str:
 
 def chat() -> None:
     print("Eve chat. Escreve /sair para sair.")
-    print("Comandos: /dashboard, /modelo, /estado, /seguranca, /modo-seguranca, /liberdade-total, /seguranca-safe, /monitores, /ocr-status, /ecra, /ecra-monitor, /ver-texto, /centro-texto, /clicar-texto, /visual-click, /vector-index, /vector-search, /win-agendar, /win-tarefas, /watch-tech, /notify, /speak, /mobile, /mobile-msg, /app, /browser, /pesquisar, /email-draft, /mouse, /mover, /clicar, /tecla, /hotkey, /escrever, /agenda, /agendar, /proativo, /workspace-scan, /preferencia, /preferencias, /falha-skill, /licao, /skill-note, /experiencia, /experiencia-result, /melhoria, /melhorias-erros, /patch-proposta, /sandbox, /admin, /aprovar-admin, /rsi, /lock, /unlock, /diario, /consolidar, /sonhar, /lembrar, /world, /tech, /lab, /workspace, /ls, /ler, /nota, /cmd, /aprovar-cmd, /erros, /skills, /skill-run, /skill-promote, /skill-demo")
+    print("Comandos: /menu, /dashboard, /modelo, /estado, /seguranca, /modo-seguranca, /liberdade-total, /seguranca-safe, /monitores, /ocr-status, /ecra, /ecra-monitor, /ver-texto, /centro-texto, /clicar-texto, /visual-click, /vector-index, /vector-search, /vector-search2, /win-agendar, /win-tarefas, /daemon-tick, /daemon-stop, /watch-tech, /notify, /speak, /mobile, /mobile-msg, /app-profile, /app-profiles, /demo-record, /demo-summary, /pipeline, /admin-elevado, /app, /browser, /pesquisar, /email-draft, /mouse, /mover, /clicar, /tecla, /hotkey, /escrever, /agenda, /agendar, /proativo, /workspace-scan, /preferencia, /preferencias, /falha-skill, /licao, /skill-note, /experiencia, /experiencia-result, /melhoria, /melhorias-erros, /patch-proposta, /sandbox, /admin, /aprovar-admin, /rsi, /lock, /unlock, /diario, /consolidar, /sonhar, /lembrar, /world, /tech, /lab, /workspace, /ls, /ler, /nota, /cmd, /aprovar-cmd, /erros, /skills, /skill-run, /skill-promote, /skill-demo")
     print()
     while True:
         try:
@@ -515,6 +522,9 @@ def chat() -> None:
             return
         if prompt.lower() == "/dashboard":
             print(render_dashboard())
+            continue
+        if prompt.lower() == "/menu":
+            print(render_menu())
             continue
         if prompt.lower() == "/modelo":
             print_model()
@@ -714,6 +724,9 @@ def chat() -> None:
         if prompt.lower().startswith("/vector-search "):
             print(json.dumps(vector_search(prompt.split(None, 1)[1]), indent=2, ensure_ascii=False)[:6000])
             continue
+        if prompt.lower().startswith("/vector-search2 "):
+            print(json.dumps(search_tfidf(prompt.split(None, 1)[1]), indent=2, ensure_ascii=False)[:6000])
+            continue
         if prompt.lower().startswith("/win-agendar "):
             try:
                 parts = [part.strip() for part in prompt.split(None, 1)[1].split("|", 1)]
@@ -725,6 +738,12 @@ def chat() -> None:
             continue
         if prompt.lower() == "/win-tarefas":
             print(json.dumps(list_eve_tasks(), indent=2, ensure_ascii=False)[:5000])
+            continue
+        if prompt.lower() == "/daemon-tick":
+            print(json.dumps(daemon_tick(), indent=2, ensure_ascii=False)[:5000])
+            continue
+        if prompt.lower() == "/daemon-stop":
+            print(f"Daemon stop pedido em: {request_daemon_stop()}")
             continue
         if prompt.lower() == "/watch-tech":
             print(f"Technology watch guardado em: {run_technology_watch()}")
@@ -745,6 +764,38 @@ def chat() -> None:
             continue
         if prompt.lower().startswith("/mobile-msg "):
             print(f"Mensagem mobile em fila: {queue_mobile_message(prompt.split(None, 1)[1])}")
+            continue
+        if prompt.lower().startswith("/app-profile"):
+            name = prompt.split(None, 1)[1] if " " in prompt else None
+            print(f"Perfil de app guardado em: {capture_app_profile(name)}")
+            continue
+        if prompt.lower() == "/app-profiles":
+            print(", ".join(list_app_profiles()) or "sem perfis")
+            continue
+        if prompt.lower().startswith("/demo-record "):
+            try:
+                parts = [part.strip() for part in prompt.split(None, 1)[1].split("|", 2)]
+                name = parts[0]
+                seconds = int(parts[1]) if len(parts) > 1 else 30
+                description = parts[2] if len(parts) > 2 else ""
+                print(f"Gravacao guardada em: {record_user_demonstration(name, seconds, description)}")
+            except Exception as exc:
+                print(f"Erro a gravar demonstracao: {exc}")
+            continue
+        if prompt.lower().startswith("/demo-summary "):
+            print(json.dumps(summarize_demonstration(prompt.split(None, 1)[1]), indent=2, ensure_ascii=False)[:4000])
+            continue
+        if prompt.lower().startswith("/pipeline "):
+            try:
+                parts = [part.strip() for part in prompt.split(None, 1)[1].split("|", 3)]
+                if len(parts) < 3:
+                    raise ValueError("Formato: /pipeline area | problema | proposta | patch_opcional")
+                print(json.dumps(run_improvement_pipeline(parts[0], parts[1], parts[2], parts[3] if len(parts) > 3 else ""), indent=2, ensure_ascii=False)[:6000])
+            except Exception as exc:
+                print(f"Erro no pipeline: {exc}")
+            continue
+        if prompt.lower().startswith("/admin-elevado "):
+            print(json.dumps(launch_elevated_powershell(prompt.split(None, 1)[1]), indent=2, ensure_ascii=False)[:4000])
             continue
         if prompt.lower().startswith("/browser "):
             try:

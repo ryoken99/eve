@@ -31,3 +31,7 @@ memory/procedural/lessons.md
 memory/semantic_vector/index.json
 memory/technology/daily_technology_watch.md
 mobile_bridge/*.jsonl
+state/daemon_heartbeat.json
+state/daemon.stop
+memory/procedural/apps/*.json
+memory/procedural/demonstrations/*.events.json

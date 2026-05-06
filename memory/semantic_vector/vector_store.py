@@ -7,6 +7,13 @@ from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 
+try:
+    from sklearn.feature_extraction.text import TfidfVectorizer
+    from sklearn.metrics.pairwise import cosine_similarity
+except Exception:  # pragma: no cover - fallback handled at runtime
+    TfidfVectorizer = None
+    cosine_similarity = None
+
 from core.paths import MEMORY_DIR, ensure_project_dirs
 
 
@@ -104,3 +111,31 @@ def search(query: str, limit: int = 5) -> list[dict]:
                 }
             )
     return sorted(scored, key=lambda item: item["score"], reverse=True)[:limit]
+
+
+def search_tfidf(query: str, limit: int = 5) -> list[dict]:
+    items = _load()
+    if not items:
+        return []
+    if TfidfVectorizer is None or cosine_similarity is None:
+        return search(query, limit)
+    corpus = [item.get("content", "") for item in items]
+    vectorizer = TfidfVectorizer(ngram_range=(1, 2), min_df=1, strip_accents="unicode")
+    matrix = vectorizer.fit_transform(corpus + [query])
+    scores = cosine_similarity(matrix[-1], matrix[:-1]).ravel()
+    ranked = sorted(enumerate(scores), key=lambda pair: pair[1], reverse=True)[:limit]
+    results = []
+    for index, score in ranked:
+        if score <= 0:
+            continue
+        item = items[index]
+        results.append(
+            {
+                "score": round(float(score), 4),
+                "source": item.get("source"),
+                "metadata": item.get("metadata", {}),
+                "excerpt": item.get("content", "")[:1000],
+                "engine": "tfidf",
+            }
+        )
+    return results

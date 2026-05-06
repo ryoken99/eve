@@ -14,6 +14,8 @@ SOURCES = {
     "arxiv_ai": "https://export.arxiv.org/rss/cs.AI",
     "arxiv_cl": "https://export.arxiv.org/rss/cs.CL",
     "openai_blog": "https://openai.com/news/rss.xml",
+    "huggingface_blog": "https://huggingface.co/blog/feed.xml",
+    "google_research": "https://research.google/blog/rss/",
 }
 
 
@@ -67,3 +69,15 @@ def run_technology_watch(limit_per_source: int = 3) -> Path:
     with path.open("a", encoding="utf-8") as handle:
         handle.write("\n".join(lines))
     return path
+
+
+def classify_research_item(title: str, summary: str) -> dict:
+    text = f"{title} {summary}".lower()
+    scores = {
+        "memory": sum(word in text for word in ["memory", "retrieval", "embedding", "rag"]),
+        "vision": sum(word in text for word in ["vision", "ocr", "screen", "multimodal"]),
+        "agents": sum(word in text for word in ["agent", "tool", "computer use", "automation"]),
+        "self_improvement": sum(word in text for word in ["self", "improve", "evaluation", "benchmark"]),
+    }
+    best = max(scores, key=scores.get)
+    return {"category": best, "scores": scores, "useful": scores[best] > 0}

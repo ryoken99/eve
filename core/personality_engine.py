@@ -24,3 +24,19 @@ def read_preferences() -> str:
     if not PREF_PATH.exists():
         return ""
     return PREF_PATH.read_text(encoding="utf-8")
+
+
+def score_options(options: list[str]) -> list[dict]:
+    preferences = read_preferences().lower()
+    weighted_terms = ["memoria", "vision", "ocr", "agente", "autonomia", "seguranca", "lab", "self", "browser"]
+    scored = []
+    for option in options:
+        text = option.lower()
+        score = 0
+        for term in weighted_terms:
+            if term in text:
+                score += 2
+            if term in preferences:
+                score += 1
+        scored.append({"option": option, "score": score})
+    return sorted(scored, key=lambda item: item["score"], reverse=True)

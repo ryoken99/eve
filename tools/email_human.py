@@ -7,6 +7,7 @@ from pathlib import Path
 from computer.ui_action_log import log_ui_action
 from core.paths import LOGS_DIR, ensure_project_dirs
 from tools.browser_human import open_url
+from computer.visual_executor import run_visual_steps
 
 
 def create_gmail_draft(to: str, subject: str, body: str, *, open_browser: bool = True) -> dict:
@@ -37,3 +38,28 @@ def create_gmail_draft(to: str, subject: str, body: str, *, open_browser: bool =
         result["browser"] = browser_result
     log_ui_action("email_draft_created", result)
     return result
+
+
+def gmail_search_visual(query: str) -> dict:
+    return run_visual_steps(
+        [
+            {"action": "hotkey", "keys": ["ctrl", "l"]},
+            {"action": "type_text", "text": "https://mail.google.com/mail/u/0/#search/" + urllib.parse.quote(query)},
+            {"action": "press_key", "key": "enter"},
+            {"action": "verify_text", "text": query.split()[0] if query.split() else query},
+        ],
+        stop_on_error=False,
+    )
+
+
+def gmail_create_draft_visual(to: str, subject: str, body: str) -> dict:
+    create_gmail_draft(to, subject, body, open_browser=False)
+    return run_visual_steps(
+        [
+            {"action": "hotkey", "keys": ["ctrl", "l"]},
+            {"action": "type_text", "text": "https://mail.google.com/mail/?view=cm&fs=1"},
+            {"action": "press_key", "key": "enter"},
+            {"action": "verify_text", "text": "New Message"},
+        ],
+        stop_on_error=False,
+    )
