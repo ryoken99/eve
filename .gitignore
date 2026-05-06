@@ -19,3 +19,4 @@ backups/tmp/
 backups/files/**
 !backups/files/.gitkeep
 memory/errors/error_memory.jsonl
+state/current_world_state.json

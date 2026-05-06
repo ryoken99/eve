@@ -26,6 +26,7 @@ from dream.memory_reorganizer import run_dream
 from research.research_notes import append_research_candidate, append_technology_learning, append_world_learning
 from lab.lab_manager import create_candidate, list_candidates
 from memory.errors.error_memory import recent_errors
+from core.awareness_engine import describe_awareness
 
 SECRETS_DIR = EVE_ROOT / "secrets"
 LOG_DIR = EVE_ROOT / "logs"
@@ -471,7 +472,7 @@ def ask(prompt: str) -> str:
 
 def chat() -> None:
     print("Eve chat. Escreve /sair para sair.")
-    print("Comandos: /modelo, /diario, /consolidar, /sonhar, /lembrar, /world, /tech, /lab, /workspace, /ls, /ler, /nota, /cmd, /aprovar-cmd, /erros, /skills, /skill-run, /skill-promote, /skill-demo")
+    print("Comandos: /modelo, /estado, /diario, /consolidar, /sonhar, /lembrar, /world, /tech, /lab, /workspace, /ls, /ler, /nota, /cmd, /aprovar-cmd, /erros, /skills, /skill-run, /skill-promote, /skill-demo")
     print()
     while True:
         try:
@@ -591,6 +592,9 @@ def chat() -> None:
         if prompt.lower() == "/skills":
             skills = list_skills()
             print("Skills: " + (", ".join(skills) if skills else "nenhuma"))
+            continue
+        if prompt.lower() in ("/estado", "/awareness"):
+            print(describe_awareness())
             continue
         if prompt.lower().startswith("/skill-run "):
             try:

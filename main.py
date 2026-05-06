@@ -4,6 +4,7 @@ import sys
 from pathlib import Path
 
 from core.paths import EVE_ROOT, ensure_project_dirs
+from core.awareness_engine import describe_awareness
 from memory.memory_manager import consolidate_today
 from tools.terminal import run_command
 
@@ -17,8 +18,7 @@ def open_chat() -> int:
 def status() -> None:
     ensure_project_dirs()
     print("Eve online. Modo actual: safe.")
-    print(f"Root: {EVE_ROOT}")
-    print(f"Workspace: {EVE_ROOT / 'workspace'}")
+    print(describe_awareness())
 
 
 def main() -> int:
