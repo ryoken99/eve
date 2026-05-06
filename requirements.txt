@@ -1,0 +1,7 @@
+# Eve v0.1 uses only Python standard library.
+# Later phases may add:
+# pyautogui
+# pillow
+# pytesseract
+# chromadb
+# playwright

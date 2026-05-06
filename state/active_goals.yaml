@@ -1,0 +1,9 @@
+goals:
+  - id: eve_v0_1
+    title: "Construir nucleo seguro da Eve"
+    status: active
+    priority: high
+  - id: memory_foundation
+    title: "Diario, memoria curta/media/longa e consolidacao"
+    status: active
+    priority: high

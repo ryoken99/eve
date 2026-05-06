@@ -1,0 +1,20 @@
+{
+  "name": "criar_nota_workspace",
+  "description": "Cria uma nota de texto dentro do workspace seguro da Eve.",
+  "risk_level": "low",
+  "permissions": [
+    "write_workspace"
+  ],
+  "steps": [
+    {
+      "action": "write_file",
+      "path_from_user": true,
+      "content_from_user": true
+    }
+  ],
+  "success_check": [
+    "file_exists"
+  ],
+  "version": 1,
+  "status": "draft"
+}

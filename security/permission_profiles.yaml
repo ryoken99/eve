@@ -1,0 +1,50 @@
+safe_mode:
+  can_chat: true
+  can_read_memory: true
+  can_write_memory: true
+  can_read_files: false
+  can_write_files: false
+  can_run_terminal: false
+  can_control_ui: false
+  can_use_admin: false
+
+work_mode:
+  can_chat: true
+  can_read_memory: true
+  can_write_memory: true
+  can_read_files: true
+  can_write_workspace: true
+  can_run_safe_terminal: true
+  can_control_ui: false
+  can_use_admin: false
+
+operator_mode:
+  can_chat: true
+  can_read_memory: true
+  can_write_memory: true
+  can_read_files: true
+  can_write_workspace: true
+  can_run_safe_terminal: true
+  can_control_ui: true
+  can_control_browser: true
+  can_type_keyboard: true
+  can_move_mouse: true
+  requires_approval_for_sensitive: true
+
+admin_mode:
+  can_use_admin: true
+  requires_explicit_approval: true
+  auto_timeout_minutes: 10
+
+sensitive_actions:
+  - delete_files
+  - send_email
+  - publish_online
+  - purchase
+  - payment
+  - password_change
+  - install_software
+  - financial_action
+  - trading_action
+  - self_modify_core
+  - admin

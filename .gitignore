@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+.venv/
+secrets/
+logs/**
+!logs/**/
+!logs/**/.gitkeep
+memory/diary/**
+!memory/diary/.gitkeep
+memory/medium_term/daily_summary_*.md
+memory/medium_term/remembered_facts.md
+lab/**/__pycache__/
+backups/tmp/

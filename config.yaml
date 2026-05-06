@@ -1,0 +1,53 @@
+eve:
+  name: "Eve"
+  mode: "safe_mode"
+  timezone: "Europe/Lisbon"
+  owner: "Sandro"
+  mission: "assistir Sandro, aprender, organizar, agir e melhorar de forma controlada"
+
+llm:
+  provider: "codex"
+  model: "gpt-5.5"
+
+paths:
+  workspace: "./workspace"
+  memory: "./memory"
+  logs: "./logs"
+  skills: "./skills"
+  lab: "./lab"
+  backups: "./backups"
+
+memory:
+  diary_enabled: true
+  consolidation_enabled: true
+  dream_enabled: false
+  vector_memory_enabled: false
+
+autonomy:
+  enabled: false
+  scheduled_tasks_enabled: false
+  proactive_mode_enabled: false
+
+computer_control:
+  screen_capture_enabled: false
+  mouse_enabled: false
+  keyboard_enabled: false
+  emergency_stop_hotkey: "ctrl+alt+e"
+
+permissions:
+  default_profile: "safe_mode"
+  require_approval_for:
+    - admin
+    - send_email
+    - delete_files
+    - publish_online
+    - purchases
+    - financial_actions
+    - self_modify_core
+
+self_improvement:
+  enabled: false
+  lab_only: true
+  require_tests: true
+  require_backup: true
+  require_approval_for_core_changes: true
