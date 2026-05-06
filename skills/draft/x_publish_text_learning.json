@@ -1,0 +1,45 @@
+{
+  "name": "x_publish_text_learning",
+  "description": "Draft learning skill for publishing a text post on X using Eve Chrome profile with visual verification.",
+  "risk_level": "high",
+  "permissions": [
+    "control_browser",
+    "publish_online"
+  ],
+  "steps": [
+    {
+      "action": "browser_open_url",
+      "url_from_user": true,
+      "note": "Use https://x.com/intent/post?text=<encoded text> to open composer in Eve Chrome profile."
+    },
+    {
+      "action": "verify_text",
+      "text_from_user": true,
+      "note": "Verify the draft text is in the composer before attempting to publish."
+    },
+    {
+      "action": "click_text",
+      "text": "Post",
+      "note": "Must be visual/OCR selected inside the composer; fixed coordinates are forbidden."
+    },
+    {
+      "action": "verify_text_absent_or_feed",
+      "text_from_user": true,
+      "note": "Only mark success if composer closed and the text appears in feed/profile as a post."
+    }
+  ],
+  "success_check": [
+    "composer_closed",
+    "post_visible_in_feed_or_profile",
+    "no_fixed_coordinates"
+  ],
+  "version": 1,
+  "status": "needs_review",
+  "created_at": "2026-05-06T14:45:12.328484Z",
+  "updated_at": "2026-05-06T14:45:12.328484Z",
+  "notes": [
+    "Created after failed live attempt on 2026-05-06. Eve must not repeat fixed-coordinate clicks.",
+    "Publishing online requires explicit Sandro approval before the final Post click.",
+    "Known bad attempts: fixed click around x=1209/y=389, Ctrl+Enter, fixed click around x=1147/y=353."
+  ]
+}

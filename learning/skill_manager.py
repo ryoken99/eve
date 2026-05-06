@@ -10,6 +10,9 @@ from tools.filesystem import append_file, read_file, write_file
 from tools.terminal import run_command
 from tools.browser_human import open_url, search_web
 from tools.email_human import create_gmail_draft
+from computer.visual_executor import click_text_and_verify
+from computer.vision import find_text_on_screen
+from security.permission_manager import check_action
 
 
 def now_iso() -> str:
@@ -61,6 +64,10 @@ def load_skill(skill_ref: str) -> dict:
 def run_skill(skill_ref: str, *, args: dict | None = None, approved: bool = False) -> dict:
     args = args or {}
     skill = load_skill(skill_ref)
+    if "publish_online" in (skill.get("permissions") or []):
+        decision = check_action("publish_online", approved=approved)
+        if not decision.allowed:
+            raise PermissionError(decision.reason)
     results = []
     for step in skill.get("steps") or []:
         action = step.get("action")
@@ -103,6 +110,25 @@ def run_skill(skill_ref: str, *, args: dict | None = None, approved: bool = Fals
             if not to or not subject or not body:
                 raise ValueError("gmail_create_draft precisa de to, subject e body")
             results.append({"action": action, "result": create_gmail_draft(to, subject, body)})
+        elif action == "verify_text":
+            text = args.get("text") or step.get("text")
+            if not text:
+                raise ValueError("verify_text precisa de text")
+            results.append({"action": action, "result": find_text_on_screen(text)})
+        elif action == "click_text":
+            text = args.get("click_text") or step.get("text")
+            verify_text = args.get("verify_text") or step.get("verify_text")
+            if not text:
+                raise ValueError("click_text precisa de text")
+            results.append({"action": action, "result": click_text_and_verify(text, verify_text)})
+        elif action == "verify_text_absent_or_feed":
+            text = args.get("text") or step.get("text")
+            if not text:
+                raise ValueError("verify_text_absent_or_feed precisa de text")
+            found = find_text_on_screen(text)
+            found["status"] = "needs_human_review"
+            found["note"] = "Verificacao final de publicacao online ainda exige distinguir feed publicado de compositor/draft."
+            results.append({"action": action, "result": found})
         else:
             raise ValueError(f"Acao de skill desconhecida: {action}")
     payload = {"skill": skill.get("name"), "status": skill.get("status"), "results": results}

@@ -8,6 +8,7 @@ from memory.semantic_vector.vector_store import add_document, search
 from security.permission_manager import check_action, check_command
 from security.safety_modes import set_safety_mode
 from research.technology_watcher import classify_research_item
+from learning.skill_manager import run_skill
 
 
 class EveCoreTests(unittest.TestCase):
@@ -38,6 +39,10 @@ class EveCoreTests(unittest.TestCase):
     def test_personality_scoring(self):
         rows = score_options(["melhorar OCR", "limpar ficheiros"])
         self.assertEqual(rows[0]["option"], "melhorar OCR")
+
+    def test_publish_skill_requires_approval(self):
+        with self.assertRaises(PermissionError):
+            run_skill("draft/x_publish_text_learning")
 
 
 if __name__ == "__main__":
