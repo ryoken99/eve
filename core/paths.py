@@ -11,6 +11,7 @@ SKILLS_DIR = EVE_ROOT / "skills"
 STATE_DIR = EVE_ROOT / "state"
 BACKUPS_DIR = EVE_ROOT / "backups"
 LAB_DIR = EVE_ROOT / "lab"
+SECURITY_DIR = EVE_ROOT / "security"
 
 
 def ensure_project_dirs() -> None:
@@ -28,6 +29,8 @@ def ensure_project_dirs() -> None:
         LOGS_DIR / "chat",
         LOGS_DIR / "terminal",
         LOGS_DIR / "errors",
+        LOGS_DIR / "approvals",
+        LOGS_DIR / "audit",
         WORKSPACE_DIR,
         SKILLS_DIR / "draft",
         SKILLS_DIR / "trusted",
@@ -39,5 +42,6 @@ def ensure_project_dirs() -> None:
         LAB_DIR / "reports",
         STATE_DIR,
         BACKUPS_DIR,
+        BACKUPS_DIR / "files",
     ):
         path.mkdir(parents=True, exist_ok=True)

@@ -24,6 +24,7 @@ from learning.skill_manager import list_skills
 from dream.memory_reorganizer import run_dream
 from research.research_notes import append_research_candidate, append_technology_learning, append_world_learning
 from lab.lab_manager import create_candidate, list_candidates
+from memory.errors.error_memory import recent_errors
 
 SECRETS_DIR = EVE_ROOT / "secrets"
 LOG_DIR = EVE_ROOT / "logs"
@@ -469,7 +470,7 @@ def ask(prompt: str) -> str:
 
 def chat() -> None:
     print("Eve chat. Escreve /sair para sair.")
-    print("Comandos: /modelo, /modelos, /diario, /consolidar, /sonhar, /lembrar, /world, /tech, /lab, /workspace, /ls, /ler, /nota, /cmd, /skills")
+    print("Comandos: /modelo, /diario, /consolidar, /sonhar, /lembrar, /world, /tech, /lab, /workspace, /ls, /ler, /nota, /cmd, /aprovar-cmd, /erros, /skills")
     print()
     while True:
         try:
@@ -568,6 +569,23 @@ def chat() -> None:
                 if result.get("stderr"):
                     print(result["stderr"])
                 print(f"exit_code={result.get('returncode')}")
+            continue
+        if prompt.lower().startswith("/aprovar-cmd "):
+            command = prompt.split(None, 1)[1]
+            print("ATENCAO: comando aprovado manualmente nesta execucao.")
+            result = run_command(command, approved=True)
+            if result.get("stdout"):
+                print(result["stdout"])
+            if result.get("stderr"):
+                print(result["stderr"])
+            print(f"exit_code={result.get('returncode')}")
+            continue
+        if prompt.lower() == "/erros":
+            errors = recent_errors()
+            if not errors:
+                print("Sem erros registados.")
+            for err in errors:
+                print(f"- {err.get('timestamp')} [{err.get('source')}] {err.get('error_type')}: {err.get('error_text')[:300]}")
             continue
         if prompt.lower() == "/skills":
             skills = list_skills()
