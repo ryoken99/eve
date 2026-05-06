@@ -27,7 +27,8 @@ from research.research_notes import append_research_candidate, append_technology
 from lab.lab_manager import create_candidate, list_candidates
 from memory.errors.error_memory import recent_errors
 from core.awareness_engine import describe_awareness
-from computer.vision import describe_screen, find_text_on_screen
+from computer.vision import describe_screen, find_text_on_screen, first_text_center, monitor_report, screenshot_monitor
+from computer.ocr import ocr_status
 from computer.emergency_stop import clear_emergency_lock, enable_emergency_lock, emergency_locked
 from computer.mouse_control import click, mouse_position, move_mouse
 from computer.keyboard_control import hotkey, press_key, type_text
@@ -492,7 +493,7 @@ def ask(prompt: str) -> str:
 
 def chat() -> None:
     print("Eve chat. Escreve /sair para sair.")
-    print("Comandos: /modelo, /estado, /seguranca, /modo-seguranca, /liberdade-total, /seguranca-safe, /ecra, /ver-texto, /app, /browser, /pesquisar, /email-draft, /mouse, /mover, /clicar, /tecla, /hotkey, /escrever, /agenda, /agendar, /proativo, /workspace-scan, /preferencia, /preferencias, /falha-skill, /licao, /skill-note, /experiencia, /experiencia-result, /melhoria, /melhorias-erros, /patch-proposta, /sandbox, /admin, /aprovar-admin, /rsi, /lock, /unlock, /diario, /consolidar, /sonhar, /lembrar, /world, /tech, /lab, /workspace, /ls, /ler, /nota, /cmd, /aprovar-cmd, /erros, /skills, /skill-run, /skill-promote, /skill-demo")
+    print("Comandos: /modelo, /estado, /seguranca, /modo-seguranca, /liberdade-total, /seguranca-safe, /monitores, /ocr-status, /ecra, /ecra-monitor, /ver-texto, /centro-texto, /clicar-texto, /app, /browser, /pesquisar, /email-draft, /mouse, /mover, /clicar, /tecla, /hotkey, /escrever, /agenda, /agendar, /proativo, /workspace-scan, /preferencia, /preferencias, /falha-skill, /licao, /skill-note, /experiencia, /experiencia-result, /melhoria, /melhorias-erros, /patch-proposta, /sandbox, /admin, /aprovar-admin, /rsi, /lock, /unlock, /diario, /consolidar, /sonhar, /lembrar, /world, /tech, /lab, /workspace, /ls, /ler, /nota, /cmd, /aprovar-cmd, /erros, /skills, /skill-run, /skill-promote, /skill-demo")
     print()
     while True:
         try:
@@ -645,17 +646,45 @@ def chat() -> None:
             print(f"Modo atualizado em: {set_safety_mode('safe_mode', reason)}")
             print(describe_safety())
             continue
+        if prompt.lower() == "/monitores":
+            print(json.dumps(monitor_report(), indent=2, ensure_ascii=False)[:6000])
+            continue
+        if prompt.lower() == "/ocr-status":
+            print(json.dumps(ocr_status(), indent=2, ensure_ascii=False))
+            continue
         if prompt.lower() == "/ecra":
             try:
                 print(json.dumps(describe_screen(), indent=2, ensure_ascii=False)[:6000])
             except Exception as exc:
                 print(f"Erro a observar ecra: {exc}")
             continue
+        if prompt.lower().startswith("/ecra-monitor "):
+            try:
+                print(json.dumps(screenshot_monitor(int(prompt.split(None, 1)[1])), indent=2, ensure_ascii=False)[:4000])
+            except Exception as exc:
+                print(f"Erro a capturar monitor: {exc}")
+            continue
         if prompt.lower().startswith("/ver-texto "):
             try:
                 print(json.dumps(find_text_on_screen(prompt.split(None, 1)[1]), indent=2, ensure_ascii=False)[:6000])
             except Exception as exc:
                 print(f"Erro a procurar texto no ecra: {exc}")
+            continue
+        if prompt.lower().startswith("/centro-texto "):
+            try:
+                print(json.dumps(first_text_center(prompt.split(None, 1)[1]), indent=2, ensure_ascii=False)[:5000])
+            except Exception as exc:
+                print(f"Erro a calcular centro do texto: {exc}")
+            continue
+        if prompt.lower().startswith("/clicar-texto "):
+            try:
+                target = first_text_center(prompt.split(None, 1)[1])
+                if not target.get("found"):
+                    print(json.dumps(target, indent=2, ensure_ascii=False)[:5000])
+                else:
+                    print(json.dumps(click(int(target["x"]), int(target["y"])), indent=2, ensure_ascii=False)[:4000])
+            except Exception as exc:
+                print(f"Erro a clicar texto: {exc}")
             continue
         if prompt.lower().startswith("/browser "):
             try:

@@ -12,9 +12,9 @@ pyautogui.FAILSAFE = True
 
 def type_text(text: str, interval: float = 0.01) -> dict:
     assert_not_locked()
-    before = take_screenshot("before_type_text")
+    before = take_screenshot("before_type_text", scope="all")
     pyautogui.write(text, interval=interval)
-    after = take_screenshot("after_type_text")
+    after = take_screenshot("after_type_text", scope="all")
     payload = {"chars": len(text), "before": str(before), "after": str(after)}
     log_ui_action("type_text", payload)
     return payload
@@ -22,9 +22,9 @@ def type_text(text: str, interval: float = 0.01) -> dict:
 
 def press_key(key: str) -> dict:
     assert_not_locked()
-    before = take_screenshot("before_press_key")
+    before = take_screenshot("before_press_key", scope="all")
     pyautogui.press(key)
-    after = take_screenshot("after_press_key")
+    after = take_screenshot("after_press_key", scope="all")
     payload = {"key": key, "before": str(before), "after": str(after)}
     log_ui_action("press_key", payload)
     return payload
@@ -32,9 +32,9 @@ def press_key(key: str) -> dict:
 
 def hotkey(*keys: str) -> dict:
     assert_not_locked()
-    before = take_screenshot("before_hotkey")
+    before = take_screenshot("before_hotkey", scope="all")
     pyautogui.hotkey(*keys)
-    after = take_screenshot("after_hotkey")
+    after = take_screenshot("after_hotkey", scope="all")
     payload = {"keys": list(keys), "before": str(before), "after": str(after)}
     log_ui_action("hotkey", payload)
     return payload
