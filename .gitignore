@@ -27,6 +27,7 @@ memory/errors/error_memory.jsonl
 state/current_world_state.json
 state/scheduled_tasks.json
 memory/procedural/adaptive_failures.jsonl
+memory/procedural/skill_learning_loop.jsonl
 memory/procedural/lessons.md
 memory/semantic_vector/index.json
 memory/technology/daily_technology_watch.md
