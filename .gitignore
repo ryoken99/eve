@@ -14,6 +14,10 @@ memory/long_term/candidate_memories.md
 lab/**/__pycache__/
 lab/candidate_improvements/*.json
 !lab/candidate_improvements/.gitkeep
+lab/experiments/*.json
+!lab/experiments/.gitkeep
+lab/prototypes/*.patch.md
+!lab/prototypes/.gitkeep
 lab/reports/dream_*.md
 !lab/reports/.gitkeep
 backups/tmp/

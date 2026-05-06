@@ -1,8 +1,8 @@
 {
   "mode": "safe_mode",
   "active_project": "Eve",
-  "active_task": "v0_5_basic_awareness",
-  "computer_control": false,
+  "active_task": "v1_0_controlled_rsi_foundation",
+  "computer_control": true,
   "admin_mode": false,
-  "autonomy": false
+  "autonomy": true
 }

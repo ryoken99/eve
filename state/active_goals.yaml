@@ -17,5 +17,17 @@ goals:
     priority: high
   - id: visual_control_foundation
     title: "Visao do ecra, OCR e controlo humano do PC"
-    status: next
+    status: done
+    priority: high
+  - id: browser_email_foundation
+    title: "Browser humano e rascunhos de email sem envio"
+    status: done
+    priority: high
+  - id: autonomy_learning_personality
+    title: "Autonomia local, aprendizagem adaptativa e personalidade evolutiva"
+    status: done
+    priority: high
+  - id: controlled_rsi_foundation
+    title: "Lab, admin gate, app observer e recursive self-improvement controlado"
+    status: done
     priority: high

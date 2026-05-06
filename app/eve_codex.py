@@ -39,6 +39,13 @@ from autonomy.event_watcher import workspace_snapshot
 from core.personality_engine import add_preference, read_preferences
 from learning.adaptive_learning import record_adaptive_lesson, record_skill_failure
 from learning.skill_refiner import add_skill_note
+from computer.app_observer import observe_active_app
+from lab.experiment_runner import create_experiment, record_experiment_result
+from self_improvement.improvement_planner import propose_from_recent_errors, propose_improvement
+from self_improvement.patch_generator import write_patch_proposal
+from self_improvement.recursive_self_improvement import run_controlled_rsi_cycle
+from self_improvement.sandbox_tester import run_python_compile
+from tools.admin_executor import run_admin_command
 
 SECRETS_DIR = EVE_ROOT / "secrets"
 LOG_DIR = EVE_ROOT / "logs"
@@ -484,7 +491,7 @@ def ask(prompt: str) -> str:
 
 def chat() -> None:
     print("Eve chat. Escreve /sair para sair.")
-    print("Comandos: /modelo, /estado, /ecra, /ver-texto, /browser, /pesquisar, /email-draft, /mouse, /mover, /clicar, /tecla, /hotkey, /escrever, /agenda, /agendar, /proativo, /workspace-scan, /preferencia, /preferencias, /falha-skill, /licao, /skill-note, /lock, /unlock, /diario, /consolidar, /sonhar, /lembrar, /world, /tech, /lab, /workspace, /ls, /ler, /nota, /cmd, /aprovar-cmd, /erros, /skills, /skill-run, /skill-promote, /skill-demo")
+    print("Comandos: /modelo, /estado, /ecra, /ver-texto, /app, /browser, /pesquisar, /email-draft, /mouse, /mover, /clicar, /tecla, /hotkey, /escrever, /agenda, /agendar, /proativo, /workspace-scan, /preferencia, /preferencias, /falha-skill, /licao, /skill-note, /experiencia, /experiencia-result, /melhoria, /melhorias-erros, /patch-proposta, /sandbox, /admin, /aprovar-admin, /rsi, /lock, /unlock, /diario, /consolidar, /sonhar, /lembrar, /world, /tech, /lab, /workspace, /ls, /ler, /nota, /cmd, /aprovar-cmd, /erros, /skills, /skill-run, /skill-promote, /skill-demo")
     print()
     while True:
         try:
@@ -660,6 +667,12 @@ def chat() -> None:
         if prompt.lower() == "/workspace-scan":
             print(json.dumps(workspace_snapshot(), indent=2, ensure_ascii=False)[:5000])
             continue
+        if prompt.lower() == "/app":
+            try:
+                print(json.dumps(observe_active_app(), indent=2, ensure_ascii=False)[:6000])
+            except Exception as exc:
+                print(f"Erro a observar app: {exc}")
+            continue
         if prompt.lower().startswith("/preferencia "):
             payload = prompt.split(None, 1)[1]
             if "|" in payload:
@@ -697,6 +710,71 @@ def chat() -> None:
                 print(f"Skill atualizada em: {add_skill_note(parts[0], parts[1])}")
             except Exception as exc:
                 print(f"Erro a atualizar skill: {exc}")
+            continue
+        if prompt.lower().startswith("/experiencia "):
+            try:
+                parts = [part.strip() for part in prompt.split(None, 1)[1].split("|", 3)]
+                if len(parts) != 4:
+                    raise ValueError("Formato: /experiencia titulo | hipotese | metrica | procedimento")
+                print(f"Experiencia criada em: {create_experiment(parts[0], parts[1], parts[2], parts[3])}")
+            except Exception as exc:
+                print(f"Erro a criar experiencia: {exc}")
+            continue
+        if prompt.lower().startswith("/experiencia-result "):
+            try:
+                parts = [part.strip() for part in prompt.split(None, 1)[1].split("|", 2)]
+                if len(parts) != 3:
+                    raise ValueError("Formato: /experiencia-result nome | resultado | decisao")
+                print(f"Resultado guardado em: {record_experiment_result(parts[0], parts[1], parts[2])}")
+            except Exception as exc:
+                print(f"Erro a guardar resultado: {exc}")
+            continue
+        if prompt.lower().startswith("/melhoria "):
+            try:
+                parts = [part.strip() for part in prompt.split(None, 1)[1].split("|", 3)]
+                if len(parts) < 3:
+                    raise ValueError("Formato: /melhoria area | problema | proposta | risco")
+                print(f"Melhoria proposta em: {propose_improvement(parts[0], parts[1], parts[2], parts[3] if len(parts) > 3 else 'low')}")
+            except Exception as exc:
+                print(f"Erro a propor melhoria: {exc}")
+            continue
+        if prompt.lower() == "/melhorias-erros":
+            paths = propose_from_recent_errors()
+            print("Melhorias propostas: " + (", ".join(str(path) for path in paths) if paths else "nenhuma"))
+            continue
+        if prompt.lower().startswith("/patch-proposta "):
+            try:
+                parts = [part.strip() for part in prompt.split(None, 1)[1].split("|", 2)]
+                if len(parts) != 3:
+                    raise ValueError("Formato: /patch-proposta nome | resumo | diff")
+                print(f"Patch proposto em: {write_patch_proposal(parts[0], parts[1], parts[2])}")
+            except Exception as exc:
+                print(f"Erro a criar patch proposta: {exc}")
+            continue
+        if prompt.lower().startswith("/sandbox "):
+            paths = [part.strip() for part in prompt.split(None, 1)[1].split() if part.strip()]
+            print(json.dumps(run_python_compile(paths), indent=2, ensure_ascii=False)[:5000])
+            continue
+        if prompt.lower().startswith("/admin "):
+            try:
+                parts = [part.strip() for part in prompt.split(None, 1)[1].split("|", 1)]
+                if len(parts) != 2:
+                    raise ValueError("Formato: /admin motivo | comando")
+                print(json.dumps(run_admin_command(parts[1], parts[0], approved=False), indent=2, ensure_ascii=False)[:5000])
+            except Exception as exc:
+                print(f"Erro admin: {exc}")
+            continue
+        if prompt.lower().startswith("/aprovar-admin "):
+            try:
+                parts = [part.strip() for part in prompt.split(None, 1)[1].split("|", 1)]
+                if len(parts) != 2:
+                    raise ValueError("Formato: /aprovar-admin motivo | comando")
+                print(json.dumps(run_admin_command(parts[1], parts[0], approved=True), indent=2, ensure_ascii=False)[:5000])
+            except Exception as exc:
+                print(f"Erro admin aprovado: {exc}")
+            continue
+        if prompt.lower() == "/rsi":
+            print(json.dumps(run_controlled_rsi_cycle(), indent=2, ensure_ascii=False)[:7000])
             continue
         if prompt.lower() == "/mouse":
             print(json.dumps(mouse_position(), indent=2, ensure_ascii=False))
