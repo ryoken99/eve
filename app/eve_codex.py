@@ -46,6 +46,7 @@ from self_improvement.patch_generator import write_patch_proposal
 from self_improvement.recursive_self_improvement import run_controlled_rsi_cycle
 from self_improvement.sandbox_tester import run_python_compile
 from tools.admin_executor import run_admin_command
+from security.safety_modes import SAFETY_MODES, describe_safety, set_safety_mode
 
 SECRETS_DIR = EVE_ROOT / "secrets"
 LOG_DIR = EVE_ROOT / "logs"
@@ -491,7 +492,7 @@ def ask(prompt: str) -> str:
 
 def chat() -> None:
     print("Eve chat. Escreve /sair para sair.")
-    print("Comandos: /modelo, /estado, /ecra, /ver-texto, /app, /browser, /pesquisar, /email-draft, /mouse, /mover, /clicar, /tecla, /hotkey, /escrever, /agenda, /agendar, /proativo, /workspace-scan, /preferencia, /preferencias, /falha-skill, /licao, /skill-note, /experiencia, /experiencia-result, /melhoria, /melhorias-erros, /patch-proposta, /sandbox, /admin, /aprovar-admin, /rsi, /lock, /unlock, /diario, /consolidar, /sonhar, /lembrar, /world, /tech, /lab, /workspace, /ls, /ler, /nota, /cmd, /aprovar-cmd, /erros, /skills, /skill-run, /skill-promote, /skill-demo")
+    print("Comandos: /modelo, /estado, /seguranca, /modo-seguranca, /liberdade-total, /seguranca-safe, /ecra, /ver-texto, /app, /browser, /pesquisar, /email-draft, /mouse, /mover, /clicar, /tecla, /hotkey, /escrever, /agenda, /agendar, /proativo, /workspace-scan, /preferencia, /preferencias, /falha-skill, /licao, /skill-note, /experiencia, /experiencia-result, /melhoria, /melhorias-erros, /patch-proposta, /sandbox, /admin, /aprovar-admin, /rsi, /lock, /unlock, /diario, /consolidar, /sonhar, /lembrar, /world, /tech, /lab, /workspace, /ls, /ler, /nota, /cmd, /aprovar-cmd, /erros, /skills, /skill-run, /skill-promote, /skill-demo")
     print()
     while True:
         try:
@@ -614,6 +615,35 @@ def chat() -> None:
             continue
         if prompt.lower() in ("/estado", "/awareness"):
             print(describe_awareness())
+            continue
+        if prompt.lower() == "/seguranca":
+            print(describe_safety())
+            continue
+        if prompt.lower() == "/modos-seguranca":
+            for mode, profile in SAFETY_MODES.items():
+                print(f"- {mode}: {profile['description']}")
+            continue
+        if prompt.lower().startswith("/modo-seguranca "):
+            try:
+                payload = prompt.split(None, 1)[1]
+                if "|" in payload:
+                    mode, reason = [part.strip() for part in payload.split("|", 1)]
+                else:
+                    mode, reason = payload.strip(), "manual"
+                print(f"Modo atualizado em: {set_safety_mode(mode, reason)}")
+                print(describe_safety())
+            except Exception as exc:
+                print(f"Erro a mudar seguranca: {exc}")
+            continue
+        if prompt.lower().startswith("/liberdade-total"):
+            reason = prompt.split(None, 1)[1] if " " in prompt else "Sandro ativou liberdade total manualmente"
+            print(f"Modo atualizado em: {set_safety_mode('unrestricted_mode', reason)}")
+            print(describe_safety())
+            continue
+        if prompt.lower().startswith("/seguranca-safe"):
+            reason = prompt.split(None, 1)[1] if " " in prompt else "Sandro voltou a ligar seguranca"
+            print(f"Modo atualizado em: {set_safety_mode('safe_mode', reason)}")
+            print(describe_safety())
             continue
         if prompt.lower() == "/ecra":
             try:

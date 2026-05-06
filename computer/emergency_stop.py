@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from core.paths import STATE_DIR, ensure_project_dirs
+from security.safety_modes import current_safety_profile
 
 
 LOCK_PATH = STATE_DIR / "emergency_lock"
@@ -20,6 +21,8 @@ def clear_emergency_lock() -> None:
 
 
 def emergency_locked() -> bool:
+    if not current_safety_profile().get("emergency_lock_enabled", True):
+        return False
     return LOCK_PATH.exists()
 
 

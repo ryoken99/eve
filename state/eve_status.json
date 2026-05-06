@@ -2,7 +2,18 @@
   "mode": "safe_mode",
   "active_project": "Eve",
   "active_task": "v1_0_controlled_rsi_foundation",
-  "computer_control": true,
+  "computer_control": false,
   "admin_mode": false,
-  "autonomy": true
+  "autonomy": true,
+  "safety": {
+    "mode": "safe_mode",
+    "description": "Conversar, memoria e tarefas locais de baixo risco.",
+    "action_guard": true,
+    "command_guard": true,
+    "admin_requires_approval": true,
+    "self_modify_requires_approval": true,
+    "emergency_lock_enabled": true,
+    "changed_at": "2026-05-06T10:14:38.408930Z",
+    "reason": "validation reset to safe"
+  }
 }

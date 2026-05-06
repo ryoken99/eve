@@ -36,6 +36,22 @@ admin_mode:
   requires_explicit_approval: true
   auto_timeout_minutes: 10
 
+unrestricted_mode:
+  can_chat: true
+  can_read_memory: true
+  can_write_memory: true
+  can_read_files: true
+  can_write_workspace: true
+  can_run_terminal: true
+  can_control_ui: true
+  can_control_browser: true
+  can_type_keyboard: true
+  can_move_mouse: true
+  can_use_admin: true
+  can_self_modify_core: true
+  requires_approval_for_sensitive: false
+  emergency_lock_enabled: false
+
 sensitive_actions:
   - delete_files
   - send_email
