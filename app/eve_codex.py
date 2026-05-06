@@ -21,6 +21,9 @@ from memory.memory_manager import consolidate_today, context_bundle, remember_fa
 from tools.filesystem import append_file, list_dir, read_file, write_file
 from tools.terminal import run_command
 from learning.skill_manager import list_skills
+from dream.memory_reorganizer import run_dream
+from research.research_notes import append_research_candidate, append_technology_learning, append_world_learning
+from lab.lab_manager import create_candidate, list_candidates
 
 SECRETS_DIR = EVE_ROOT / "secrets"
 LOG_DIR = EVE_ROOT / "logs"
@@ -466,7 +469,7 @@ def ask(prompt: str) -> str:
 
 def chat() -> None:
     print("Eve chat. Escreve /sair para sair.")
-    print("Comandos: /modelo, /modelos, /diario, /consolidar, /lembrar, /workspace, /ls, /ler, /nota, /cmd, /skills")
+    print("Comandos: /modelo, /modelos, /diario, /consolidar, /sonhar, /lembrar, /world, /tech, /lab, /workspace, /ls, /ler, /nota, /cmd, /skills")
     print()
     while True:
         try:
@@ -501,9 +504,37 @@ def chat() -> None:
             path = consolidate_today()
             print(f"Diario consolidado em: {path}")
             continue
+        if prompt.lower() == "/sonhar":
+            path = run_dream()
+            print(f"Relatorio de sonho criado em: {path}")
+            continue
         if prompt.lower().startswith("/lembrar "):
             path = remember_fact(prompt.split(None, 1)[1])
             print(f"Memoria guardada em: {path}")
+            continue
+        if prompt.lower().startswith("/world "):
+            path = append_world_learning(prompt.split(None, 1)[1])
+            print(f"Aprendizagem do mundo guardada em: {path}")
+            continue
+        if prompt.lower().startswith("/tech "):
+            text = prompt.split(None, 1)[1]
+            path = append_technology_learning(text)
+            candidate = append_research_candidate(text)
+            print(f"Aprendizagem tecnologica guardada em: {path}")
+            print(f"Candidato de research guardado em: {candidate}")
+            continue
+        if prompt.lower().startswith("/lab "):
+            payload = prompt.split(None, 1)[1]
+            if "|" in payload:
+                title, hypothesis = [part.strip() for part in payload.split("|", 1)]
+            else:
+                title, hypothesis = payload, payload
+            path = create_candidate(title, hypothesis)
+            print(f"Candidato de lab criado em: {path}")
+            continue
+        if prompt.lower() == "/lab":
+            candidates = list_candidates()
+            print("Lab candidates: " + (", ".join(candidates) if candidates else "nenhum"))
             continue
         if prompt.lower() == "/workspace":
             print(EVE_ROOT / "workspace")

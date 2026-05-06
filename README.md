@@ -40,7 +40,12 @@ python D:\Eve\main.py
 /diario
 /diarios
 /consolidar
+/sonhar
 /lembrar texto
+/world texto
+/tech texto
+/lab
+/lab titulo | hipotese
 /workspace
 /ls
 /ls pasta

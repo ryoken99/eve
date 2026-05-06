@@ -10,6 +10,7 @@ WORKSPACE_DIR = EVE_ROOT / "workspace"
 SKILLS_DIR = EVE_ROOT / "skills"
 STATE_DIR = EVE_ROOT / "state"
 BACKUPS_DIR = EVE_ROOT / "backups"
+LAB_DIR = EVE_ROOT / "lab"
 
 
 def ensure_project_dirs() -> None:
@@ -30,6 +31,12 @@ def ensure_project_dirs() -> None:
         WORKSPACE_DIR,
         SKILLS_DIR / "draft",
         SKILLS_DIR / "trusted",
+        LAB_DIR / "experiments",
+        LAB_DIR / "prototypes",
+        LAB_DIR / "benchmarks",
+        LAB_DIR / "candidate_improvements",
+        LAB_DIR / "rejected_ideas",
+        LAB_DIR / "reports",
         STATE_DIR,
         BACKUPS_DIR,
     ):

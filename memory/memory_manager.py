@@ -5,6 +5,7 @@ from pathlib import Path
 
 from core.paths import MEMORY_DIR, ensure_project_dirs
 from memory.diary_manager import diary_path, read_diary, today_key
+from dream.diary_consolidator import consolidate
 
 
 def read_memory_file(layer: str, name: str) -> str:
@@ -53,35 +54,7 @@ def context_bundle(max_chars: int = 12000) -> str:
 
 
 def consolidate_today() -> Path:
-    ensure_project_dirs()
-    diary = read_diary()
-    out = MEMORY_DIR / "medium_term" / f"daily_summary_{today_key()}.md"
-    if not diary.strip():
-        out.write_text(f"# Daily Summary {today_key()}\n\nNo diary entries yet.\n", encoding="utf-8")
-        return out
-
-    lines = [line.strip() for line in diary.splitlines() if line.strip()]
-    user_lines = [line for line in lines if not line.startswith("#") and not line.startswith("##")]
-    summary = [
-        f"# Daily Summary {today_key()}",
-        "",
-        f"Generated: {datetime.now().isoformat(timespec='seconds')}",
-        "",
-        "## Raw Signals",
-        "",
-    ]
-    for line in user_lines[-80:]:
-        summary.append(f"- {line}")
-    summary.extend(
-        [
-            "",
-            "## Candidate Memories",
-            "",
-            "- Review this summary and promote stable facts to long-term memory when confirmed.",
-        ]
-    )
-    out.write_text("\n".join(summary) + "\n", encoding="utf-8")
-    return out
+    return consolidate(today_key())
 
 
 def remember_fact(text: str) -> Path:
