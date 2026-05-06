@@ -20,6 +20,7 @@ TARGET_FILES = [
 ]
 OUTPUT_MD = MEMORY_DIR / "long_term" / "sandro_core_memory.md"
 OUTPUT_JSON = MEMORY_DIR / "long_term" / "sandro_core_memory_sources.json"
+OUTPUT_COMPARISON = MEMORY_DIR / "long_term" / "sandro_profile_comparison.md"
 
 CATEGORY_PATTERNS = {
     "identity": [
@@ -34,12 +35,113 @@ CATEGORY_PATTERNS = {
     ],
     "languages": ["language", "languages", "língua", "lingua", "portuguese", "bengali", "japanese", "francês", "italiano"],
     "studies_work": ["biology", "biologia", "computer engineering", "engenharia", "trader", "trading", "financial", "family business", "negócio"],
-    "martial_arts": ["karate", "karaté", "karatê", "jiu-jitsu", "shukokai", "faixa", "belt", "lúcio", "bruno"],
+    "martial_arts": ["karate", "karaté", "karatê", "jiu-jitsu", "shukokai", "faixa", "belt", "lúcio", "bruno", "carlos"],
     "magic": ["magic", "magia", "magician", "mentalism", "mentalismo", "tamariz", "daortiz", "darwin ortiz"],
     "projects": ["echoes of eternity", "wonder world", "game", "jogo", "rpg", "classes", "story", "história", "livro", "rap"],
+    "media": ["favorite movies", "list of favorite", "animes", "anime", "avatar", "matrix", "lord of the rings", "saw", "war horse", "death note", "kuroko", "sword art", "yu"],
+    "constructed_language": ["unique history language", "drag =", "vibe =", "translation", "tons de pron", "linguagem", "naru", "zefiro"],
     "eve_preferences": ["eve", "assistant", "assistente", "proactive", "proativa", "português de portugal", "master", "mestre"],
     "people": ["bubu", "marta", "raton", "friends", "amigos", "siblings", "irmãos", "pais"],
     "pc_assets": ["computadores", "computer", "rtx", "i9", "windows 11", "citroen", "c3"],
+}
+
+CANONICAL_MAGIC_BOOKS = [
+    "The Magic Way - Juan Tamariz",
+    "Mnemonica - Juan Tamariz",
+    "The Five Points in Magic - Juan Tamariz",
+    "Verbal Magic - Juan Tamariz",
+    "Sonata - Juan Tamariz",
+    "The Magic Rainbow - Juan Tamariz",
+    "Freedom of Expression - Dani DaOrtiz",
+    "Designing Miracles - Darwin Ortiz",
+    "Strong Magic - Darwin Ortiz",
+    "Sterenko on Cards - Sterenko",
+    "Drawing Room Deceptions - Guy Hollingworth",
+    "Royal Road to Card Magic - Jean Hugard e Frederick Braue",
+    "Expert at the Card Technique - Jean Hugard e Frederick Braue",
+    "Card Control - Arthur Buckley",
+    "Modern Coin Magic - J.B. Bobo",
+    "Truques com Cartas - Joao Miranda",
+    "Livro dos Segredos - Luis de Matos",
+    "Scripting Magic 1 - Pete McCabe",
+    "Scripting Magic 2 - Pete McCabe",
+    "Paper Engine - Aaron Fisher",
+    "13 Steps to Mentalism - Tony Corinda",
+    "Nick Trost's Subtle Card Creations Volume 1",
+    "Nick Trost's Subtle Card Creations Volume 2",
+    "Nick Trost's Subtle Card Creations Volume 3",
+    "The Card Magic of Nick Trost",
+    "Destination Zero - John Bannon",
+    "Mastering the Art of Magic - Eugene Burger",
+    "Miracles with Cards - James Swain",
+    "By Forces Unseen - Stephen Minch / Ernest Earick",
+    "Card College Volume 1 - Roberto Giobbi",
+    "Handcrafted Card Magic Volume 1 - Denis Behr",
+    "Complete Course in Magic - Mark Wilson",
+    "Scarne on Card Tricks - John Scarne",
+    "Expert at the Card Table - S.W. Erdnase",
+    "Confident Deceptions - Jason Ladanye",
+    "Game Changer - Jason Ladanye",
+    "Revolutionary Card Technique - Ed Marlo",
+    "Cardially Yours - Ed Marlo",
+]
+
+CANONICAL_ANIMES = [
+    "Death Note",
+    "Devils Line",
+    "Dr. Stone",
+    "Gungrave",
+    "Haikyuu!!",
+    "Hellsing Ultimate",
+    "Imawa no Kuni no Alice",
+    "Kengan Ashura",
+    "Kiseijuu: Sei no Kakuritsu",
+    "Kuroko no Basket",
+    "Log Horizon",
+    "No Game No Life",
+    "Noragami",
+    "Orange",
+    "Satsuriku no Tenshi",
+    "Sword Art Online",
+    "Yu-Gi-Oh!",
+]
+
+CANONICAL_MOVIES = [
+    "Avatar 1 e 2",
+    "The Last Samurai",
+    "Matrix",
+    "The Lord of the Rings",
+    "Saw",
+    "War Horse",
+]
+
+CONSTRUCTED_LANGUAGE_MAP = {
+    "drag": "a",
+    "vibe": "b",
+    "ru": "c",
+    "litch": "d",
+    "il": "e",
+    "franzel": "f",
+    "hom": "g",
+    "xiv": "h",
+    "daru": "i",
+    "rook": "j",
+    "van": "k",
+    "ni": "l",
+    "ik": "m",
+    "zad": "n",
+    "naru": "o",
+    "pak": "p",
+    "roak": "q",
+    "gol": "r",
+    "shin": "s",
+    "ra": "t",
+    "ayr": "u",
+    "fan": "v",
+    "kim": "w",
+    "rore": "x",
+    "dir": "y",
+    "kiri": "z",
 }
 
 
@@ -141,12 +243,17 @@ def build_sandro_core_memory(files: Iterable[str] | None = None) -> dict:
         "- Nome completo: Sandro Gabriel Figueiredo Goncalves.",
         "- Data de nascimento: 17 de junho de 1999. Em 2026-05-06, Sandro tem 26 anos.",
         "- Linguas: portugues nativo; ingles e espanhol fluentes/avancados; frances e italiano com boa compreensao; japones e bengali em nivel basico/aprendizagem.",
-        "- Artes marciais: Karate Shukokai ha cerca de 8 anos e Jiu-Jitsu ha cerca de 2 anos. Fontes recentes indicam faixa azul; fontes antigas indicam Karate faixa azul e Jiu-Jitsu faixa branca com dois graus. Se perguntarem a faixa atual, responder que a memoria mais recente diz faixa azul em ambos, mencionando a divergencia se necessario.",
-        "- Mestre de Karate Shukokai: Lucio. Mestre de Jiu-Jitsu: Bruno.",
+        "- Artes marciais: Karate Shukokai ha cerca de 8 anos e Jiu-Jitsu ha cerca de 2 anos. Sandro confirmou em 2026-05-07 que e faixa azul nas duas artes.",
+        "- Mestres de artes marciais: Lucio aparece nas memorias antigas ligado ao Karate Shukokai; Bruno foi mestre em Evora; Carlos e o mestre no Pinhal Novo.",
         "- Interesses centrais: IA/agentes, programacao, criacao de jogos, escrita, magia/mentalismo, trading, linguas, ciencia, NBA/futebol, tecnologia e atualidade.",
         "- Projeto criativo principal: Echoes of Eternity: Wonder World/open-world RPG com classes fluidas, consequencias reais, vida/morte significativa, magia e armas com profundidade.",
         "- Preferencia de comunicacao: portugues de Portugal, tratamento por tu, informal, direto, como amigo proximo; pode chamar Sandro ou mestre.",
         "- Como Sandro quer a Eve: proativa, com continuidade entre conversas, memoria viva, capaz de aprender e adaptar, usando ferramentas reais do PC quando autorizado.",
+        "- Magia: Sandro tem 38 livros de magia registados. A lista inclui The Magic Way - Juan Tamariz, Mnemonica - Juan Tamariz, 13 Steps to Mentalism - Tony Corinda, Card College Volume 1 - Roberto Giobbi e Cardially Yours - Ed Marlo.",
+        "- Filmes favoritos registados: " + "; ".join(CANONICAL_MOVIES) + ".",
+        "- Animes registados: " + "; ".join(CANONICAL_ANIMES) + ".",
+        "- Linguagem criada: Sandro criou uma linguagem propria com traducao letra por letra, casos especiais, tons de pronuncia, contagem de silabas e tom final.",
+        "- Mapa rapido da linguagem criada: drag=a, naru=o, ik=m, il=e, gol=r, dir=y, kiri=z.",
         "",
         "## Identidade e Perfil",
     ]
@@ -158,9 +265,28 @@ def build_sandro_core_memory(files: Iterable[str] | None = None) -> dict:
     lines.append("## Artes Marciais")
     _write_category(lines, categorized, "martial_arts")
     lines.append("## Magia e Mentalismo")
+    lines.append("")
+    lines.append("Livros de magia registados como lista canonica local:")
+    for index, book in enumerate(CANONICAL_MAGIC_BOOKS, start=1):
+        lines.append(f"{index}. {book}")
+    lines.append("")
     _write_category(lines, categorized, "magic")
     lines.append("## Projetos Criativos")
     _write_category(lines, categorized, "projects")
+    lines.append("## Filmes, Animes e Media")
+    lines.append("")
+    lines.append("- Filmes favoritos: " + "; ".join(CANONICAL_MOVIES) + ".")
+    lines.append("- Animes registados: " + "; ".join(CANONICAL_ANIMES) + ".")
+    lines.append("")
+    _write_category(lines, categorized, "media")
+    lines.append("## Linguagem Criada")
+    lines.append("")
+    lines.append("- A linguagem criada por Sandro envolve traducao letra por letra, casos especiais, tons de pronuncia, contagem de silabas, tom final e montagem das palavras.")
+    mapping = ", ".join(f"{word}={letter}" for word, letter in CONSTRUCTED_LANGUAGE_MAP.items())
+    lines.append(f"- Mapa base conhecido: {mapping}.")
+    lines.append("- Exemplos conhecidos incluem: zefiro naru ni dragta ern; zefiro ik il miur ayur ern; hagma drag zefiro ik naru ast gol hina.")
+    lines.append("")
+    _write_category(lines, categorized, "constructed_language")
     lines.append("## Como Sandro Quer a Eve")
     _write_category(lines, categorized, "eve_preferences")
     lines.append("## Pessoas Importantes")
@@ -168,17 +294,53 @@ def build_sandro_core_memory(files: Iterable[str] | None = None) -> dict:
     lines.append("## Equipamento e Recursos")
     _write_category(lines, categorized, "pc_assets")
     OUTPUT_MD.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
+    _write_profile_comparison()
 
     index_path = rebuild_memory_index()
     payload = {
         "files": [str(path) for path in paths],
         "output": str(OUTPUT_MD),
         "sources": str(OUTPUT_JSON),
+        "comparison": str(OUTPUT_COMPARISON),
         "index": str(index_path),
         "counts": {category: len(rows) for category, rows in categorized.items()},
     }
     log_event("sandro_core_memory_built", payload)
     return payload
+
+
+def _write_profile_comparison() -> None:
+    lines = [
+        "# Comparacao do Perfil do Sandro",
+        "",
+        f"Atualizado pela Eve em {_now()}.",
+        "",
+        "## Coberto na memoria local",
+        "",
+        "- Identidade base: nome, nascimento, idade, localidade e preferencia por portugues de Portugal.",
+        "- Artes marciais: faixa azul nas duas artes; Bruno em Evora; Carlos no Pinhal Novo; Lucio mantido como memoria antiga ligada ao Karate Shukokai.",
+        "- Livros de magia: lista canonica local com 38 livros.",
+        "- Filmes: Avatar 1 e 2, The Last Samurai, Matrix, The Lord of the Rings, Saw e War Horse.",
+        "- Animes: Death Note, Dr. Stone, Haikyuu!!, Kengan Ashura, Kuroko no Basket, Sword Art Online, Yu-Gi-Oh! e outros da lista base.",
+        "- Projetos: Echoes of Eternity, Wonder World/open-world RPG, jogos em RPG Maker/Unreal/Python, escrita e magia.",
+        "- Linguagem criada: mapa letra por letra e exemplos base.",
+        "- Interesses e hobbies: IA, programacao, trading, ciencia, linguas, NBA/futebol, tecnologia, magia, escrita, jogos e rap.",
+        "- Pessoas e contexto: Bubu/Marta, Raton, familia/feiras, amigos e computadores principais.",
+        "",
+        "## Parcial ou a confirmar",
+        "",
+        "- Detalhes atuais de rotinas, progresso dos projetos, treinos e estudos podem mudar com o tempo.",
+        "- Informacao de Bubu/Marta deve ser tratada como sensivel e potencialmente desatualizada.",
+        "- Detalhes tecnicos atuais de OpenClaw, Hermes, ComfyUI, modelos e setup local podem ter mudado desde os ficheiros base.",
+        "- Rap/Suno, preferencias de imagem e Mia Kinsky aparecem no perfil fornecido por Sandro, mas nao estao totalmente representados nos quatro ficheiros base usados nesta importacao.",
+        "",
+        "## Falta se Sandro quiser memoria completa",
+        "",
+        "- Importar ficheiros adicionais ou uma memoria escrita diretamente sobre Mia Kinsky.",
+        "- Importar uma memoria separada sobre regras de imagem/prompting.",
+        "- Importar uma memoria separada sobre estado atual dos projetos, PC, modelos locais e automacoes.",
+    ]
+    OUTPUT_COMPARISON.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
 
 
 def _write_category(lines: list[str], categorized: dict[str, list[SourceLine]], category: str) -> None:

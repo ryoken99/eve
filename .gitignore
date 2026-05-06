@@ -13,6 +13,7 @@ memory/medium_term/remembered_facts.md
 memory/long_term/candidate_memories.md
 memory/long_term/sandro_core_memory.md
 memory/long_term/sandro_core_memory_sources.json
+memory/long_term/sandro_profile_comparison.md
 lab/**/__pycache__/
 lab/candidate_improvements/*.json
 !lab/candidate_improvements/.gitkeep

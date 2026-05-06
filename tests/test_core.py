@@ -118,7 +118,11 @@ class EveCoreTests(unittest.TestCase):
         bundle = context_bundle(20000)
         self.assertIn("Sandro Core Memory", bundle)
         self.assertIn("Sandro tem 26 anos", bundle)
-        self.assertIn("faixa azul em ambos", bundle)
+        self.assertIn("faixa azul nas duas artes", bundle)
+        self.assertIn("Carlos e o mestre no Pinhal Novo", bundle)
+        self.assertIn("The Magic Way - Juan Tamariz", bundle)
+        self.assertIn("Kuroko no Basket", bundle)
+        self.assertIn("drag=a", bundle)
 
 
 if __name__ == "__main__":
