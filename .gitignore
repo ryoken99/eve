@@ -21,3 +21,6 @@ backups/files/**
 !backups/files/.gitkeep
 memory/errors/error_memory.jsonl
 state/current_world_state.json
+state/scheduled_tasks.json
+memory/procedural/adaptive_failures.jsonl
+memory/procedural/lessons.md

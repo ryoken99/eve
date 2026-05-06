@@ -23,6 +23,7 @@ def ensure_project_dirs() -> None:
         MEMORY_DIR / "long_term",
         MEMORY_DIR / "errors",
         MEMORY_DIR / "procedural",
+        MEMORY_DIR / "procedural" / "demonstrations",
         MEMORY_DIR / "world",
         MEMORY_DIR / "technology",
         MEMORY_DIR / "personality",

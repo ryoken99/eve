@@ -33,6 +33,12 @@ from computer.mouse_control import click, mouse_position, move_mouse
 from computer.keyboard_control import hotkey, press_key, type_text
 from tools.browser_human import open_url, search_web
 from tools.email_human import create_gmail_draft
+from autonomy.scheduler import add_scheduled_task, list_scheduled_tasks
+from autonomy.proactive_decider import propose_low_risk_actions
+from autonomy.event_watcher import workspace_snapshot
+from core.personality_engine import add_preference, read_preferences
+from learning.adaptive_learning import record_adaptive_lesson, record_skill_failure
+from learning.skill_refiner import add_skill_note
 
 SECRETS_DIR = EVE_ROOT / "secrets"
 LOG_DIR = EVE_ROOT / "logs"
@@ -478,7 +484,7 @@ def ask(prompt: str) -> str:
 
 def chat() -> None:
     print("Eve chat. Escreve /sair para sair.")
-    print("Comandos: /modelo, /estado, /ecra, /ver-texto, /browser, /pesquisar, /email-draft, /mouse, /mover, /clicar, /tecla, /hotkey, /escrever, /lock, /unlock, /diario, /consolidar, /sonhar, /lembrar, /world, /tech, /lab, /workspace, /ls, /ler, /nota, /cmd, /aprovar-cmd, /erros, /skills, /skill-run, /skill-promote, /skill-demo")
+    print("Comandos: /modelo, /estado, /ecra, /ver-texto, /browser, /pesquisar, /email-draft, /mouse, /mover, /clicar, /tecla, /hotkey, /escrever, /agenda, /agendar, /proativo, /workspace-scan, /preferencia, /preferencias, /falha-skill, /licao, /skill-note, /lock, /unlock, /diario, /consolidar, /sonhar, /lembrar, /world, /tech, /lab, /workspace, /ls, /ler, /nota, /cmd, /aprovar-cmd, /erros, /skills, /skill-run, /skill-promote, /skill-demo")
     print()
     while True:
         try:
@@ -634,6 +640,63 @@ def chat() -> None:
                 print(json.dumps(create_gmail_draft(parts[0], parts[1], parts[2]), indent=2, ensure_ascii=False)[:5000])
             except Exception as exc:
                 print(f"Erro a criar rascunho: {exc}")
+            continue
+        if prompt.lower() == "/agenda":
+            print(json.dumps(list_scheduled_tasks(), indent=2, ensure_ascii=False)[:5000])
+            continue
+        if prompt.lower().startswith("/agendar "):
+            try:
+                parts = [part.strip() for part in prompt.split(None, 1)[1].split("|", 2)]
+                if len(parts) != 3:
+                    raise ValueError("Formato: /agendar nome | cadencia | acao")
+                print(f"Tarefa agendada em: {add_scheduled_task(parts[0], parts[1], parts[2])}")
+            except Exception as exc:
+                print(f"Erro a agendar: {exc}")
+            continue
+        if prompt.lower() == "/proativo":
+            for item in propose_low_risk_actions():
+                print(f"- {item}")
+            continue
+        if prompt.lower() == "/workspace-scan":
+            print(json.dumps(workspace_snapshot(), indent=2, ensure_ascii=False)[:5000])
+            continue
+        if prompt.lower().startswith("/preferencia "):
+            payload = prompt.split(None, 1)[1]
+            if "|" in payload:
+                pref, reason = [part.strip() for part in payload.split("|", 1)]
+            else:
+                pref, reason = payload, ""
+            print(f"Preferencia guardada em: {add_preference(pref, reason)}")
+            continue
+        if prompt.lower() == "/preferencias":
+            print(read_preferences()[-5000:] or "Sem preferencias evolutivas.")
+            continue
+        if prompt.lower().startswith("/falha-skill "):
+            try:
+                parts = [part.strip() for part in prompt.split(None, 1)[1].split("|", 3)]
+                if len(parts) < 3:
+                    raise ValueError("Formato: /falha-skill skill | passo | erro | observacao")
+                print(f"Falha registada em: {record_skill_failure(parts[0], parts[1], parts[2], parts[3] if len(parts) > 3 else '')}")
+            except Exception as exc:
+                print(f"Erro a registar falha: {exc}")
+            continue
+        if prompt.lower().startswith("/licao "):
+            try:
+                parts = [part.strip() for part in prompt.split(None, 1)[1].split("|", 3)]
+                if len(parts) != 4:
+                    raise ValueError("Formato: /licao skill | problema | correcao | licao")
+                print(f"Licao registada em: {record_adaptive_lesson(parts[0], parts[1], parts[2], parts[3])}")
+            except Exception as exc:
+                print(f"Erro a registar licao: {exc}")
+            continue
+        if prompt.lower().startswith("/skill-note "):
+            try:
+                parts = [part.strip() for part in prompt.split(None, 1)[1].split("|", 1)]
+                if len(parts) != 2:
+                    raise ValueError("Formato: /skill-note skill | nota")
+                print(f"Skill atualizada em: {add_skill_note(parts[0], parts[1])}")
+            except Exception as exc:
+                print(f"Erro a atualizar skill: {exc}")
             continue
         if prompt.lower() == "/mouse":
             print(json.dumps(mouse_position(), indent=2, ensure_ascii=False))
