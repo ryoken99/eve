@@ -20,7 +20,8 @@ from memory.diary_manager import append_chat, list_diary_days, read_diary
 from memory.memory_manager import consolidate_today, context_bundle, remember_fact
 from tools.filesystem import append_file, list_dir, read_file, write_file
 from tools.terminal import run_command
-from learning.skill_manager import list_skills
+from learning.skill_manager import list_skills, promote_skill, run_skill
+from learning.learn_mode import create_skill_from_demonstration
 from dream.memory_reorganizer import run_dream
 from research.research_notes import append_research_candidate, append_technology_learning, append_world_learning
 from lab.lab_manager import create_candidate, list_candidates
@@ -470,7 +471,7 @@ def ask(prompt: str) -> str:
 
 def chat() -> None:
     print("Eve chat. Escreve /sair para sair.")
-    print("Comandos: /modelo, /diario, /consolidar, /sonhar, /lembrar, /world, /tech, /lab, /workspace, /ls, /ler, /nota, /cmd, /aprovar-cmd, /erros, /skills")
+    print("Comandos: /modelo, /diario, /consolidar, /sonhar, /lembrar, /world, /tech, /lab, /workspace, /ls, /ler, /nota, /cmd, /aprovar-cmd, /erros, /skills, /skill-run, /skill-promote, /skill-demo")
     print()
     while True:
         try:
@@ -590,6 +591,48 @@ def chat() -> None:
         if prompt.lower() == "/skills":
             skills = list_skills()
             print("Skills: " + (", ".join(skills) if skills else "nenhuma"))
+            continue
+        if prompt.lower().startswith("/skill-run "):
+            try:
+                payload = prompt.split(None, 1)[1]
+                parts = payload.split("|")
+                skill = parts[0].strip()
+                args = {}
+                for item in parts[1:]:
+                    if "=" in item:
+                        key, value = item.split("=", 1)
+                        args[key.strip()] = value.strip()
+                result = run_skill(skill, args=args)
+                print(json.dumps(result, indent=2, ensure_ascii=False)[:6000])
+            except Exception as exc:
+                print(f"Erro na skill: {exc}")
+            continue
+        if prompt.lower().startswith("/skill-promote "):
+            try:
+                path = promote_skill(prompt.split(None, 1)[1].strip())
+                print(f"Skill promovida para trusted: {path}")
+            except Exception as exc:
+                print(f"Erro a promover skill: {exc}")
+            continue
+        if prompt.lower().startswith("/skill-demo "):
+            try:
+                payload = prompt.split(None, 1)[1]
+                parts = [part.strip() for part in payload.split("|")]
+                name = parts[0]
+                description = parts[1] if len(parts) > 1 else name
+                step_text = parts[2] if len(parts) > 2 else ""
+                if step_text.startswith("append:"):
+                    _, path, content = step_text.split(":", 2)
+                    steps = [{"action": "append_file", "path": path, "content": content}]
+                elif step_text.startswith("write:"):
+                    _, path, content = step_text.split(":", 2)
+                    steps = [{"action": "write_file", "path": path, "content": content}]
+                else:
+                    raise ValueError("Formato: /skill-demo nome | descricao | append:ficheiro:texto")
+                path = create_skill_from_demonstration(name, description, steps)
+                print(f"Skill draft criada: {path}")
+            except Exception as exc:
+                print(f"Erro a criar demonstracao: {exc}")
             continue
         print("eve> ", end="", flush=True)
         ask(prompt)

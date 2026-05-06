@@ -7,7 +7,7 @@
   ],
   "steps": [
     {
-      "action": "write_file",
+      "action": "append_file",
       "path_from_user": true,
       "content_from_user": true
     }

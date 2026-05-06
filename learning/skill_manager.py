@@ -5,6 +5,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from core.paths import SKILLS_DIR, ensure_project_dirs
+from security.audit_log import log_event
+from tools.filesystem import append_file, read_file, write_file
+from tools.terminal import run_command
 
 
 def now_iso() -> str:
@@ -39,3 +42,66 @@ def list_skills(status: str | None = None) -> list[str]:
         for path in root.glob("*.json"):
             found.append(f"{root.name}/{path.stem}")
     return sorted(found)
+
+
+def load_skill(skill_ref: str) -> dict:
+    ensure_project_dirs()
+    if "/" in skill_ref:
+        status, name = skill_ref.split("/", 1)
+        path = SKILLS_DIR / status / f"{name}.json"
+    else:
+        candidates = list(SKILLS_DIR.glob(f"*/{skill_ref}.json"))
+        if not candidates:
+            raise FileNotFoundError(f"Skill nao encontrada: {skill_ref}")
+        path = candidates[0]
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def run_skill(skill_ref: str, *, args: dict | None = None, approved: bool = False) -> dict:
+    args = args or {}
+    skill = load_skill(skill_ref)
+    results = []
+    for step in skill.get("steps") or []:
+        action = step.get("action")
+        if action == "write_file":
+            path = args.get("path") or step.get("path")
+            content = args.get("content") or step.get("content", "")
+            if not path:
+                raise ValueError("write_file skill step precisa de path")
+            results.append({"action": action, "path": str(write_file(path, content))})
+        elif action == "append_file":
+            path = args.get("path") or step.get("path")
+            content = args.get("content") or step.get("content", "")
+            if not path:
+                raise ValueError("append_file skill step precisa de path")
+            results.append({"action": action, "path": str(append_file(path, content))})
+        elif action == "read_file":
+            path = args.get("path") or step.get("path")
+            if not path:
+                raise ValueError("read_file skill step precisa de path")
+            results.append({"action": action, "path": path, "content": read_file(path)})
+        elif action == "run_command":
+            command = args.get("command") or step.get("command")
+            if not command:
+                raise ValueError("run_command skill step precisa de command")
+            results.append({"action": action, "result": run_command(command, approved=approved)})
+        else:
+            raise ValueError(f"Acao de skill desconhecida: {action}")
+    payload = {"skill": skill.get("name"), "status": skill.get("status"), "results": results}
+    log_event("skill_executed", payload)
+    return payload
+
+
+def promote_skill(name: str) -> Path:
+    source = SKILLS_DIR / "draft" / f"{name}.json"
+    if not source.exists():
+        raise FileNotFoundError(f"Draft skill nao encontrada: {name}")
+    skill = json.loads(source.read_text(encoding="utf-8"))
+    skill["status"] = "trusted"
+    skill["updated_at"] = now_iso()
+    dest = SKILLS_DIR / "trusted" / f"{name}.json"
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.write_text(json.dumps(skill, indent=2, ensure_ascii=False), encoding="utf-8")
+    source.unlink()
+    log_event("skill_promoted", {"name": name, "dest": str(dest)})
+    return dest
