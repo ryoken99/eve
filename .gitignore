@@ -16,3 +16,6 @@ lab/candidate_improvements/*.json
 lab/reports/dream_*.md
 !lab/reports/.gitkeep
 backups/tmp/
+backups/files/**
+!backups/files/.gitkeep
+memory/errors/error_memory.jsonl
