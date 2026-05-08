@@ -28,6 +28,7 @@ from core.mission_control import (
     update_step,
 )
 from autonomy.autonomy_director import build_autonomy_prompt, run_autonomy_cycle
+from autonomy.autonomous_executor import execute_autonomous_backlog, execute_autonomous_mission
 
 
 class EveCoreTests(unittest.TestCase):
@@ -275,6 +276,41 @@ class EveCoreTests(unittest.TestCase):
         )
         self.assertIn("Nao executes acoes sensiveis", prompt)
         self.assertIn("Daily self review", prompt)
+
+    def test_autonomous_executor_completes_low_risk_self_review_and_notifies(self):
+        mission = create_mission(
+            "Unit autonomous self review",
+            plan=["rever estado", "registar relatorio"],
+            permissions=["read_memory", "write_memory"],
+            status="proposed",
+            source="autonomy:unit:self_review",
+        )
+        result = execute_autonomous_mission(mission["id"], notify_chat=True)
+        self.assertEqual(result["status"], "done")
+        loaded = load_mission(mission["id"])
+        self.assertEqual(loaded["status"], "done")
+        self.assertTrue(loaded["checkpoints"])
+        self.assertIn("chat_message", result)
+
+    def test_autonomous_backlog_executes_only_allowed_proposed_missions(self):
+        allowed = create_mission(
+            "Unit allowed autonomous memory hygiene",
+            plan=["rever memoria"],
+            permissions=["read_memory"],
+            status="proposed",
+            source="autonomy:unit:memory_hygiene",
+        )
+        blocked = create_mission(
+            "Unit unsupported mission",
+            plan=["fazer algo"],
+            permissions=[],
+            status="proposed",
+            source="manual",
+        )
+        result = execute_autonomous_backlog(max_missions=1, notify_chat=False)
+        self.assertTrue(any(item["id"] == allowed["id"] for item in result["executed"]))
+        self.assertEqual(load_mission(allowed["id"])["status"], "done")
+        self.assertEqual(load_mission(blocked["id"])["status"], "proposed")
 
 
 if __name__ == "__main__":

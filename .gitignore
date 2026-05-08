@@ -10,6 +10,7 @@ memory/diary/**
 !memory/diary/.gitkeep
 memory/medium_term/daily_summary_*.md
 memory/medium_term/remembered_facts.md
+memory/medium_term/memory_hygiene_notes.md
 memory/long_term/candidate_memories.md
 memory/long_term/sandro_core_memory.md
 memory/long_term/sandro_core_memory_sources.json
@@ -31,6 +32,7 @@ backups/tmp/
 backups/files/**
 !backups/files/.gitkeep
 memory/errors/error_memory.jsonl
+memory/errors/autonomous_error_review.md
 state/current_world_state.json
 state/scheduled_tasks.json
 state/missions/*.json
