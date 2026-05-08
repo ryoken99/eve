@@ -64,6 +64,7 @@ from app.terminal_ui import render_menu
 from autonomy.daemon import daemon_tick, request_daemon_stop
 from autonomy.autonomy_director import run_autonomy_cycle
 from autonomy.autonomous_executor import execute_autonomous_backlog, execute_autonomous_mission
+from autonomy.autonomy_reporter import run_autonomy_report_cycle
 from computer.app_profiles import capture_app_profile, list_app_profiles
 from learning.demonstration_recorder import record_user_demonstration, summarize_demonstration
 from memory.semantic_vector.vector_store import search_tfidf
@@ -994,7 +995,7 @@ def handle_natural_tool_request(prompt: str, *, speaker: str = "sandro") -> bool
 
 def chat() -> None:
     print("Eve chat. Escreve /sair para sair.")
-    print("Comandos: /menu, /voltar, /speaker sandro|codex, /codex mensagem, /loop objectivo, /loop-status, /loop-modo 1|2|3, /auth, /auth-contas, /auth-trocar, /auth-login nome, /dashboard, /modelo, /estado, /seguranca, /modo-seguranca, /liberdade-total, /seguranca-safe, /entidades-path, /entidades-files, /aprender-sandro, /entidades, /entidade, /relacao, /entidades-search, /monitores, /ocr-status, /ecra, /ecra-monitor, /ver-texto, /centro-texto, /clicar-texto, /visual-click, /vector-index, /vector-search, /vector-search2, /win-agendar, /win-tarefas, /daemon-tick, /daemon-stop, /autonomia-ciclo, /autonomia-llm, /autonomia-executar, /missao-executar-auto, /watch-tech, /notify, /speak, /mobile, /mobile-msg, /app-profile, /app-profiles, /demo-record, /demo-summary, /pipeline, /admin-elevado, /app, /browser, /pesquisar, /research-report, /missao-criar, /missoes, /missao, /missao-retomar, /missao-status, /missao-passo, /missao-log, /missao-checkpoint, /email-draft, /mouse, /mover, /clicar, /tecla, /hotkey, /escrever, /agenda, /agendar, /proativo, /workspace-scan, /preferencia, /preferencias, /falha-skill, /licao, /skill-note, /experiencia, /experiencia-result, /melhoria, /melhorias-erros, /patch-proposta, /sandbox, /admin, /aprovar-admin, /rsi, /lock, /unlock, /diario, /consolidar, /sonhar, /lembrar, /world, /tech, /lab, /workspace, /ls, /ler, /nota, /cmd, /aprovar-cmd, /erros, /skills, /skill-run, /skill-promote, /skill-demo")
+    print("Comandos: /menu, /voltar, /speaker sandro|codex, /codex mensagem, /loop objectivo, /loop-status, /loop-modo 1|2|3, /auth, /auth-contas, /auth-trocar, /auth-login nome, /dashboard, /modelo, /estado, /seguranca, /modo-seguranca, /liberdade-total, /seguranca-safe, /entidades-path, /entidades-files, /aprender-sandro, /entidades, /entidade, /relacao, /entidades-search, /monitores, /ocr-status, /ecra, /ecra-monitor, /ver-texto, /centro-texto, /clicar-texto, /visual-click, /vector-index, /vector-search, /vector-search2, /win-agendar, /win-tarefas, /daemon-tick, /daemon-stop, /autonomia-ciclo, /autonomia-llm, /autonomia-executar, /autonomia-relatorio, /missao-executar-auto, /watch-tech, /notify, /speak, /mobile, /mobile-msg, /app-profile, /app-profiles, /demo-record, /demo-summary, /pipeline, /admin-elevado, /app, /browser, /pesquisar, /research-report, /missao-criar, /missoes, /missao, /missao-retomar, /missao-status, /missao-passo, /missao-log, /missao-checkpoint, /email-draft, /mouse, /mover, /clicar, /tecla, /hotkey, /escrever, /agenda, /agendar, /proativo, /workspace-scan, /preferencia, /preferencias, /falha-skill, /licao, /skill-note, /experiencia, /experiencia-result, /melhoria, /melhorias-erros, /patch-proposta, /sandbox, /admin, /aprovar-admin, /rsi, /lock, /unlock, /diario, /consolidar, /sonhar, /lembrar, /world, /tech, /lab, /workspace, /ls, /ler, /nota, /cmd, /aprovar-cmd, /erros, /skills, /skill-run, /skill-promote, /skill-demo")
     print("Mensagens externas de Codex-instrutor aparecem automaticamente aqui.")
     print()
     start_interface_inbox_watcher()
@@ -1354,6 +1355,9 @@ def chat() -> None:
             continue
         if prompt.lower() == "/autonomia-executar":
             print(json.dumps(execute_autonomous_backlog(max_missions=2, notify_chat=True), indent=2, ensure_ascii=False)[:7000])
+            continue
+        if prompt.lower() == "/autonomia-relatorio":
+            print(json.dumps(run_autonomy_report_cycle(call_llm="auto"), indent=2, ensure_ascii=False)[:9000])
             continue
         if prompt.lower().startswith("/missao-executar-auto "):
             try:

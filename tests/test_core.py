@@ -30,6 +30,7 @@ from core.mission_control import (
 from autonomy.autonomy_director import build_autonomy_prompt, run_autonomy_cycle
 from autonomy.autonomous_executor import execute_autonomous_backlog, execute_autonomous_mission
 from autonomy.token_gate import decide_llm_call, record_llm_call
+from autonomy.autonomy_reporter import run_autonomy_report_cycle
 
 
 class EveCoreTests(unittest.TestCase):
@@ -354,6 +355,13 @@ class EveCoreTests(unittest.TestCase):
         path = record_llm_call("unit_test", {"reason": "test", "prompt_type": "unit"}, result={"returncode": 0})
         self.assertTrue(path.exists())
         self.assertIn("unit_test", path.read_text(encoding="utf-8"))
+
+    def test_autonomy_report_cycle_publishes_visible_summary(self):
+        result = run_autonomy_report_cycle(cycle_name="unit_report", call_llm=False, max_new_missions=1, execute_max=1)
+        self.assertEqual(result["status"], "ok")
+        self.assertIn("Token Gate", result["summary"])
+        self.assertIn("Tokens gastos", result["summary"])
+        self.assertTrue(result["report_path"].endswith(".md"))
 
 
 if __name__ == "__main__":
