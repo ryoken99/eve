@@ -1,0 +1,35 @@
+short_term:
+  description: "Contexto imediato usado para a tarefa actual."
+  promote_when:
+    - "tarefa actual"
+    - "erro recente"
+    - "ficheiros em edicao"
+    - "janela ou app activa"
+
+medium_term:
+  description: "Contexto dos ultimos dias/semanas e projectos em movimento."
+  promote_when:
+    - "projectos activos"
+    - "skills em teste"
+    - "decisoes recentes ainda reversiveis"
+    - "padroes recorrentes"
+
+long_term:
+  description: "Factos estaveis, preferencias persistentes e regras centrais."
+  promote_when:
+    - "dados estaveis de Sandro"
+    - "missao e constituicao da Eve"
+    - "decisoes arquitecturais definitivas"
+    - "skills confiaveis"
+    - "regras de seguranca"
+    - "correccoes importantes feitas por Sandro"
+
+archive_only:
+  description: "Fica no diario/log bruto, mas nao entra na memoria viva."
+  keep_when:
+    - "conversa casual sem valor futuro"
+    - "logs repetidos"
+    - "tentativas falhadas sem licao nova"
+    - "duplicados"
+    - "informacao temporaria expirada"
+    - "ruido"

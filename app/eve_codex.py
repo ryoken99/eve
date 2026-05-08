@@ -24,10 +24,12 @@ from tools.terminal import run_command
 from learning.skill_manager import list_skills, promote_skill, run_skill
 from learning.learn_mode import create_skill_from_demonstration
 from dream.memory_reorganizer import run_dream
+from dream.dream_cycle import run_dream_cycle
 from research.research_notes import append_research_candidate, append_technology_learning, append_world_learning
 from lab.lab_manager import create_candidate, list_candidates
 from memory.errors.error_memory import recent_errors
 from core.awareness_engine import describe_awareness
+from core.self_report import format_self_report
 from computer.vision import describe_screen, find_text_on_screen, first_text_center, monitor_report, screenshot_monitor
 from computer.ocr import ocr_status
 from computer.emergency_stop import clear_emergency_lock, enable_emergency_lock, emergency_locked
@@ -675,6 +677,12 @@ def chat() -> None:
             path = run_dream()
             print(f"Relatorio de sonho criado em: {path}")
             continue
+        if prompt.lower() == "/sonho-ciclo":
+            payload = run_dream_cycle()
+            print(f"Relatorio de sonho criado em: {payload['dream_report']}")
+            print(f"Fila do lab criada em: {payload['queue']}")
+            print(f"Indice vetorial atualizado em: {payload['vector_index']}")
+            continue
         if prompt.lower().startswith("/lembrar "):
             path = remember_fact(prompt.split(None, 1)[1])
             print(f"Memoria guardada em: {path}")
@@ -759,6 +767,9 @@ def chat() -> None:
             continue
         if prompt.lower() in ("/estado", "/awareness"):
             print(describe_awareness())
+            continue
+        if prompt.lower() in ("/self-report", "/introspecao"):
+            print(format_self_report("manual_self_report"))
             continue
         if prompt.lower() == "/seguranca":
             print(describe_safety())

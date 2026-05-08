@@ -3,12 +3,14 @@ from __future__ import annotations
 import unittest
 
 from computer.monitors import virtual_bounds
+from core.self_report import functional_self_report
 from core.paths import SKILLS_DIR, WORKSPACE_DIR
 from core.personality_engine import score_options
 from learning.skill_learning_loop import run_skill_learning_loop, skill_result_successful
 from app.eve_codex import natural_browser_target, relevant_entity_memory
 from memory.memory_manager import context_bundle
 from memory.sandro_profile_builder import build_sandro_core_memory
+from dream.dream_cycle import run_dream_cycle
 from memory.semantic_vector.vector_store import add_document, search
 from security.permission_manager import check_action, check_command
 from security.safety_modes import set_safety_mode
@@ -123,6 +125,17 @@ class EveCoreTests(unittest.TestCase):
         self.assertIn("The Magic Way - Juan Tamariz", bundle)
         self.assertIn("Kuroko no Basket", bundle)
         self.assertIn("drag=a", bundle)
+
+    def test_functional_self_report_does_not_claim_consciousness(self):
+        report = functional_self_report("unit-test")
+        self.assertIn("nao e prova de consciencia subjectiva", report["claim_boundary"])
+        self.assertIn("caution", report["functional_state"])
+
+    def test_dream_cycle_creates_auditable_outputs(self):
+        payload = run_dream_cycle("2099-01-01")
+        self.assertIn("dream_report", payload)
+        self.assertIn("self_report", payload)
+        self.assertIn("long_term", payload["promotion_rules"])
 
 
 if __name__ == "__main__":

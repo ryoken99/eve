@@ -23,6 +23,10 @@ lab/prototypes/*.patch.md
 !lab/prototypes/.gitkeep
 lab/reports/dream_*.md
 !lab/reports/.gitkeep
+lab/queue/*.json
+!lab/queue/.gitkeep
+memory/dream_reports/*.md
+!memory/dream_reports/.gitkeep
 backups/tmp/
 backups/files/**
 !backups/files/.gitkeep
