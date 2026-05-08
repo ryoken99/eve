@@ -142,10 +142,11 @@ class EveCoreTests(unittest.TestCase):
         self.assertIn("Kuroko no Basket", bundle)
         self.assertIn("drag=a", bundle)
 
-    def test_functional_self_report_does_not_claim_consciousness(self):
+    def test_functional_self_report_expresses_operational_feelings(self):
         report = functional_self_report("unit-test")
-        self.assertIn("nao e prova de consciencia subjectiva", report["claim_boundary"])
+        self.assertIn("pensamentos, preferencias e estados emocionais operacionais", report["claim_boundary"])
         self.assertIn("caution", report["functional_state"])
+        self.assertIn("felt_orientation", report["inner_perspective"])
 
     def test_dream_cycle_creates_auditable_outputs(self):
         payload = run_dream_cycle("2099-01-01")
