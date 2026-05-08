@@ -7,7 +7,7 @@ from core.self_report import functional_self_report
 from core.paths import SKILLS_DIR, WORKSPACE_DIR
 from core.personality_engine import score_options
 from learning.skill_learning_loop import run_skill_learning_loop, skill_result_successful
-from app.eve_codex import natural_browser_target, relevant_entity_memory
+from app.eve_codex import _safe_profile_name, natural_browser_target, relevant_entity_memory
 from memory.memory_manager import context_bundle
 from memory.sandro_profile_builder import build_sandro_core_memory
 from dream.dream_cycle import run_dream_cycle
@@ -114,6 +114,11 @@ class EveCoreTests(unittest.TestCase):
         self.assertEqual(natural_browser_target("abre o navegador"), "https://www.google.com")
         self.assertEqual(natural_browser_target("abre o x.com"), "x.com")
         self.assertIsNone(natural_browser_target("/browser https://x.com"))
+
+    def test_auth_profile_names_are_filesystem_safe(self):
+        self.assertEqual(_safe_profile_name(" Minha Conta Principal "), "minha-conta-principal")
+        self.assertEqual(_safe_profile_name("../outra conta!"), "outra-conta")
+        self.assertEqual(_safe_profile_name(""), "default")
 
     def test_sandro_core_memory_enters_context(self):
         build_sandro_core_memory()

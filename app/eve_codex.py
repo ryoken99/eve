@@ -73,6 +73,8 @@ from memory.sandro_profile_builder import TARGET_FILES as SANDRO_MEMORY_FILES, b
 SECRETS_DIR = EVE_ROOT / "secrets"
 LOG_DIR = EVE_ROOT / "logs"
 AUTH_PATH = SECRETS_DIR / "codex_auth.json"
+AUTH_ACCOUNTS_DIR = SECRETS_DIR / "codex_auth_accounts"
+ACTIVE_AUTH_PROFILE_PATH = SECRETS_DIR / "codex_auth_active.txt"
 CONFIG_PATH = EVE_ROOT / "config" / "eve.json"
 
 ISSUER = "https://auth.openai.com"
@@ -94,7 +96,7 @@ PERSONAL_MEMORY_EXPANSIONS = {
 
 
 def ensure_dirs() -> None:
-    for path in (SECRETS_DIR, LOG_DIR, CONFIG_PATH.parent):
+    for path in (SECRETS_DIR, AUTH_ACCOUNTS_DIR, LOG_DIR, CONFIG_PATH.parent):
         path.mkdir(parents=True, exist_ok=True)
 
 
@@ -247,23 +249,109 @@ def copy_to_clipboard(text: str) -> None:
         pass
 
 
-def save_auth(payload: dict) -> None:
+def _safe_profile_name(name: str | None) -> str:
+    value = (name or "").strip().lower()
+    value = re.sub(r"[^a-z0-9_.-]+", "-", value)
+    value = value.strip(".-")
+    return value or "default"
+
+
+def _auth_profile_path(profile: str | None) -> Path:
+    return AUTH_ACCOUNTS_DIR / f"{_safe_profile_name(profile)}.json"
+
+
+def active_auth_profile() -> str:
     ensure_dirs()
-    AUTH_PATH.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-    if os.name == "nt":
-        # Best effort: keep token file readable by current user/admin/system only.
+    if ACTIVE_AUTH_PROFILE_PATH.exists():
+        value = ACTIVE_AUTH_PROFILE_PATH.read_text(encoding="utf-8").strip()
+        if value:
+            return _safe_profile_name(value)
+    if _auth_profile_path("default").exists() or AUTH_PATH.exists():
+        return "default"
+    return ""
+
+
+def set_active_auth_profile(profile: str) -> Path:
+    ensure_dirs()
+    profile = _safe_profile_name(profile)
+    path = _auth_profile_path(profile)
+    if not path.exists():
+        raise SystemExit(f"Conta Codex '{profile}' nao existe. Usa login --account {profile} primeiro.")
+    ACTIVE_AUTH_PROFILE_PATH.write_text(profile + "\n", encoding="utf-8")
+    AUTH_PATH.write_text(path.read_text(encoding="utf-8"), encoding="utf-8")
+    _lock_secret_file(AUTH_PATH)
+    return ACTIVE_AUTH_PROFILE_PATH
+
+
+def _lock_secret_file(path: Path) -> None:
+    if os.name != "nt":
+        return
+    try:
         subprocess.run(
-            ["icacls", str(AUTH_PATH), "/inheritance:r", "/grant:r", f"{os.getlogin()}:R", "Administrators:F", "SYSTEM:F"],
+            ["icacls", str(path), "/inheritance:r", "/grant:r", f"{os.getlogin()}:R", "Administrators:F", "SYSTEM:F"],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             check=False,
         )
+    except Exception:
+        pass
 
 
-def load_auth() -> dict:
+def save_auth(payload: dict, profile: str | None = None) -> None:
+    ensure_dirs()
+    profile_name = _safe_profile_name(profile or payload.get("profile") or active_auth_profile() or "default")
+    payload["profile"] = profile_name
+    account_path = _auth_profile_path(profile_name)
+    account_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    _lock_secret_file(account_path)
+    ACTIVE_AUTH_PROFILE_PATH.write_text(profile_name + "\n", encoding="utf-8")
+    AUTH_PATH.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    _lock_secret_file(AUTH_PATH)
+
+
+def load_auth(profile: str | None = None) -> dict:
+    ensure_dirs()
+    selected = _safe_profile_name(profile or active_auth_profile() or "default")
+    account_path = _auth_profile_path(selected)
+    if account_path.exists():
+        return json.loads(account_path.read_text(encoding="utf-8"))
+    if selected == "default" and AUTH_PATH.exists():
+        auth = json.loads(AUTH_PATH.read_text(encoding="utf-8"))
+        auth.setdefault("profile", "default")
+        account_path.write_text(json.dumps(auth, indent=2), encoding="utf-8")
+        ACTIVE_AUTH_PROFILE_PATH.write_text("default\n", encoding="utf-8")
+        _lock_secret_file(account_path)
+        return auth
     if not AUTH_PATH.exists():
         raise SystemExit("Nao ha login Codex guardado. Usa a opcao 1 primeiro.")
-    return json.loads(AUTH_PATH.read_text(encoding="utf-8"))
+    raise SystemExit(f"Conta Codex activa '{selected}' nao encontrada. Usa /auth-contas ou login --account {selected}.")
+
+
+def list_auth_accounts() -> list[dict]:
+    ensure_dirs()
+    accounts = []
+    active = active_auth_profile()
+    if AUTH_PATH.exists() and not _auth_profile_path("default").exists():
+        load_auth("default")
+    for path in sorted(AUTH_ACCOUNTS_DIR.glob("*.json")):
+        try:
+            auth = json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            auth = {}
+        profile = path.stem
+        token = (auth.get("tokens") or {}).get("access_token", "")
+        claims = jwt_claims(token) if token else {}
+        accounts.append(
+            {
+                "profile": profile,
+                "active": profile == active,
+                "created_at": auth.get("created_at", ""),
+                "last_refresh": auth.get("last_refresh", ""),
+                "account_id": claims.get("https://api.openai.com/auth", {}).get("chatgpt_account_id", ""),
+                "expires_at": datetime.fromtimestamp(claims.get("exp", 0), timezone.utc).isoformat() if claims.get("exp") else "",
+            }
+        )
+    return accounts
 
 
 def jwt_claims(token: str) -> dict:
@@ -325,12 +413,13 @@ def refresh_if_needed(auth: dict, *, force=False) -> dict:
         tokens["refresh_token"] = payload["refresh_token"]
     auth["tokens"] = tokens
     auth["last_refresh"] = now_iso()
-    save_auth(auth)
+    save_auth(auth, auth.get("profile"))
     return auth
 
 
-def login() -> None:
+def login(profile: str = "default") -> None:
     ensure_dirs()
+    profile = _safe_profile_name(profile)
     status, device_data = powershell_json(
         "POST",
         f"{ISSUER}/api/accounts/deviceauth/usercode",
@@ -348,6 +437,7 @@ def login() -> None:
     url = f"{ISSUER}/codex/device"
     print()
     print("Login OpenAI Codex / ChatGPT OAuth para a Eve")
+    print(f"Perfil local: {profile}")
     print()
     print(f"URL:    {url}")
     visual_code = str(user_code).replace("0", "0 (zero)")
@@ -412,6 +502,7 @@ def login() -> None:
 
     auth = {
         "provider": "openai-codex",
+        "profile": profile,
         "auth_mode": "chatgpt",
         "base_url": CODEX_BASE_URL,
         "created_at": now_iso(),
@@ -421,19 +512,22 @@ def login() -> None:
             "refresh_token": tokens.get("refresh_token", ""),
         },
     }
-    save_auth(auth)
-    print(f"Login guardado em: {AUTH_PATH}")
+    save_auth(auth, profile)
+    print(f"Login guardado no perfil: {profile}")
+    print(f"Conta ativa: {ACTIVE_AUTH_PROFILE_PATH}")
     print("Chat com LLM disponivel.")
 
 
 def status() -> None:
-    if not AUTH_PATH.exists():
+    if not AUTH_PATH.exists() and not any(AUTH_ACCOUNTS_DIR.glob("*.json")):
         print("Codex OAuth: nao autenticado")
         return
     auth = load_auth()
+    profile = active_auth_profile() or auth.get("profile") or "default"
     token = (auth.get("tokens") or {}).get("access_token", "")
     claims = jwt_claims(token)
     print("Codex OAuth: autenticado")
+    print(f"Perfil:   {profile}")
     print(f"Ficheiro: {AUTH_PATH}")
     print(f"Criado:   {auth.get('created_at')}")
     print(f"Refresh:  {auth.get('last_refresh')}")
@@ -441,6 +535,26 @@ def status() -> None:
     acct = claims.get("https://api.openai.com/auth", {}).get("chatgpt_account_id")
     if acct:
         print(f"Conta:    {acct}")
+
+
+def print_auth_accounts() -> None:
+    accounts = list_auth_accounts()
+    if not accounts:
+        print("Sem contas Codex guardadas.")
+        return
+    print("Contas Codex guardadas:")
+    for account in accounts:
+        marker = "*" if account["active"] else " "
+        label = account["profile"]
+        acct = account["account_id"] or "conta-desconhecida"
+        refresh = account["last_refresh"] or "sem-refresh"
+        print(f"{marker} {label} | {acct} | refresh: {refresh}")
+
+
+def select_auth_account(profile: str) -> None:
+    path = set_active_auth_profile(profile)
+    print(f"Conta ativa definida em: {path}")
+    status()
 
 
 def load_config() -> dict:
@@ -660,6 +774,18 @@ def chat() -> None:
             continue
         if prompt.lower().startswith("/modelo "):
             set_model(prompt.split(None, 1)[1])
+            continue
+        if prompt.lower() == "/auth":
+            status()
+            continue
+        if prompt.lower() == "/auth-contas":
+            print_auth_accounts()
+            continue
+        if prompt.lower().startswith("/auth-usar "):
+            try:
+                select_auth_account(prompt.split(None, 1)[1])
+            except Exception as exc:
+                print(f"Erro a selecionar conta: {exc}")
             continue
         if prompt.lower() == "/diario":
             text = read_diary()
@@ -1188,8 +1314,12 @@ def print_model() -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Eve Codex OAuth/client")
     sub = parser.add_subparsers(dest="cmd", required=True)
-    sub.add_parser("login")
+    login_p = sub.add_parser("login")
+    login_p.add_argument("--account", default="default")
     sub.add_parser("status")
+    sub.add_parser("accounts")
+    use_p = sub.add_parser("use-account")
+    use_p.add_argument("account")
     sub.add_parser("chat")
     sub.add_parser("current-model")
     sub.add_parser("models")
@@ -1200,9 +1330,13 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.cmd == "login":
-        login()
+        login(args.account)
     elif args.cmd == "status":
         status()
+    elif args.cmd == "accounts":
+        print_auth_accounts()
+    elif args.cmd == "use-account":
+        select_auth_account(args.account)
     elif args.cmd == "chat":
         chat()
     elif args.cmd == "current-model":
