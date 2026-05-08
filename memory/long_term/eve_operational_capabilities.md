@@ -22,6 +22,15 @@ Este ficheiro guarda capacidades operacionais que ja foram ensinadas, testadas o
 - Explicit command format: `/x-agendar HH:MM | text`.
 - CLI format: `python -m app.eve_codex x-schedule HH:MM "text"`.
 - If the requested time already passed, scheduling uses the next local occurrence and reports that note instead of pretending it used the past time.
+- Do not cross separate intents in the same sentence. If Sandro says "open x.com" and separately "schedule folder creation", that is not an X post request.
+- X scheduling requires an explicit post/publication/tweet intent near the scheduling request.
+- In compound requests, split and execute each action separately before choosing a tool.
+
+## Desktop actions
+
+- Eve can create a file on Sandro's Desktop when explicitly requested.
+- Eve can schedule Desktop folder creation through Windows Task Scheduler.
+- For unnamed scheduled folders, use `pasta_agendada_eve_HHMM` and report the exact folder path.
 
 ## Browser profile
 

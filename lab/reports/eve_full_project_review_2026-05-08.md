@@ -78,3 +78,23 @@ Sandro natural request
 6. Add scheduled dream/consolidation/research tasks with clear cadence and reports.
 7. Harden visual browser/app actions into reusable skills with screenshots before/after and selectors by text/image.
 8. Add a capability self-test command that Eve can run before claiming she can do something.
+
+## 2026-05-08 Follow-up: Compound Intent Bug
+
+Sandro tested a compound request:
+
+```text
+cria um ficheiro no ambiente de trabalho chamado ola,
+abre o x.com,
+agenda a criacao de uma pasta no ambiente de trabalho para as 22:43
+```
+
+Failure observed: Eve incorrectly scheduled an X post because the parser matched `x.com` and `agenda` anywhere in the whole sentence.
+
+Fix:
+
+- X scheduling now requires an explicit post/publication/tweet intent.
+- Desktop file creation and Desktop folder scheduling were added as separate natural tool intents.
+- The wrong X task was cancelled before execution.
+- The correct file `C:\Users\utilizador\Desktop\ola` was created.
+- The correct folder task `Eve_Create_Desktop_Folder_2243` ran with Last Result `0`.

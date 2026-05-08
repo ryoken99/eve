@@ -55,6 +55,12 @@ from security.safety_modes import SAFETY_MODES, describe_safety, set_safety_mode
 from memory.semantic_vector.vector_store import rebuild_memory_index, search as vector_search
 from tools.windows_scheduler import create_daily_task, list_eve_tasks
 from tools.x_scheduler import schedule_x_post
+from tools.desktop_tasks import (
+    create_desktop_file,
+    parse_desktop_file_request,
+    parse_desktop_folder_schedule_request,
+    schedule_desktop_folder_creation,
+)
 from computer.visual_executor import click_text_and_verify
 from tools.notification import notify
 from tools.voice import speak
@@ -1000,7 +1006,8 @@ def parse_natural_x_schedule_request(prompt: str) -> dict | None:
         return None
     wants_schedule = any(word in lowered for word in ("agenda", "agendar", "schedule", "programa", "programar"))
     mentions_x = " x " in f" {lowered} " or "x.com" in lowered or "twitter" in lowered
-    if not wants_schedule or not mentions_x:
+    mentions_post = any(word in lowered for word in ("post", "publica", "publicação", "publicacao", "tweet"))
+    if not wants_schedule or not mentions_x or not mentions_post:
         return None
     time_match = re.search(r"\b(?:as|às|para as|for)\s*([01]?\d|2[0-3]):([0-5]\d)\b", lowered)
     if not time_match:
@@ -1048,7 +1055,48 @@ def handle_natural_tool_request(prompt: str, *, speaker: str = "sandro") -> bool
             print(text)
             append_chat("error", text, tags=["tool_error", "x_schedule"])
         return True
+    desktop_file = parse_desktop_file_request(prompt)
+    desktop_folder_schedule = parse_desktop_folder_schedule_request(prompt)
     browser_target = natural_browser_target(prompt)
+    if desktop_file or desktop_folder_schedule or browser_target:
+        role = speaker_role(speaker)
+        append_chat(role, prompt, tags=["tool_request", "compound", role] if role != "user" else ["tool_request", "compound"])
+        messages = []
+        if desktop_file and desktop_file.get("status") == "needs_confirmation":
+            messages.append("Preciso do nome do ficheiro para criar no Ambiente de Trabalho.")
+        elif desktop_file:
+            try:
+                result = create_desktop_file(desktop_file["name"])
+                messages.append(f"Ficheiro criado: {result['path']}")
+            except Exception as exc:
+                messages.append(f"Erro real ao criar ficheiro no Ambiente de Trabalho: {type(exc).__name__}: {exc}")
+        if browser_target:
+            try:
+                result = open_url(browser_target)
+                messages.append(
+                    f"Abri o navegador da Eve em {result['url']} "
+                    f"com o perfil {result['profile_name']} ({result['profile_directory']})."
+                )
+            except Exception as exc:
+                messages.append(f"Erro real ao abrir o navegador: {type(exc).__name__}: {exc}")
+        if desktop_folder_schedule and desktop_folder_schedule.get("status") == "needs_confirmation":
+            messages.append("Preciso da hora em formato HH:MM para agendar a criação da pasta.")
+        elif desktop_folder_schedule:
+            try:
+                result = schedule_desktop_folder_creation(desktop_folder_schedule["name"], desktop_folder_schedule["time"])
+                messages.append(
+                    f"Pasta agendada: {result['folder']}\n"
+                    f"Hora: {result['scheduled_for']}\n"
+                    f"Tarefa: {result['task_name']}"
+                )
+                if result.get("note"):
+                    messages.append(f"Nota: {result['note']}")
+            except Exception as exc:
+                messages.append(f"Erro real ao agendar pasta no Ambiente de Trabalho: {type(exc).__name__}: {exc}")
+        text = "\n".join(messages)
+        print(text)
+        append_chat("assistant", text, tags=["tool", "compound"])
+        return True
     if browser_target:
         role = speaker_role(speaker)
         append_chat(role, prompt, tags=["tool_request", role] if role != "user" else ["tool_request"])

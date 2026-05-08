@@ -52,6 +52,7 @@ from autonomy.autonomous_executor import execute_autonomous_backlog, execute_aut
 from autonomy.token_gate import decide_llm_call, record_llm_call
 from autonomy.autonomy_reporter import run_autonomy_report_cycle
 from tools.x_scheduler import build_x_post_task_command, schedule_x_post
+from tools.desktop_tasks import parse_desktop_file_request, parse_desktop_folder_schedule_request, schedule_desktop_folder_creation
 
 
 class EveCoreTests(unittest.TestCase):
@@ -258,6 +259,34 @@ class EveCoreTests(unittest.TestCase):
         self.assertEqual(parsed["time"], "22:21")
         self.assertIn("feel", parsed["text"].lower())
         self.assertIn("Eve", parsed["text"])
+
+    def test_compound_desktop_request_does_not_schedule_x_post(self):
+        prompt = "ok cria um ficheiro no ambiente de trabalho chamado ola, abre o x.com, agenda a criacao de uma pasta no ambiente de trabalho para as 22:43"
+        self.assertIsNone(parse_natural_x_schedule_request(prompt))
+
+    def test_desktop_file_and_folder_schedule_parsers(self):
+        prompt = "ok cria um ficheiro no ambiente de trabalho chamado ola, abre o x.com, agenda a criacao de uma pasta no ambiente de trabalho para as 22:43"
+        self.assertEqual(parse_desktop_file_request(prompt)["name"], "ola")
+        folder = parse_desktop_folder_schedule_request(prompt)
+        self.assertEqual(folder["time"], "22:43")
+        self.assertEqual(folder["name"], "pasta_agendada_eve_2243")
+
+    def test_desktop_folder_scheduler_uses_windows_task_command(self):
+        captured = {}
+
+        def fake_create_task(name, time_hhmm, date, command):
+            captured.update({"name": name, "time": time_hhmm, "date": date, "command": command})
+            return {"returncode": 0, "stdout": "SUCCESS", "stderr": "", "task": name}
+
+        result = schedule_desktop_folder_creation(
+            "pasta_agendada_eve_2243",
+            "22:43",
+            now=datetime(2026, 5, 8, 22, 40),
+            create_task_func=fake_create_task,
+        )
+        self.assertEqual(result["status"], "scheduled")
+        self.assertIn("mkdir", captured["command"])
+        self.assertIn("pasta_agendada_eve_2243", captured["command"])
 
     def test_draft_x_post_defaults_to_english(self):
         text = draft_x_post_from_prompt("agenda no x para as 22:21 sobre tudo o que aprendeste hoje")
