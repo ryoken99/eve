@@ -5,6 +5,7 @@ import os
 import re
 import subprocess
 import sys
+import threading
 import time
 import urllib.error
 import urllib.parse
@@ -75,6 +76,7 @@ LOG_DIR = EVE_ROOT / "logs"
 AUTH_PATH = SECRETS_DIR / "codex_auth.json"
 AUTH_ACCOUNTS_DIR = SECRETS_DIR / "codex_auth_accounts"
 ACTIVE_AUTH_PROFILE_PATH = SECRETS_DIR / "codex_auth_active.txt"
+INTERFACE_INBOX_PATH = LOG_DIR / "interface_inbox.jsonl"
 CONFIG_PATH = EVE_ROOT / "config" / "eve.json"
 
 ISSUER = "https://auth.openai.com"
@@ -121,6 +123,60 @@ def ensure_dirs() -> None:
 
 def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def publish_interface_message(source: str, content: str, *, tags: list[str] | None = None) -> None:
+    ensure_dirs()
+    entry = {
+        "timestamp": now_iso(),
+        "source": source,
+        "content": content,
+        "tags": tags or [],
+    }
+    with INTERFACE_INBOX_PATH.open("a", encoding="utf-8") as fh:
+        fh.write(json.dumps(entry, ensure_ascii=False) + "\n")
+
+
+def _format_interface_message(entry: dict) -> str:
+    source = entry.get("source") or "external"
+    timestamp = entry.get("timestamp") or ""
+    content = entry.get("content") or ""
+    return f"\n[{source} -> Eve | {timestamp}]\n{content}\n"
+
+
+def drain_interface_messages(position: int = 0) -> int:
+    ensure_dirs()
+    if not INTERFACE_INBOX_PATH.exists():
+        return 0
+    size = INTERFACE_INBOX_PATH.stat().st_size
+    if position > size:
+        position = 0
+    with INTERFACE_INBOX_PATH.open("r", encoding="utf-8") as fh:
+        fh.seek(position)
+        for line in fh:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                entry = json.loads(line)
+            except Exception:
+                entry = {"source": "external", "content": line}
+            print(_format_interface_message(entry), flush=True)
+        return fh.tell()
+
+
+def start_interface_inbox_watcher() -> None:
+    state = {"position": 0}
+
+    def watch() -> None:
+        while True:
+            try:
+                state["position"] = drain_interface_messages(state["position"])
+            except Exception:
+                pass
+            time.sleep(2)
+
+    threading.Thread(target=watch, daemon=True, name="eve-interface-inbox").start()
 
 
 def request_json(method: str, url: str, *, headers=None, data=None, timeout=30):
@@ -699,6 +755,8 @@ def ask(prompt: str, *, speaker: str = "sandro") -> str:
         f"RELEVANT ENTITY MEMORY:\n{json.dumps(entity_context, ensure_ascii=False)[:5000]}"
     )
     append_chat(role, prompt, tags=["codex_instructor"] if role == "codex_instructor" else None)
+    if role == "codex_instructor":
+        publish_interface_message("codex_instructor", prompt, tags=["instructor", "incoming"])
     body = {
         "model": model,
         "instructions": instructions,
@@ -721,11 +779,15 @@ def ask(prompt: str, *, speaker: str = "sandro") -> str:
     if text:
         print(text)
         append_chat("assistant", text)
+        if role == "codex_instructor":
+            publish_interface_message("eve", text, tags=["reply", "codex_instructor"])
         return text
     else:
         text = json.dumps(payload, indent=2)[:4000]
         print(text)
         append_chat("assistant", text)
+        if role == "codex_instructor":
+            publish_interface_message("eve", text, tags=["reply", "codex_instructor"])
         return text
 
 
@@ -769,7 +831,9 @@ def handle_natural_tool_request(prompt: str, *, speaker: str = "sandro") -> bool
 def chat() -> None:
     print("Eve chat. Escreve /sair para sair.")
     print("Comandos: /menu, /voltar, /speaker sandro|codex, /codex mensagem, /auth, /auth-contas, /auth-trocar, /auth-login nome, /dashboard, /modelo, /estado, /seguranca, /modo-seguranca, /liberdade-total, /seguranca-safe, /entidades-path, /entidades-files, /aprender-sandro, /entidades, /entidade, /relacao, /entidades-search, /monitores, /ocr-status, /ecra, /ecra-monitor, /ver-texto, /centro-texto, /clicar-texto, /visual-click, /vector-index, /vector-search, /vector-search2, /win-agendar, /win-tarefas, /daemon-tick, /daemon-stop, /watch-tech, /notify, /speak, /mobile, /mobile-msg, /app-profile, /app-profiles, /demo-record, /demo-summary, /pipeline, /admin-elevado, /app, /browser, /pesquisar, /email-draft, /mouse, /mover, /clicar, /tecla, /hotkey, /escrever, /agenda, /agendar, /proativo, /workspace-scan, /preferencia, /preferencias, /falha-skill, /licao, /skill-note, /experiencia, /experiencia-result, /melhoria, /melhorias-erros, /patch-proposta, /sandbox, /admin, /aprovar-admin, /rsi, /lock, /unlock, /diario, /consolidar, /sonhar, /lembrar, /world, /tech, /lab, /workspace, /ls, /ler, /nota, /cmd, /aprovar-cmd, /erros, /skills, /skill-run, /skill-promote, /skill-demo")
+    print("Mensagens externas de Codex-instrutor aparecem automaticamente aqui.")
     print()
+    start_interface_inbox_watcher()
     current_speaker = "sandro"
     while True:
         try:
@@ -806,6 +870,7 @@ def chat() -> None:
             continue
         if one_off_speaker == "codex" and prompt.startswith("/"):
             append_chat("codex_instructor", prompt, tags=["codex_instructor", "command"])
+            publish_interface_message("codex_instructor", prompt, tags=["instructor", "command"])
         if prompt.lower() == "/dashboard":
             print(render_dashboard())
             continue
