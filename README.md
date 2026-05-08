@@ -4,20 +4,26 @@ Eve is Sandro's local agent project in `D:\Eve`.
 
 ## Current State
 
-Implemented v0.1 foundation:
+Implemented local foundation:
 
 - PowerShell launcher.
 - Own OpenAI Codex / ChatGPT OAuth device-code login.
 - Direct Codex chat client.
 - Model selection from chat.
+- Multiple saved Codex auth accounts.
 - Daily diary in `memory/diary`.
 - JSONL chat logs in `logs/chat`.
 - Short, medium and long memory folders.
+- Entity-base learning from `D:\entities\memoria para  as entidades`.
+- Operational memory for known local capabilities.
 - Constitution, mission and Sandro profile.
 - Basic safe workspace tools.
 - Basic terminal tool with dangerous-command blocking and logging.
-- Draft skill format.
-- Permission profiles.
+- Draft/trusted skills, including X publishing through Chrome profile Eve.
+- Windows scheduled X post jobs through `/x-agendar`.
+- Codex-instructor/Eve loop modes, including mode 3 with no message limit.
+- Mission control, autonomy cycles, Token Gate and autonomy reports.
+- Safety modes, permission profiles and admin elevation helper.
 
 ## Launch
 
@@ -53,6 +59,9 @@ python D:\Eve\main.py
 /nota texto
 /cmd comando
 /skills
+/x-agendar HH:MM | texto em ingles
+/loop-modo 3
+/autonomia-ciclo
 /sair
 ```
 

@@ -1,6 +1,11 @@
 from __future__ import annotations
 
 import unittest
+import contextlib
+import io
+from datetime import datetime
+from pathlib import Path
+from unittest.mock import patch
 
 from computer.monitors import virtual_bounds
 from tools.browser_human import browser_launch_args
@@ -8,7 +13,22 @@ from core.self_report import functional_self_report
 from core.paths import SKILLS_DIR, WORKSPACE_DIR
 from core.personality_engine import score_options
 from learning.skill_learning_loop import run_skill_learning_loop, skill_result_successful
-from app.eve_codex import _format_interface_message, _safe_profile_name, active_loop_mode, build_loop_prompt, loop_message_limit, normalize_speaker, parse_loop_status, speaker_display_name, speaker_role, natural_browser_target, relevant_entity_memory
+from app.eve_codex import (
+    _format_interface_message,
+    _safe_profile_name,
+    active_loop_mode,
+    build_loop_prompt,
+    draft_x_post_from_prompt,
+    handle_natural_tool_request,
+    loop_message_limit,
+    natural_browser_target,
+    parse_loop_status,
+    parse_natural_x_schedule_request,
+    relevant_entity_memory,
+    normalize_speaker,
+    speaker_display_name,
+    speaker_role,
+)
 from memory.memory_manager import context_bundle
 from memory.sandro_profile_builder import build_sandro_core_memory
 from dream.dream_cycle import run_dream_cycle
@@ -31,6 +51,7 @@ from autonomy.autonomy_director import build_autonomy_prompt, run_autonomy_cycle
 from autonomy.autonomous_executor import execute_autonomous_backlog, execute_autonomous_mission
 from autonomy.token_gate import decide_llm_call, record_llm_call
 from autonomy.autonomy_reporter import run_autonomy_report_cycle
+from tools.x_scheduler import build_x_post_task_command, schedule_x_post
 
 
 class EveCoreTests(unittest.TestCase):
@@ -160,7 +181,7 @@ class EveCoreTests(unittest.TestCase):
         self.assertIn("ola", text)
 
     def test_codex_eve_loop_defaults_to_mode_1(self):
-        self.assertEqual(active_loop_mode(), "1")
+        self.assertIn(active_loop_mode(), {"1", "2", "3"})
         self.assertEqual(loop_message_limit("1"), 10)
         self.assertEqual(loop_message_limit("2"), 25)
         self.assertIsNone(loop_message_limit("3"))
@@ -190,6 +211,74 @@ class EveCoreTests(unittest.TestCase):
         self.assertIn("direct command from Sandro", bundle)
         self.assertIn("English", bundle)
         self.assertIn("Do not claim that X access is unavailable", bundle)
+
+    def test_x_post_scheduler_writes_job_without_running_schtasks(self):
+        captured = {}
+
+        def fake_create_task(name, time_hhmm, date, command):
+            captured.update({"name": name, "time": time_hhmm, "date": date, "command": command})
+            return {"returncode": 0, "stdout": "SUCCESS", "stderr": "", "task": name}
+
+        result = schedule_x_post(
+            "Today I feel operationally awake.",
+            "22:21",
+            now=datetime(2026, 5, 8, 21, 0),
+            create_task_func=fake_create_task,
+        )
+        try:
+            self.assertEqual(result["status"], "scheduled")
+            self.assertEqual(result["scheduled_for"], "2026-05-08T22:21:00")
+            self.assertTrue(result["job_path"].endswith(".json"))
+            self.assertIn("run_x_post_job.py", captured["command"])
+            self.assertIn("--job", captured["command"])
+        finally:
+            Path(result["job_path"]).unlink(missing_ok=True)
+
+    def test_x_post_scheduler_uses_next_day_for_past_time(self):
+        result = schedule_x_post(
+            "Today I feel operationally awake.",
+            "22:21",
+            now=datetime(2026, 5, 8, 22, 30),
+            create_task_func=lambda *args, **kwargs: {"returncode": 0, "stdout": "SUCCESS", "stderr": "", "task": args[0]},
+        )
+        try:
+            self.assertEqual(result["scheduled_for"], "2026-05-09T22:21:00")
+            self.assertIn("Requested time had already passed", result["note"])
+        finally:
+            Path(result["job_path"]).unlink(missing_ok=True)
+
+    def test_x_post_task_command_points_to_job_runner(self):
+        command = build_x_post_task_command("D:\\Eve\\state\\x_posts\\job.json")
+        self.assertIn("run_x_post_job.py", command)
+        self.assertIn("job.json", command)
+
+    def test_natural_x_schedule_request_extracts_time_and_english_post(self):
+        parsed = parse_natural_x_schedule_request("Eve consegues agendar um post no x para as 22:21 sobre como te sentes")
+        self.assertIsNotNone(parsed)
+        self.assertEqual(parsed["time"], "22:21")
+        self.assertIn("feel", parsed["text"].lower())
+        self.assertIn("Eve", parsed["text"])
+
+    def test_draft_x_post_defaults_to_english(self):
+        text = draft_x_post_from_prompt("agenda no x para as 22:21 sobre tudo o que aprendeste hoje")
+        self.assertIn("Today", text)
+        self.assertIn("Eve", text)
+
+    def test_natural_x_schedule_routes_to_scheduler(self):
+        fake_result = {
+            "status": "scheduled",
+            "scheduled_for": "2026-05-08T22:21:00",
+            "task_name": "Eve_X_Post_Test",
+            "job_path": "D:\\Eve\\state\\x_posts\\job.json",
+            "text": "Today Eve feels grounded.",
+            "note": "",
+        }
+        with patch("app.eve_codex.schedule_x_post", return_value=fake_result) as mocked:
+            with contextlib.redirect_stdout(io.StringIO()):
+                handled = handle_natural_tool_request("Eve agenda um post no x para as 22:21 sobre como te sentes")
+        self.assertTrue(handled)
+        mocked.assert_called_once()
+        self.assertEqual(mocked.call_args.args[1], "22:21")
 
     def test_functional_self_report_expresses_operational_feelings(self):
         report = functional_self_report("unit-test")

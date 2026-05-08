@@ -15,6 +15,14 @@ Este ficheiro guarda capacidades operacionais que ja foram ensinadas, testadas o
 - Do not claim that X access is unavailable unless a real attempt or status check fails.
 - Always log the action, the skill used, screenshots/verifications, and any uncertainty.
 
+## X scheduling
+
+- Natural-language requests from Sandro such as "agenda um post no X para as HH:MM..." should be routed to the local X scheduler, not answered only by LLM text.
+- The local scheduler writes a job in `state/x_posts/`, creates a Windows Task Scheduler entry, and later runs `scripts/run_x_post_job.py`.
+- Explicit command format: `/x-agendar HH:MM | text`.
+- CLI format: `python -m app.eve_codex x-schedule HH:MM "text"`.
+- If the requested time already passed, scheduling uses the next local occurrence and reports that note instead of pretending it used the past time.
+
 ## Browser profile
 
 - The browser for Eve tasks is Chrome with Eve's own profile.

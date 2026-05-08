@@ -8,6 +8,29 @@ from core.paths import EVE_ROOT
 from security.audit_log import log_event
 
 
+def create_once_task(name: str, time_hhmm: str, date_ddmmyyyy: str, command: str) -> dict:
+    task_name = f"Eve_{name}"
+    args = [
+        "schtasks",
+        "/Create",
+        "/SC",
+        "ONCE",
+        "/TN",
+        task_name,
+        "/TR",
+        command,
+        "/ST",
+        time_hhmm,
+        "/SD",
+        date_ddmmyyyy,
+        "/F",
+    ]
+    completed = subprocess.run(args, capture_output=True, text=True, timeout=60)
+    result = {"task": task_name, "returncode": completed.returncode, "stdout": completed.stdout, "stderr": completed.stderr}
+    log_event("windows_task_create_once", result)
+    return result
+
+
 def create_daily_task(name: str, time_hhmm: str, command: str | None = None) -> dict:
     command = command or f'"{sys.executable}" "{EVE_ROOT / "scripts" / "eve_maintenance.py"}"'
     task_name = f"Eve_{name}"

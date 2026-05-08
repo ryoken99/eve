@@ -36,6 +36,7 @@ memory/errors/autonomous_error_review.md
 state/current_world_state.json
 state/scheduled_tasks.json
 state/missions/*.json
+state/x_posts/*.json
 memory/procedural/adaptive_failures.jsonl
 memory/procedural/skill_learning_loop.jsonl
 memory/procedural/lessons.md

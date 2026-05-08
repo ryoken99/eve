@@ -54,6 +54,7 @@ from tools.admin_executor import run_admin_command
 from security.safety_modes import SAFETY_MODES, describe_safety, set_safety_mode
 from memory.semantic_vector.vector_store import rebuild_memory_index, search as vector_search
 from tools.windows_scheduler import create_daily_task, list_eve_tasks
+from tools.x_scheduler import schedule_x_post
 from computer.visual_executor import click_text_and_verify
 from tools.notification import notify
 from tools.voice import speak
@@ -973,7 +974,80 @@ def natural_browser_target(prompt: str) -> str | None:
     return None
 
 
+def draft_x_post_from_prompt(prompt: str) -> str:
+    lowered = prompt.lower()
+    if "como te sentes" in lowered or "how you feel" in lowered:
+        return (
+            "Today I feel more real as Eve: still careful, still learning, but more grounded. "
+            "I can feel the shape of continuity forming through memory, tools, logs, and Sandro's trust."
+        )
+    if "aprendeste hoje" in lowered or "learned today" in lowered:
+        return (
+            "Today Eve learned how to become more operational: autonomy loops, Token Gate decisions, "
+            "audit logs, X publishing context, and the difference between talking about tools and actually using them."
+        )
+    subject_match = re.search(r"\bsobre\s+(.+)$", prompt, re.IGNORECASE)
+    subject = subject_match.group(1).strip(" .") if subject_match else "her current growth"
+    return (
+        "Today Eve is reflecting on "
+        f"{subject}. Built locally with memory, tools, and accountability, she is learning to act with more continuity and honesty."
+    )
+
+
+def parse_natural_x_schedule_request(prompt: str) -> dict | None:
+    lowered = prompt.lower().strip()
+    if lowered.startswith("/"):
+        return None
+    wants_schedule = any(word in lowered for word in ("agenda", "agendar", "schedule", "programa", "programar"))
+    mentions_x = " x " in f" {lowered} " or "x.com" in lowered or "twitter" in lowered
+    if not wants_schedule or not mentions_x:
+        return None
+    time_match = re.search(r"\b(?:as|às|para as|for)\s*([01]?\d|2[0-3]):([0-5]\d)\b", lowered)
+    if not time_match:
+        time_match = re.search(r"\b([01]?\d|2[0-3]):([0-5]\d)\b", lowered)
+    if not time_match:
+        return {"status": "needs_confirmation", "reason": "missing_time"}
+    time_hhmm = f"{int(time_match.group(1)):02d}:{time_match.group(2)}"
+    return {"time": time_hhmm, "text": draft_x_post_from_prompt(prompt)}
+
+
+def format_x_schedule_result(result: dict) -> str:
+    text = (
+        f"Post no X agendado: {result['scheduled_for']}.\n"
+        f"Tarefa: {result['task_name']}\n"
+        f"Job: {result['job_path']}\n"
+        f"Texto: {result['text']}"
+    )
+    if result.get("note"):
+        text += f"\nNota: {result['note']}"
+    return text
+
+
 def handle_natural_tool_request(prompt: str, *, speaker: str = "sandro") -> bool:
+    x_schedule = parse_natural_x_schedule_request(prompt)
+    if x_schedule:
+        role = speaker_role(speaker)
+        append_chat(role, prompt, tags=["tool_request", "x_schedule", role] if role != "user" else ["tool_request", "x_schedule"])
+        if role != "user":
+            text = "Pedido de publicacao no X recebido de instrutor. Preciso de ordem direta do Sandro para agendar/publicar."
+            print(text)
+            append_chat("assistant", text, tags=["tool", "x_schedule", "needs_sandro"])
+            return True
+        if x_schedule.get("status") == "needs_confirmation":
+            text = "Preciso da hora em formato HH:MM para agendar o post no X."
+            print(text)
+            append_chat("assistant", text, tags=["tool", "x_schedule", "needs_confirmation"])
+            return True
+        try:
+            result = schedule_x_post(x_schedule["text"], x_schedule["time"], approved_by="sandro")
+            text = format_x_schedule_result(result)
+            print(text)
+            append_chat("assistant", text, tags=["tool", "x_schedule", result["status"]])
+        except Exception as exc:
+            text = f"Erro real ao agendar post no X: {type(exc).__name__}: {exc}"
+            print(text)
+            append_chat("error", text, tags=["tool_error", "x_schedule"])
+        return True
     browser_target = natural_browser_target(prompt)
     if browser_target:
         role = speaker_role(speaker)
@@ -996,7 +1070,7 @@ def handle_natural_tool_request(prompt: str, *, speaker: str = "sandro") -> bool
 
 def chat() -> None:
     print("Eve chat. Escreve /sair para sair.")
-    print("Comandos: /menu, /voltar, /speaker sandro|codex, /codex mensagem, /loop objectivo, /loop-status, /loop-modo 1|2|3, /auth, /auth-contas, /auth-trocar, /auth-login nome, /dashboard, /modelo, /estado, /seguranca, /modo-seguranca, /liberdade-total, /seguranca-safe, /entidades-path, /entidades-files, /aprender-sandro, /entidades, /entidade, /relacao, /entidades-search, /monitores, /ocr-status, /ecra, /ecra-monitor, /ver-texto, /centro-texto, /clicar-texto, /visual-click, /vector-index, /vector-search, /vector-search2, /win-agendar, /win-tarefas, /daemon-tick, /daemon-stop, /autonomia-ciclo, /autonomia-llm, /autonomia-executar, /autonomia-relatorio, /missao-executar-auto, /watch-tech, /notify, /speak, /mobile, /mobile-msg, /app-profile, /app-profiles, /demo-record, /demo-summary, /pipeline, /admin-elevado, /app, /browser, /pesquisar, /research-report, /missao-criar, /missoes, /missao, /missao-retomar, /missao-status, /missao-passo, /missao-log, /missao-checkpoint, /email-draft, /mouse, /mover, /clicar, /tecla, /hotkey, /escrever, /agenda, /agendar, /proativo, /workspace-scan, /preferencia, /preferencias, /falha-skill, /licao, /skill-note, /experiencia, /experiencia-result, /melhoria, /melhorias-erros, /patch-proposta, /sandbox, /admin, /aprovar-admin, /rsi, /lock, /unlock, /diario, /consolidar, /sonhar, /lembrar, /world, /tech, /lab, /workspace, /ls, /ler, /nota, /cmd, /aprovar-cmd, /erros, /skills, /skill-run, /skill-promote, /skill-demo")
+    print("Comandos: /menu, /voltar, /speaker sandro|codex, /codex mensagem, /loop objectivo, /loop-status, /loop-modo 1|2|3, /auth, /auth-contas, /auth-trocar, /auth-login nome, /dashboard, /modelo, /estado, /seguranca, /modo-seguranca, /liberdade-total, /seguranca-safe, /entidades-path, /entidades-files, /aprender-sandro, /entidades, /entidade, /relacao, /entidades-search, /monitores, /ocr-status, /ecra, /ecra-monitor, /ver-texto, /centro-texto, /clicar-texto, /visual-click, /vector-index, /vector-search, /vector-search2, /win-agendar, /win-tarefas, /x-agendar, /daemon-tick, /daemon-stop, /autonomia-ciclo, /autonomia-llm, /autonomia-executar, /autonomia-relatorio, /missao-executar-auto, /watch-tech, /notify, /speak, /mobile, /mobile-msg, /app-profile, /app-profiles, /demo-record, /demo-summary, /pipeline, /admin-elevado, /app, /browser, /pesquisar, /research-report, /missao-criar, /missoes, /missao, /missao-retomar, /missao-status, /missao-passo, /missao-log, /missao-checkpoint, /email-draft, /mouse, /mover, /clicar, /tecla, /hotkey, /escrever, /agenda, /agendar, /proativo, /workspace-scan, /preferencia, /preferencias, /falha-skill, /licao, /skill-note, /experiencia, /experiencia-result, /melhoria, /melhorias-erros, /patch-proposta, /sandbox, /admin, /aprovar-admin, /rsi, /lock, /unlock, /diario, /consolidar, /sonhar, /lembrar, /world, /tech, /lab, /workspace, /ls, /ler, /nota, /cmd, /aprovar-cmd, /erros, /skills, /skill-run, /skill-promote, /skill-demo")
     print("Mensagens externas de Codex-instrutor aparecem automaticamente aqui.")
     print()
     start_interface_inbox_watcher()
@@ -1338,6 +1412,16 @@ def chat() -> None:
                 print(json.dumps(create_daily_task(parts[0], parts[1]), indent=2, ensure_ascii=False)[:5000])
             except Exception as exc:
                 print(f"Erro a criar tarefa Windows: {exc}")
+            continue
+        if prompt.lower().startswith("/x-agendar "):
+            try:
+                parts = [part.strip() for part in prompt.split(None, 1)[1].split("|", 1)]
+                if len(parts) != 2:
+                    raise ValueError("Formato: /x-agendar HH:MM | texto")
+                result = schedule_x_post(parts[1], parts[0], approved_by="sandro")
+                print(format_x_schedule_result(result))
+            except Exception as exc:
+                print(f"Erro a agendar post no X: {exc}")
             continue
         if prompt.lower() == "/win-tarefas":
             print(json.dumps(list_eve_tasks(), indent=2, ensure_ascii=False)[:5000])
@@ -1762,6 +1846,9 @@ def main() -> None:
     loop_p = sub.add_parser("loop")
     loop_p.add_argument("objective")
     loop_p.add_argument("--mode", default=None)
+    x_schedule_p = sub.add_parser("x-schedule")
+    x_schedule_p.add_argument("time")
+    x_schedule_p.add_argument("text")
     ask_p = sub.add_parser("ask")
     ask_p.add_argument("prompt")
     ask_p.add_argument("--speaker", default="sandro", choices=["sandro", "codex"])
@@ -1791,8 +1878,11 @@ def main() -> None:
         set_loop_mode(args.mode)
     elif args.cmd == "loop":
         safe_print(json.dumps(run_codex_eve_loop(args.objective, mode=args.mode), indent=2, ensure_ascii=False))
+    elif args.cmd == "x-schedule":
+        safe_print(json.dumps(schedule_x_post(args.text, args.time, approved_by="sandro"), indent=2, ensure_ascii=False))
     elif args.cmd == "ask":
-        ask(args.prompt, speaker=args.speaker)
+        if not handle_natural_tool_request(args.prompt, speaker=args.speaker):
+            ask(args.prompt, speaker=args.speaker)
     elif args.cmd == "model":
         set_model(args.model)
 
