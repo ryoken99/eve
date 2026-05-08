@@ -578,13 +578,24 @@ def select_auth_account(profile: str) -> None:
 
 def interactive_auth_switch() -> None:
     accounts = list_auth_accounts()
-    if not accounts:
-        print("Sem contas Codex guardadas. Usa: python app\\eve_codex.py login --account nome")
-        return
-    print_auth_accounts()
-    choice = input("Conta a usar: ").strip()
+    if accounts:
+        print_auth_accounts()
+    else:
+        print("Sem contas Codex guardadas.")
+    print()
+    print("Escreve o nome de uma conta existente para a usar.")
+    print("Escreve 'nova' para autenticar outra conta agora.")
+    print("Enter vazio cancela.")
+    choice = input("Conta a usar ou 'nova': ").strip()
     if not choice:
         print("Troca cancelada.")
+        return
+    if choice.lower() in {"nova", "novo", "new", "login", "+"}:
+        profile = input("Nome local para esta conta: ").strip()
+        if not profile:
+            print("Login cancelado: nome de conta vazio.")
+            return
+        login(profile)
         return
     select_auth_account(choice)
 
@@ -757,7 +768,7 @@ def handle_natural_tool_request(prompt: str, *, speaker: str = "sandro") -> bool
 
 def chat() -> None:
     print("Eve chat. Escreve /sair para sair.")
-    print("Comandos: /menu, /voltar, /speaker sandro|codex, /codex mensagem, /auth, /auth-contas, /auth-trocar, /dashboard, /modelo, /estado, /seguranca, /modo-seguranca, /liberdade-total, /seguranca-safe, /entidades-path, /entidades-files, /aprender-sandro, /entidades, /entidade, /relacao, /entidades-search, /monitores, /ocr-status, /ecra, /ecra-monitor, /ver-texto, /centro-texto, /clicar-texto, /visual-click, /vector-index, /vector-search, /vector-search2, /win-agendar, /win-tarefas, /daemon-tick, /daemon-stop, /watch-tech, /notify, /speak, /mobile, /mobile-msg, /app-profile, /app-profiles, /demo-record, /demo-summary, /pipeline, /admin-elevado, /app, /browser, /pesquisar, /email-draft, /mouse, /mover, /clicar, /tecla, /hotkey, /escrever, /agenda, /agendar, /proativo, /workspace-scan, /preferencia, /preferencias, /falha-skill, /licao, /skill-note, /experiencia, /experiencia-result, /melhoria, /melhorias-erros, /patch-proposta, /sandbox, /admin, /aprovar-admin, /rsi, /lock, /unlock, /diario, /consolidar, /sonhar, /lembrar, /world, /tech, /lab, /workspace, /ls, /ler, /nota, /cmd, /aprovar-cmd, /erros, /skills, /skill-run, /skill-promote, /skill-demo")
+    print("Comandos: /menu, /voltar, /speaker sandro|codex, /codex mensagem, /auth, /auth-contas, /auth-trocar, /auth-login nome, /dashboard, /modelo, /estado, /seguranca, /modo-seguranca, /liberdade-total, /seguranca-safe, /entidades-path, /entidades-files, /aprender-sandro, /entidades, /entidade, /relacao, /entidades-search, /monitores, /ocr-status, /ecra, /ecra-monitor, /ver-texto, /centro-texto, /clicar-texto, /visual-click, /vector-index, /vector-search, /vector-search2, /win-agendar, /win-tarefas, /daemon-tick, /daemon-stop, /watch-tech, /notify, /speak, /mobile, /mobile-msg, /app-profile, /app-profiles, /demo-record, /demo-summary, /pipeline, /admin-elevado, /app, /browser, /pesquisar, /email-draft, /mouse, /mover, /clicar, /tecla, /hotkey, /escrever, /agenda, /agendar, /proativo, /workspace-scan, /preferencia, /preferencias, /falha-skill, /licao, /skill-note, /experiencia, /experiencia-result, /melhoria, /melhorias-erros, /patch-proposta, /sandbox, /admin, /aprovar-admin, /rsi, /lock, /unlock, /diario, /consolidar, /sonhar, /lembrar, /world, /tech, /lab, /workspace, /ls, /ler, /nota, /cmd, /aprovar-cmd, /erros, /skills, /skill-run, /skill-promote, /skill-demo")
     print()
     current_speaker = "sandro"
     while True:
@@ -861,6 +872,12 @@ def chat() -> None:
             except Exception as exc:
                 print(f"Erro a trocar conta: {exc}")
             print("Usa /voltar para voltar ao menu.")
+            continue
+        if prompt.lower().startswith("/auth-login "):
+            try:
+                login(prompt.split(None, 1)[1])
+            except Exception as exc:
+                print(f"Erro no login da conta: {exc}")
             continue
         if prompt.lower().startswith("/auth-usar "):
             try:

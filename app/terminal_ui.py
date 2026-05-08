@@ -15,7 +15,7 @@ MENU = [
     ("9", "Liberdade total", "/liberdade-total menu"),
     ("10", "Conta Codex ativa", "/auth"),
     ("11", "Listar contas Codex", "/auth-contas"),
-    ("12", "Trocar conta Codex", "/auth-trocar"),
+    ("12", "Trocar ou autenticar conta Codex", "/auth-trocar"),
     ("0", "Voltar ao chat", "/chat"),
 ]
 
