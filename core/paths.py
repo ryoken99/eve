@@ -36,6 +36,7 @@ def ensure_project_dirs() -> None:
         LOGS_DIR / "chat",
         LOGS_DIR / "terminal",
         LOGS_DIR / "errors",
+        LOGS_DIR / "loops",
         LOGS_DIR / "approvals",
         LOGS_DIR / "audit",
         LOGS_DIR / "ui_actions",

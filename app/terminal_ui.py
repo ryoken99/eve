@@ -16,6 +16,7 @@ MENU = [
     ("10", "Conta Codex ativa", "/auth"),
     ("11", "Listar contas Codex", "/auth-contas"),
     ("12", "Trocar ou autenticar conta Codex", "/auth-trocar"),
+    ("13", "Loop Codex-Eve", "/loop-status"),
     ("0", "Voltar ao chat", "/chat"),
 ]
 

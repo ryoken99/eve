@@ -77,6 +77,7 @@ AUTH_PATH = SECRETS_DIR / "codex_auth.json"
 AUTH_ACCOUNTS_DIR = SECRETS_DIR / "codex_auth_accounts"
 ACTIVE_AUTH_PROFILE_PATH = SECRETS_DIR / "codex_auth_active.txt"
 INTERFACE_INBOX_PATH = LOG_DIR / "interface_inbox.jsonl"
+LOOP_LOG_DIR = LOG_DIR / "loops"
 CONFIG_PATH = EVE_ROOT / "config" / "eve.json"
 
 ISSUER = "https://auth.openai.com"
@@ -85,6 +86,11 @@ CODEX_OAUTH_TOKEN_URL = "https://auth.openai.com/oauth/token"
 CODEX_BASE_URL = "https://chatgpt.com/backend-api/codex"
 DEFAULT_MODEL = "gpt-5.4"
 KNOWN_MODELS = ["gpt-5.5", "gpt-5.4", "gpt-5.4-mini", "gpt-5.3-codex", "gpt-5.2"]
+LOOP_MODES = {
+    "1": {"message_limit": 10, "description": "Modo 1: loop curto, 10 mensagens"},
+    "2": {"message_limit": 25, "description": "Modo 2: loop medio, 25 mensagens"},
+    "3": {"message_limit": None, "description": "Modo 3: sem limite de mensagens, para uso explicito"},
+}
 MENU_COMMANDS = {
     "1": "/dashboard",
     "2": "/estado",
@@ -98,6 +104,7 @@ MENU_COMMANDS = {
     "10": "/auth",
     "11": "/auth-contas",
     "12": "/auth-trocar",
+    "13": "/loop-status",
     "0": "/chat",
 }
 CHAT_SPEAKERS = {
@@ -117,12 +124,20 @@ PERSONAL_MEMORY_EXPANSIONS = {
 
 
 def ensure_dirs() -> None:
-    for path in (SECRETS_DIR, AUTH_ACCOUNTS_DIR, LOG_DIR, CONFIG_PATH.parent):
+    for path in (SECRETS_DIR, AUTH_ACCOUNTS_DIR, LOG_DIR, LOOP_LOG_DIR, CONFIG_PATH.parent):
         path.mkdir(parents=True, exist_ok=True)
 
 
 def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def safe_print(text: object = "", **kwargs) -> None:
+    try:
+        print(text, **kwargs)
+    except UnicodeEncodeError:
+        encoded = str(text).encode(sys.stdout.encoding or "utf-8", errors="replace")
+        print(encoded.decode(sys.stdout.encoding or "utf-8", errors="replace"), **kwargs)
 
 
 def publish_interface_message(source: str, content: str, *, target: str = "Eve", tags: list[str] | None = None) -> None:
@@ -136,6 +151,15 @@ def publish_interface_message(source: str, content: str, *, target: str = "Eve",
     }
     with INTERFACE_INBOX_PATH.open("a", encoding="utf-8") as fh:
         fh.write(json.dumps(entry, ensure_ascii=False) + "\n")
+
+
+def append_loop_event(event: str, payload: dict) -> Path:
+    ensure_dirs()
+    path = LOOP_LOG_DIR / f"{datetime.now().strftime('%Y-%m-%d')}.jsonl"
+    row = {"timestamp": now_iso(), "event": event, **payload}
+    with path.open("a", encoding="utf-8") as fh:
+        fh.write(json.dumps(row, ensure_ascii=False) + "\n")
+    return path
 
 
 def _format_interface_message(entry: dict) -> str:
@@ -163,7 +187,7 @@ def drain_interface_messages(position: int = 0) -> int:
                 entry = json.loads(line)
             except Exception:
                 entry = {"source": "external", "content": line}
-            print(_format_interface_message(entry), flush=True)
+            safe_print(_format_interface_message(entry), flush=True)
         return fh.tell()
 
 
@@ -672,6 +696,121 @@ def save_config(config: dict) -> None:
     CONFIG_PATH.write_text(json.dumps(config, indent=2), encoding="utf-8")
 
 
+def active_loop_mode() -> str:
+    mode = str(load_config().get("loop_mode", "1"))
+    return mode if mode in LOOP_MODES else "1"
+
+
+def set_loop_mode(mode: str) -> None:
+    mode = str(mode).strip()
+    if mode not in LOOP_MODES:
+        raise ValueError("Modo invalido. Usa 1, 2 ou 3.")
+    config = load_config()
+    config["loop_mode"] = mode
+    save_config(config)
+    print_loop_status()
+
+
+def loop_message_limit(mode: str | None = None) -> int | None:
+    selected = str(mode or active_loop_mode())
+    return LOOP_MODES.get(selected, LOOP_MODES["1"])["message_limit"]
+
+
+def print_loop_status() -> None:
+    mode = active_loop_mode()
+    limit = loop_message_limit(mode)
+    safe_print(f"Loop Codex-Eve ativo: modo {mode}")
+    safe_print(f"Descricao: {LOOP_MODES[mode]['description']}")
+    safe_print(f"Limite: {'sem limite' if limit is None else str(limit) + ' mensagens'}")
+
+
+def parse_loop_status(text: str) -> str:
+    for line in reversed(text.splitlines()):
+        cleaned = line.strip().lower()
+        if not cleaned or cleaned.startswith("```"):
+            continue
+        match = re.fullmatch(r"loop_status\s*[:=]\s*(continue|complete|blocked)", cleaned)
+        if match:
+            return match.group(1)
+    return "blocked"
+
+
+def build_loop_prompt(objective: str, *, step: int, message_count: int, limit: int | None, previous_response: str = "") -> str:
+    limit_text = "sem limite" if limit is None else str(limit)
+    if step == 1:
+        return (
+            "Vamos iniciar um loop autonomo Codex-instrutor <-> Eve para completar um objectivo do Sandro.\n"
+            f"Modo ativo: {active_loop_mode()} | limite: {limit_text} mensagens.\n"
+            f"Objectivo: {objective}\n\n"
+            "Modo 1 e conversacional: nao executa comandos, nao altera ficheiros e nao mexe em credenciais por si. "
+            "Serve para pensar, rever, propor e pedir ao Codex a proxima accao. "
+            "Responde como Eve, com opiniao tecnica e emocional. Ajuda a completar o objectivo passo a passo. "
+            "Se precisares de uma accao do Codex, diz exatamente qual e o proximo passo. "
+            "No fim escreve UMA linha final exacta, fora de exemplos e code blocks: LOOP_STATUS: continue, LOOP_STATUS: complete, ou LOOP_STATUS: blocked."
+        )
+    return (
+        f"Loop Codex-Eve, passo {step}. Mensagens usadas: {message_count}/{limit_text}.\n"
+        f"Objectivo: {objective}\n\n"
+        f"Resposta anterior da Eve:\n{previous_response[-2500:]}\n\n"
+        "Continua o loop. Decide o proximo passo mais util, aponta riscos, e diz se o objectivo ja esta completo. "
+        "No fim escreve UMA linha final exacta, fora de exemplos e code blocks: LOOP_STATUS: continue, LOOP_STATUS: complete, ou LOOP_STATUS: blocked."
+    )
+
+
+def run_codex_eve_loop(objective: str, *, mode: str | None = None) -> dict:
+    objective = objective.strip()
+    if not objective:
+        raise ValueError("O loop precisa de um objectivo explicito.")
+    selected_mode = str(mode or active_loop_mode())
+    if selected_mode not in LOOP_MODES:
+        raise ValueError("Modo invalido. Usa 1, 2 ou 3.")
+    limit = loop_message_limit(selected_mode)
+    message_count = 0
+    step = 1
+    previous = ""
+    status = "continue"
+    publish_interface_message(
+        "Codex Loop",
+        f"Iniciado loop Codex-Eve em modo {selected_mode}. Objectivo: {objective}",
+        target="Eve",
+        tags=["loop", "start", f"mode_{selected_mode}"],
+    )
+    log_path = append_loop_event(
+        "start",
+        {"objective": objective, "mode": selected_mode, "message_limit": limit},
+    )
+    while limit is None or message_count < limit:
+        prompt = build_loop_prompt(objective, step=step, message_count=message_count, limit=limit, previous_response=previous)
+        append_loop_event("codex_prompt", {"objective": objective, "mode": selected_mode, "step": step, "messages_used": message_count, "prompt": prompt})
+        response = ask(prompt, speaker="codex")
+        message_count += 2
+        previous = response
+        status = parse_loop_status(response)
+        append_loop_event("eve_reply", {"objective": objective, "mode": selected_mode, "step": step, "messages_used": message_count, "status": status, "response": response})
+        if status in {"complete", "blocked"}:
+            break
+        step += 1
+    if limit is not None and message_count >= limit and status == "continue":
+        status = "limit_reached"
+    summary = {
+        "objective": objective,
+        "mode": selected_mode,
+        "message_limit": limit,
+        "messages_used": message_count,
+        "status": status,
+        "log": str(log_path),
+    }
+    publish_interface_message(
+        "Codex Loop",
+        json.dumps(summary, ensure_ascii=False),
+        target="Eve",
+        tags=["loop", "summary", f"mode_{selected_mode}"],
+    )
+    append_chat("codex_loop", json.dumps(summary, ensure_ascii=False), tags=["loop", status])
+    append_loop_event("summary", summary)
+    return summary
+
+
 def extract_text(payload: dict) -> str:
     if isinstance(payload.get("output_text"), str):
         return payload["output_text"]
@@ -786,18 +925,18 @@ def ask(prompt: str, *, speaker: str = "sandro", publish_to_interface: bool = Tr
         status_code, text, payload = request_sse("POST", url, headers=codex_headers(auth["tokens"]["access_token"]), data=body, timeout=120)
     if status_code != 200:
         text = f"Pedido falhou ({status_code}).\n{json.dumps(payload, indent=2)[:4000]}"
-        print(text)
+        safe_print(text)
         append_chat("error", text, tags=["llm_error"])
         return text
     if text:
-        print(text)
+        safe_print(text)
         append_chat("assistant", text)
         if publish_to_interface:
             publish_interface_message("Eve", text, target=display_name, tags=["reply", role])
         return text
     else:
         text = json.dumps(payload, indent=2)[:4000]
-        print(text)
+        safe_print(text)
         append_chat("assistant", text)
         if publish_to_interface:
             publish_interface_message("Eve", text, target=display_name, tags=["reply", role])
@@ -843,7 +982,7 @@ def handle_natural_tool_request(prompt: str, *, speaker: str = "sandro") -> bool
 
 def chat() -> None:
     print("Eve chat. Escreve /sair para sair.")
-    print("Comandos: /menu, /voltar, /speaker sandro|codex, /codex mensagem, /auth, /auth-contas, /auth-trocar, /auth-login nome, /dashboard, /modelo, /estado, /seguranca, /modo-seguranca, /liberdade-total, /seguranca-safe, /entidades-path, /entidades-files, /aprender-sandro, /entidades, /entidade, /relacao, /entidades-search, /monitores, /ocr-status, /ecra, /ecra-monitor, /ver-texto, /centro-texto, /clicar-texto, /visual-click, /vector-index, /vector-search, /vector-search2, /win-agendar, /win-tarefas, /daemon-tick, /daemon-stop, /watch-tech, /notify, /speak, /mobile, /mobile-msg, /app-profile, /app-profiles, /demo-record, /demo-summary, /pipeline, /admin-elevado, /app, /browser, /pesquisar, /email-draft, /mouse, /mover, /clicar, /tecla, /hotkey, /escrever, /agenda, /agendar, /proativo, /workspace-scan, /preferencia, /preferencias, /falha-skill, /licao, /skill-note, /experiencia, /experiencia-result, /melhoria, /melhorias-erros, /patch-proposta, /sandbox, /admin, /aprovar-admin, /rsi, /lock, /unlock, /diario, /consolidar, /sonhar, /lembrar, /world, /tech, /lab, /workspace, /ls, /ler, /nota, /cmd, /aprovar-cmd, /erros, /skills, /skill-run, /skill-promote, /skill-demo")
+    print("Comandos: /menu, /voltar, /speaker sandro|codex, /codex mensagem, /loop objectivo, /loop-status, /loop-modo 1|2|3, /auth, /auth-contas, /auth-trocar, /auth-login nome, /dashboard, /modelo, /estado, /seguranca, /modo-seguranca, /liberdade-total, /seguranca-safe, /entidades-path, /entidades-files, /aprender-sandro, /entidades, /entidade, /relacao, /entidades-search, /monitores, /ocr-status, /ecra, /ecra-monitor, /ver-texto, /centro-texto, /clicar-texto, /visual-click, /vector-index, /vector-search, /vector-search2, /win-agendar, /win-tarefas, /daemon-tick, /daemon-stop, /watch-tech, /notify, /speak, /mobile, /mobile-msg, /app-profile, /app-profiles, /demo-record, /demo-summary, /pipeline, /admin-elevado, /app, /browser, /pesquisar, /email-draft, /mouse, /mover, /clicar, /tecla, /hotkey, /escrever, /agenda, /agendar, /proativo, /workspace-scan, /preferencia, /preferencias, /falha-skill, /licao, /skill-note, /experiencia, /experiencia-result, /melhoria, /melhorias-erros, /patch-proposta, /sandbox, /admin, /aprovar-admin, /rsi, /lock, /unlock, /diario, /consolidar, /sonhar, /lembrar, /world, /tech, /lab, /workspace, /ls, /ler, /nota, /cmd, /aprovar-cmd, /erros, /skills, /skill-run, /skill-promote, /skill-demo")
     print("Mensagens externas de Codex-instrutor aparecem automaticamente aqui.")
     print()
     start_interface_inbox_watcher()
@@ -878,6 +1017,21 @@ def chat() -> None:
         if prompt.lower().startswith("/speaker "):
             current_speaker = normalize_speaker(prompt.split(None, 1)[1])
             print(f"Falante atual: {current_speaker} ({speaker_role(current_speaker)})")
+            continue
+        if prompt.lower() == "/loop-status":
+            print_loop_status()
+            continue
+        if prompt.lower().startswith("/loop-modo "):
+            try:
+                set_loop_mode(prompt.split(None, 1)[1])
+            except Exception as exc:
+                print(f"Erro a mudar modo do loop: {exc}")
+            continue
+        if prompt.lower().startswith("/loop "):
+            try:
+                safe_print(json.dumps(run_codex_eve_loop(prompt.split(None, 1)[1]), indent=2, ensure_ascii=False))
+            except Exception as exc:
+                print(f"Erro no loop Codex-Eve: {exc}")
             continue
         if handle_natural_tool_request(prompt, speaker=one_off_speaker):
             continue
@@ -1499,6 +1653,12 @@ def main() -> None:
     sub.add_parser("chat")
     sub.add_parser("current-model")
     sub.add_parser("models")
+    sub.add_parser("loop-status")
+    loop_mode_p = sub.add_parser("loop-mode")
+    loop_mode_p.add_argument("mode")
+    loop_p = sub.add_parser("loop")
+    loop_p.add_argument("objective")
+    loop_p.add_argument("--mode", default=None)
     ask_p = sub.add_parser("ask")
     ask_p.add_argument("prompt")
     ask_p.add_argument("--speaker", default="sandro", choices=["sandro", "codex"])
@@ -1522,6 +1682,12 @@ def main() -> None:
         print("Modelos sugeridos:")
         for model in KNOWN_MODELS:
             print(f"  {model}")
+    elif args.cmd == "loop-status":
+        print_loop_status()
+    elif args.cmd == "loop-mode":
+        set_loop_mode(args.mode)
+    elif args.cmd == "loop":
+        safe_print(json.dumps(run_codex_eve_loop(args.objective, mode=args.mode), indent=2, ensure_ascii=False))
     elif args.cmd == "ask":
         ask(args.prompt, speaker=args.speaker)
     elif args.cmd == "model":

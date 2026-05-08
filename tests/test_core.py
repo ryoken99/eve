@@ -7,7 +7,7 @@ from core.self_report import functional_self_report
 from core.paths import SKILLS_DIR, WORKSPACE_DIR
 from core.personality_engine import score_options
 from learning.skill_learning_loop import run_skill_learning_loop, skill_result_successful
-from app.eve_codex import _format_interface_message, _safe_profile_name, normalize_speaker, speaker_display_name, speaker_role, natural_browser_target, relevant_entity_memory
+from app.eve_codex import _format_interface_message, _safe_profile_name, active_loop_mode, build_loop_prompt, loop_message_limit, normalize_speaker, parse_loop_status, speaker_display_name, speaker_role, natural_browser_target, relevant_entity_memory
 from memory.memory_manager import context_bundle
 from memory.sandro_profile_builder import build_sandro_core_memory
 from dream.dream_cycle import run_dream_cycle
@@ -130,6 +130,19 @@ class EveCoreTests(unittest.TestCase):
         text = _format_interface_message({"source": "Eve", "target": "Codex", "timestamp": "2026-05-08T00:00:00Z", "content": "ola"})
         self.assertIn("Eve -> Codex", text)
         self.assertIn("ola", text)
+
+    def test_codex_eve_loop_defaults_to_mode_1(self):
+        self.assertEqual(active_loop_mode(), "1")
+        self.assertEqual(loop_message_limit("1"), 10)
+        self.assertEqual(loop_message_limit("2"), 25)
+        self.assertIsNone(loop_message_limit("3"))
+
+    def test_codex_eve_loop_prompt_and_status_parser(self):
+        prompt = build_loop_prompt("testar autonomia", step=1, message_count=0, limit=10)
+        self.assertIn("Objectivo: testar autonomia", prompt)
+        self.assertEqual(parse_loop_status("ok\nLOOP_STATUS: complete"), "complete")
+        self.assertEqual(parse_loop_status("exemplo: LOOP_STATUS: complete\nmas ainda nao"), "blocked")
+        self.assertEqual(parse_loop_status("preciso de autorizacao"), "blocked")
 
     def test_sandro_core_memory_enters_context(self):
         build_sandro_core_memory()
