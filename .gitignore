@@ -38,6 +38,7 @@ memory/procedural/skill_learning_loop.jsonl
 memory/procedural/lessons.md
 memory/semantic_vector/index.json
 memory/technology/daily_technology_watch.md
+memory/technology/research_reports.md
 mobile_bridge/*.jsonl
 state/daemon_heartbeat.json
 state/daemon.stop

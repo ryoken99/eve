@@ -10,10 +10,25 @@ from tools.filesystem import append_file, read_file, write_file
 from tools.terminal import run_command
 from tools.browser_human import open_url, search_web
 from tools.email_human import create_gmail_draft
+from tools.web_research import run_web_research_report
 from tools.x_human import publish_current_x_composer
 from computer.visual_executor import click_text_and_verify
 from computer.vision import find_text_on_screen
 from security.permission_manager import check_action
+
+
+def _list_arg(value):
+    if value is None or isinstance(value, list):
+        return value
+    return [item.strip() for item in str(value).split(",") if item.strip()]
+
+
+def _bool_arg(value, default: bool = True) -> bool:
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    return str(value).strip().lower() not in {"0", "false", "no", "nao", "não", "off"}
 
 
 def now_iso() -> str:
@@ -104,6 +119,25 @@ def run_skill(skill_ref: str, *, args: dict | None = None, approved: bool = Fals
             if not query:
                 raise ValueError("browser_search_web skill step precisa de query")
             results.append({"action": action, "result": search_web(query)})
+        elif action == "web_research_report":
+            query = args.get("query") or step.get("query")
+            if not query:
+                raise ValueError("web_research_report precisa de query")
+            results.append(
+                {
+                    "action": action,
+                    "result": run_web_research_report(
+                        query,
+                        seed_urls=_list_arg(args.get("seed_urls") or step.get("seed_urls")),
+                        allowed_domains=_list_arg(args.get("allowed_domains") or step.get("allowed_domains")),
+                        max_pages=int(args.get("max_pages") or step.get("max_pages") or 8),
+                        open_visible_browser=_bool_arg(
+                            args.get("open_visible_browser", step.get("open_visible_browser")),
+                            default=True,
+                        ),
+                    ),
+                }
+            )
         elif action == "gmail_create_draft":
             to = args.get("to") or step.get("to")
             subject = args.get("subject") or step.get("subject")

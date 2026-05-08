@@ -42,6 +42,7 @@ def ensure_project_dirs() -> None:
         LOGS_DIR / "ui_actions",
         LOGS_DIR / "ui_actions" / "screenshots",
         LOGS_DIR / "browser",
+        LOGS_DIR / "research",
         LOGS_DIR / "email_drafts",
         WORKSPACE_DIR,
         SCRIPTS_DIR,

@@ -3,6 +3,7 @@ from __future__ import annotations
 import unittest
 
 from computer.monitors import virtual_bounds
+from tools.browser_human import browser_launch_args
 from core.self_report import functional_self_report
 from core.paths import SKILLS_DIR, WORKSPACE_DIR
 from core.personality_engine import score_options
@@ -16,6 +17,7 @@ from security.permission_manager import check_action, check_command
 from security.safety_modes import set_safety_mode
 from research.technology_watcher import classify_research_item
 from learning.skill_manager import run_skill
+from tools.web_research import build_research_report_from_pages, candidate_article_links, extract_links, recent_enough_for_query
 
 
 class EveCoreTests(unittest.TestCase):
@@ -115,6 +117,19 @@ class EveCoreTests(unittest.TestCase):
         self.assertEqual(natural_browser_target("abre o x.com"), "x.com")
         self.assertIsNone(natural_browser_target("/browser https://x.com"))
 
+    def test_browser_launch_args_can_target_monitor(self):
+        config = {
+            "chrome_path": "chrome.exe",
+            "profile_directory": "Profile 2",
+            "user_data_dir": "",
+            "new_window": True,
+            "target_monitor_index": 2,
+        }
+        monitors = [{"index": 2, "left": 0, "top": 0, "width": 1920, "height": 1080}]
+        args = browser_launch_args("https://example.com", config=config, monitors=monitors)
+        self.assertIn("--window-position=40,40", args)
+        self.assertIn("--window-size=1840,1000", args)
+
     def test_auth_profile_names_are_filesystem_safe(self):
         self.assertEqual(_safe_profile_name(" Minha Conta Principal "), "minha-conta-principal")
         self.assertEqual(_safe_profile_name("../outra conta!"), "outra-conta")
@@ -166,6 +181,51 @@ class EveCoreTests(unittest.TestCase):
         self.assertIn("dream_report", payload)
         self.assertIn("self_report", payload)
         self.assertIn("long_term", payload["promotion_rules"])
+
+    def test_web_research_report_separates_facts_from_interpretation(self):
+        pages = [
+            {
+                "url": "https://example.com/research/a",
+                "title": "Paper A",
+                "date": "2026-05-01",
+                "text": "Paper A introduces a benchmark. Key findings include stronger evidence tracking.",
+            }
+        ]
+        report = build_research_report_from_pages("recent papers", pages)
+        self.assertEqual(report["query"], "recent papers")
+        self.assertIn("source_facts", report)
+        self.assertIn("eve_interpretation", report)
+        self.assertEqual(report["source_facts"][0]["title"], "Paper A")
+        self.assertIn("evidence tracking", report["source_facts"][0]["claim"])
+        self.assertEqual(report["source_facts"][0]["url"], "https://example.com/research/a")
+        self.assertGreaterEqual(report["source_facts"][0]["confidence"], 0.7)
+        self.assertIn("auditavel", report["eve_interpretation"][0]["summary"].lower())
+
+    def test_web_research_extract_links_keeps_allowed_domain(self):
+        html = '<a href="/research/a">A</a><a href="https://other.test/x">X</a>'
+        links = extract_links(html, "https://example.com/research", allowed_domains=["example.com"])
+        self.assertEqual(links, ["https://example.com/research/a"])
+
+    def test_web_research_prefers_article_links_over_navigation(self):
+        links = [
+            "https://www.anthropic.com/research",
+            "https://www.anthropic.com/",
+            "https://www.anthropic.com/research/team/alignment",
+            "https://www.anthropic.com/research/natural-language-autoencoders",
+            "https://www.anthropic.com/research/teaching-claude-why",
+        ]
+        self.assertEqual(
+            candidate_article_links(links),
+            [
+                "https://www.anthropic.com/research/natural-language-autoencoders",
+                "https://www.anthropic.com/research/teaching-claude-why",
+            ],
+        )
+
+    def test_web_research_last_three_months_filters_old_dates(self):
+        self.assertTrue(recent_enough_for_query("last 3 months papers", "Apr 2, 2026", now="2026-05-08"))
+        self.assertFalse(recent_enough_for_query("last 3 months papers", "Dec 18, 2025", now="2026-05-08"))
+        self.assertTrue(recent_enough_for_query("papers", "Dec 18, 2025", now="2026-05-08"))
 
 
 if __name__ == "__main__":

@@ -1,0 +1,25 @@
+{
+  "name": "web_research_report",
+  "description": "Pesquisa web humana auditavel: abre Chrome/perfil Eve, recolhe fontes candidatas, extrai factos, separa source_facts de eve_interpretation e guarda relatorio JSON/Markdown.",
+  "risk_level": "low",
+  "permissions": [
+    "control_browser"
+  ],
+  "steps": [
+    {
+      "action": "web_research_report",
+      "query_from_user": true,
+      "seed_urls_from_user": true,
+      "allowed_domains_from_user": true,
+      "max_pages": 8,
+      "open_visible_browser": true
+    }
+  ],
+  "success_check": [
+    "json_report_written",
+    "markdown_report_written",
+    "source_facts_present"
+  ],
+  "version": 1,
+  "status": "trusted"
+}
