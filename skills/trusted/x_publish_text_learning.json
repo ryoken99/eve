@@ -40,6 +40,10 @@
   "notes": [
     "Created after failed live attempt on 2026-05-06. Eve must not repeat fixed-coordinate clicks.",
     "Publishing online requires explicit Sandro approval before the final Post click.",
+    "A direct command from Sandro to publish or schedule a specific X post is explicit approval for that scoped action; do not ask for a second confirmation for the same exact publication.",
+    "If the requested post content or target is ambiguous, create a draft and ask Sandro; if content and timing are clear, execute or attempt execution and report the real result.",
+    "Default X post language is English unless Sandro explicitly asks for another language.",
+    "Do not claim that X access is unavailable before checking or attempting the trusted browser skill.",
     "Known bad attempts: fixed click around x=1209/y=389, Ctrl+Enter, fixed click around x=1147/y=353.",
     "Corrected learning path: use x_publish_current_composer, which finds the active composer by text/reply-control evidence and locates the actual light Post button visually.",
     "Successful supervised run on 2026-05-06: Eve clicked the detected composer Post button, X returned to /home, the new post appeared in the feed, and X showed the 'Your post was sent' confirmation.",

@@ -183,6 +183,14 @@ class EveCoreTests(unittest.TestCase):
         self.assertIn("Kuroko no Basket", bundle)
         self.assertIn("drag=a", bundle)
 
+    def test_operational_capabilities_enter_context(self):
+        bundle = context_bundle(20000)
+        self.assertIn("Eve Operational Capabilities", bundle)
+        self.assertIn("trusted/x_publish_text_learning", bundle)
+        self.assertIn("direct command from Sandro", bundle)
+        self.assertIn("English", bundle)
+        self.assertIn("Do not claim that X access is unavailable", bundle)
+
     def test_functional_self_report_expresses_operational_feelings(self):
         report = functional_self_report("unit-test")
         self.assertIn("pensamentos, preferencias e estados emocionais operacionais", report["claim_boundary"])

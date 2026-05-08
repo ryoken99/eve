@@ -39,6 +39,7 @@ def context_bundle(max_chars: int = 12000) -> str:
     for rel in (
         ("long_term", "eve_constitution.md"),
         ("long_term", "eve_mission.md"),
+        ("long_term", "eve_operational_capabilities.md"),
         ("long_term", "sandro_profile.md"),
         ("medium_term", "recent_projects.md"),
         ("short_term", "current_session.md"),
