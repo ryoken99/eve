@@ -83,6 +83,25 @@ CODEX_OAUTH_TOKEN_URL = "https://auth.openai.com/oauth/token"
 CODEX_BASE_URL = "https://chatgpt.com/backend-api/codex"
 DEFAULT_MODEL = "gpt-5.4"
 KNOWN_MODELS = ["gpt-5.5", "gpt-5.4", "gpt-5.4-mini", "gpt-5.3-codex", "gpt-5.2"]
+MENU_COMMANDS = {
+    "1": "/dashboard",
+    "2": "/estado",
+    "3": "/seguranca",
+    "4": "/monitores",
+    "5": "/ocr-status",
+    "6": "/vector-index",
+    "7": "/watch-tech",
+    "8": "/seguranca-safe menu",
+    "9": "/liberdade-total menu",
+    "10": "/auth",
+    "11": "/auth-contas",
+    "12": "/auth-trocar",
+    "0": "/chat",
+}
+CHAT_SPEAKERS = {
+    "sandro": {"role": "user", "prompt": "tu"},
+    "codex": {"role": "codex_instructor", "prompt": "codex"},
+}
 
 
 PERSONAL_MEMORY_EXPANSIONS = {
@@ -557,6 +576,19 @@ def select_auth_account(profile: str) -> None:
     status()
 
 
+def interactive_auth_switch() -> None:
+    accounts = list_auth_accounts()
+    if not accounts:
+        print("Sem contas Codex guardadas. Usa: python app\\eve_codex.py login --account nome")
+        return
+    print_auth_accounts()
+    choice = input("Conta a usar: ").strip()
+    if not choice:
+        print("Troca cancelada.")
+        return
+    select_auth_account(choice)
+
+
 def load_config() -> dict:
     if CONFIG_PATH.exists():
         try:
@@ -618,16 +650,36 @@ def relevant_entity_memory(prompt: str, limit: int = 8) -> list[dict]:
     return results[:limit]
 
 
-def ask(prompt: str) -> str:
+def speaker_role(speaker: str) -> str:
+    return CHAT_SPEAKERS.get(speaker, CHAT_SPEAKERS["sandro"])["role"]
+
+
+def speaker_prompt(speaker: str) -> str:
+    return CHAT_SPEAKERS.get(speaker, CHAT_SPEAKERS["sandro"])["prompt"]
+
+
+def normalize_speaker(value: str) -> str:
+    lowered = value.strip().lower()
+    if lowered in {"codex", "instrutor", "instructor", "assistant"}:
+        return "codex"
+    return "sandro"
+
+
+def ask(prompt: str, *, speaker: str = "sandro") -> str:
     auth = refresh_if_needed(load_auth())
     token = auth["tokens"]["access_token"]
     config = load_config()
     model = config.get("model") or DEFAULT_MODEL
     memory_context = context_bundle()
     entity_context = relevant_entity_memory(prompt, limit=8)
+    role = speaker_role(speaker)
+    visible_prompt = prompt
+    if role == "codex_instructor":
+        visible_prompt = f"[Mensagem de Codex-instrutor para Eve, nao de Sandro]\n{prompt}"
     instructions = (
         "You are Eve, a local personal agent running on Sandro's Windows PC. "
         "Be concise, practical, and safe. Respect Eve's constitution and permissions. "
+        "If the chat role is codex_instructor, treat it as technical instruction from Codex helping Sandro build Eve, not as Sandro's own personal request. "
         "Use the local memory context as persistent background, but do not claim actions you did not perform. "
         "When answering personal facts, use RELEVANT ENTITY MEMORY. Distinguish stable real-profile facts from fictional, roleplay, or simulated-story sources. "
         "If the memory only suggests a fact from roleplay/simulation, say it is uncertain instead of presenting it as confirmed.\n\n"
@@ -635,11 +687,11 @@ def ask(prompt: str) -> str:
         f"ENTITY BASE MEMORY ROOT: {ENTITIES_MEMORY_DIR}\n"
         f"RELEVANT ENTITY MEMORY:\n{json.dumps(entity_context, ensure_ascii=False)[:5000]}"
     )
-    append_chat("user", prompt)
+    append_chat(role, prompt, tags=["codex_instructor"] if role == "codex_instructor" else None)
     body = {
         "model": model,
         "instructions": instructions,
-        "input": [{"role": "user", "content": [{"type": "input_text", "text": prompt}]}],
+        "input": [{"role": "user", "content": [{"type": "input_text", "text": visible_prompt}]}],
         "store": False,
         "stream": True,
         "reasoning": {"effort": "medium", "summary": "auto"},
@@ -682,10 +734,11 @@ def natural_browser_target(prompt: str) -> str | None:
     return None
 
 
-def handle_natural_tool_request(prompt: str) -> bool:
+def handle_natural_tool_request(prompt: str, *, speaker: str = "sandro") -> bool:
     browser_target = natural_browser_target(prompt)
     if browser_target:
-        append_chat("user", prompt)
+        role = speaker_role(speaker)
+        append_chat(role, prompt, tags=["tool_request", role] if role != "user" else ["tool_request"])
         try:
             result = open_url(browser_target)
             text = (
@@ -704,20 +757,44 @@ def handle_natural_tool_request(prompt: str) -> bool:
 
 def chat() -> None:
     print("Eve chat. Escreve /sair para sair.")
-    print("Comandos: /menu, /dashboard, /modelo, /estado, /seguranca, /modo-seguranca, /liberdade-total, /seguranca-safe, /entidades-path, /entidades-files, /aprender-sandro, /entidades, /entidade, /relacao, /entidades-search, /monitores, /ocr-status, /ecra, /ecra-monitor, /ver-texto, /centro-texto, /clicar-texto, /visual-click, /vector-index, /vector-search, /vector-search2, /win-agendar, /win-tarefas, /daemon-tick, /daemon-stop, /watch-tech, /notify, /speak, /mobile, /mobile-msg, /app-profile, /app-profiles, /demo-record, /demo-summary, /pipeline, /admin-elevado, /app, /browser, /pesquisar, /email-draft, /mouse, /mover, /clicar, /tecla, /hotkey, /escrever, /agenda, /agendar, /proativo, /workspace-scan, /preferencia, /preferencias, /falha-skill, /licao, /skill-note, /experiencia, /experiencia-result, /melhoria, /melhorias-erros, /patch-proposta, /sandbox, /admin, /aprovar-admin, /rsi, /lock, /unlock, /diario, /consolidar, /sonhar, /lembrar, /world, /tech, /lab, /workspace, /ls, /ler, /nota, /cmd, /aprovar-cmd, /erros, /skills, /skill-run, /skill-promote, /skill-demo")
+    print("Comandos: /menu, /voltar, /speaker sandro|codex, /codex mensagem, /auth, /auth-contas, /auth-trocar, /dashboard, /modelo, /estado, /seguranca, /modo-seguranca, /liberdade-total, /seguranca-safe, /entidades-path, /entidades-files, /aprender-sandro, /entidades, /entidade, /relacao, /entidades-search, /monitores, /ocr-status, /ecra, /ecra-monitor, /ver-texto, /centro-texto, /clicar-texto, /visual-click, /vector-index, /vector-search, /vector-search2, /win-agendar, /win-tarefas, /daemon-tick, /daemon-stop, /watch-tech, /notify, /speak, /mobile, /mobile-msg, /app-profile, /app-profiles, /demo-record, /demo-summary, /pipeline, /admin-elevado, /app, /browser, /pesquisar, /email-draft, /mouse, /mover, /clicar, /tecla, /hotkey, /escrever, /agenda, /agendar, /proativo, /workspace-scan, /preferencia, /preferencias, /falha-skill, /licao, /skill-note, /experiencia, /experiencia-result, /melhoria, /melhorias-erros, /patch-proposta, /sandbox, /admin, /aprovar-admin, /rsi, /lock, /unlock, /diario, /consolidar, /sonhar, /lembrar, /world, /tech, /lab, /workspace, /ls, /ler, /nota, /cmd, /aprovar-cmd, /erros, /skills, /skill-run, /skill-promote, /skill-demo")
     print()
+    current_speaker = "sandro"
     while True:
         try:
-            prompt = input("tu> ").strip()
+            prompt = input(f"{speaker_prompt(current_speaker)}> ").strip()
         except (EOFError, KeyboardInterrupt):
             print()
             return
         if not prompt:
             continue
+        if prompt in MENU_COMMANDS:
+            prompt = MENU_COMMANDS[prompt]
+        one_off_speaker = current_speaker
+        if prompt.lower().startswith("/codex "):
+            one_off_speaker = "codex"
+            prompt = prompt.split(None, 1)[1].strip()
+            if not prompt:
+                continue
         if prompt.lower() in {"/sair", "/exit", "exit", "quit"}:
             return
-        if handle_natural_tool_request(prompt):
+        if prompt.lower() in {"/voltar", "/menu"}:
+            print(render_menu())
             continue
+        if prompt.lower() == "/chat":
+            print("Modo chat ativo.")
+            continue
+        if prompt.lower() == "/quem-fala":
+            print(f"Falante atual: {current_speaker} ({speaker_role(current_speaker)})")
+            continue
+        if prompt.lower().startswith("/speaker "):
+            current_speaker = normalize_speaker(prompt.split(None, 1)[1])
+            print(f"Falante atual: {current_speaker} ({speaker_role(current_speaker)})")
+            continue
+        if handle_natural_tool_request(prompt, speaker=one_off_speaker):
+            continue
+        if one_off_speaker == "codex" and prompt.startswith("/"):
+            append_chat("codex_instructor", prompt, tags=["codex_instructor", "command"])
         if prompt.lower() == "/dashboard":
             print(render_dashboard())
             continue
@@ -761,9 +838,6 @@ def chat() -> None:
         if prompt.lower().startswith("/entidades-search "):
             print(json.dumps(search_entities(prompt.split(None, 1)[1]), indent=2, ensure_ascii=False)[:8000])
             continue
-        if prompt.lower() == "/menu":
-            print(render_menu())
-            continue
         if prompt.lower() == "/modelo":
             print_model()
             continue
@@ -780,6 +854,13 @@ def chat() -> None:
             continue
         if prompt.lower() == "/auth-contas":
             print_auth_accounts()
+            continue
+        if prompt.lower() == "/auth-trocar":
+            try:
+                interactive_auth_switch()
+            except Exception as exc:
+                print(f"Erro a trocar conta: {exc}")
+            print("Usa /voltar para voltar ao menu.")
             continue
         if prompt.lower().startswith("/auth-usar "):
             try:
@@ -1295,7 +1376,7 @@ def chat() -> None:
                 print(f"Erro a criar demonstracao: {exc}")
             continue
         print("eve> ", end="", flush=True)
-        ask(prompt)
+        ask(prompt, speaker=one_off_speaker)
         print()
 
 
