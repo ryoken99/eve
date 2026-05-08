@@ -33,6 +33,7 @@ backups/files/**
 memory/errors/error_memory.jsonl
 state/current_world_state.json
 state/scheduled_tasks.json
+state/missions/*.json
 memory/procedural/adaptive_failures.jsonl
 memory/procedural/skill_learning_loop.jsonl
 memory/procedural/lessons.md

@@ -18,6 +18,15 @@ from security.safety_modes import set_safety_mode
 from research.technology_watcher import classify_research_item
 from learning.skill_manager import run_skill
 from tools.web_research import build_research_report_from_pages, candidate_article_links, extract_links, recent_enough_for_query
+from core.mission_control import (
+    add_checkpoint,
+    append_mission_log,
+    create_mission,
+    list_missions,
+    load_mission,
+    next_step,
+    update_step,
+)
 
 
 class EveCoreTests(unittest.TestCase):
@@ -226,6 +235,24 @@ class EveCoreTests(unittest.TestCase):
         self.assertTrue(recent_enough_for_query("last 3 months papers", "Apr 2, 2026", now="2026-05-08"))
         self.assertFalse(recent_enough_for_query("last 3 months papers", "Dec 18, 2025", now="2026-05-08"))
         self.assertTrue(recent_enough_for_query("papers", "Dec 18, 2025", now="2026-05-08"))
+
+    def test_mission_control_creates_and_resumes_auditable_mission(self):
+        mission = create_mission(
+            "unit mission control",
+            plan=["abrir fonte", "criar resumo"],
+            permissions=["control_browser"],
+        )
+        self.assertEqual(mission["status"], "draft")
+        self.assertEqual(mission["next_step"]["description"], "abrir fonte")
+        append_mission_log(mission["id"], "test", "started")
+        update_step(mission["id"], 0, "done", note="fonte aberta")
+        add_checkpoint(mission["id"], "after_source", {"url": "https://example.com"})
+        loaded = load_mission(mission["id"])
+        self.assertEqual(loaded["steps"][0]["status"], "done")
+        self.assertTrue(any(entry["message"] == "started" for entry in loaded["logs"]))
+        self.assertEqual(loaded["checkpoints"][-1]["name"], "after_source")
+        self.assertEqual(next_step(loaded)["description"], "criar resumo")
+        self.assertTrue(any(item["id"] == mission["id"] for item in list_missions()))
 
 
 if __name__ == "__main__":

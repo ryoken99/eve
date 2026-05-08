@@ -60,6 +60,7 @@ def ensure_project_dirs() -> None:
         LAB_DIR / "queue",
         LAB_DIR / "evaluation_suites",
         STATE_DIR,
+        STATE_DIR / "missions",
         BACKUPS_DIR,
         BACKUPS_DIR / "files",
         BACKUPS_DIR / "eve_versions",

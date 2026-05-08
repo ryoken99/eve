@@ -68,6 +68,16 @@ from memory.semantic_vector.vector_store import search_tfidf
 from self_improvement.pipeline import run_improvement_pipeline
 from tools.admin_executor import launch_elevated_powershell
 from core.paths import ENTITIES_MEMORY_DIR
+from core.mission_control import (
+    add_checkpoint as mission_add_checkpoint,
+    append_mission_log,
+    create_mission,
+    list_missions,
+    load_mission,
+    resume_summary,
+    set_mission_status,
+    update_step as mission_update_step,
+)
 from memory.entity_memory import list_base_memory_files, list_entities, relate_entities, remember_entity, search_entities
 from memory.sandro_profile_builder import TARGET_FILES as SANDRO_MEMORY_FILES, build_sandro_core_memory
 
@@ -982,7 +992,7 @@ def handle_natural_tool_request(prompt: str, *, speaker: str = "sandro") -> bool
 
 def chat() -> None:
     print("Eve chat. Escreve /sair para sair.")
-    print("Comandos: /menu, /voltar, /speaker sandro|codex, /codex mensagem, /loop objectivo, /loop-status, /loop-modo 1|2|3, /auth, /auth-contas, /auth-trocar, /auth-login nome, /dashboard, /modelo, /estado, /seguranca, /modo-seguranca, /liberdade-total, /seguranca-safe, /entidades-path, /entidades-files, /aprender-sandro, /entidades, /entidade, /relacao, /entidades-search, /monitores, /ocr-status, /ecra, /ecra-monitor, /ver-texto, /centro-texto, /clicar-texto, /visual-click, /vector-index, /vector-search, /vector-search2, /win-agendar, /win-tarefas, /daemon-tick, /daemon-stop, /watch-tech, /notify, /speak, /mobile, /mobile-msg, /app-profile, /app-profiles, /demo-record, /demo-summary, /pipeline, /admin-elevado, /app, /browser, /pesquisar, /research-report, /email-draft, /mouse, /mover, /clicar, /tecla, /hotkey, /escrever, /agenda, /agendar, /proativo, /workspace-scan, /preferencia, /preferencias, /falha-skill, /licao, /skill-note, /experiencia, /experiencia-result, /melhoria, /melhorias-erros, /patch-proposta, /sandbox, /admin, /aprovar-admin, /rsi, /lock, /unlock, /diario, /consolidar, /sonhar, /lembrar, /world, /tech, /lab, /workspace, /ls, /ler, /nota, /cmd, /aprovar-cmd, /erros, /skills, /skill-run, /skill-promote, /skill-demo")
+    print("Comandos: /menu, /voltar, /speaker sandro|codex, /codex mensagem, /loop objectivo, /loop-status, /loop-modo 1|2|3, /auth, /auth-contas, /auth-trocar, /auth-login nome, /dashboard, /modelo, /estado, /seguranca, /modo-seguranca, /liberdade-total, /seguranca-safe, /entidades-path, /entidades-files, /aprender-sandro, /entidades, /entidade, /relacao, /entidades-search, /monitores, /ocr-status, /ecra, /ecra-monitor, /ver-texto, /centro-texto, /clicar-texto, /visual-click, /vector-index, /vector-search, /vector-search2, /win-agendar, /win-tarefas, /daemon-tick, /daemon-stop, /watch-tech, /notify, /speak, /mobile, /mobile-msg, /app-profile, /app-profiles, /demo-record, /demo-summary, /pipeline, /admin-elevado, /app, /browser, /pesquisar, /research-report, /missao-criar, /missoes, /missao, /missao-retomar, /missao-status, /missao-passo, /missao-log, /missao-checkpoint, /email-draft, /mouse, /mover, /clicar, /tecla, /hotkey, /escrever, /agenda, /agendar, /proativo, /workspace-scan, /preferencia, /preferencias, /falha-skill, /licao, /skill-note, /experiencia, /experiencia-result, /melhoria, /melhorias-erros, /patch-proposta, /sandbox, /admin, /aprovar-admin, /rsi, /lock, /unlock, /diario, /consolidar, /sonhar, /lembrar, /world, /tech, /lab, /workspace, /ls, /ler, /nota, /cmd, /aprovar-cmd, /erros, /skills, /skill-run, /skill-promote, /skill-demo")
     print("Mensagens externas de Codex-instrutor aparecem automaticamente aqui.")
     print()
     start_interface_inbox_watcher()
@@ -1413,6 +1423,61 @@ def chat() -> None:
                 print(json.dumps(result, indent=2, ensure_ascii=False)[:6000])
             except Exception as exc:
                 print(f"Erro no research report: {exc}")
+            continue
+        if prompt.lower().startswith("/missao-criar "):
+            try:
+                parts = [part.strip() for part in prompt.split(None, 1)[1].split("|")]
+                objective = parts[0]
+                plan = [item.strip() for item in parts[1].split(";") if item.strip()] if len(parts) > 1 and parts[1] else []
+                permissions = [item.strip() for item in parts[2].split(",") if item.strip()] if len(parts) > 2 and parts[2] else []
+                mission = create_mission(objective, plan=plan, permissions=permissions)
+                print(json.dumps(mission, indent=2, ensure_ascii=False)[:6000])
+            except Exception as exc:
+                print(f"Erro a criar missao: {exc}")
+            continue
+        if prompt.lower() == "/missoes":
+            print(json.dumps(list_missions(), indent=2, ensure_ascii=False)[:6000])
+            continue
+        if prompt.lower().startswith("/missao-retomar "):
+            try:
+                print(json.dumps(resume_summary(prompt.split(None, 1)[1].strip()), indent=2, ensure_ascii=False)[:4000])
+            except Exception as exc:
+                print(f"Erro a retomar missao: {exc}")
+            continue
+        if prompt.lower().startswith("/missao-status "):
+            try:
+                parts = [part.strip() for part in prompt.split(None, 1)[1].split("|", 2)]
+                print(json.dumps(set_mission_status(parts[0], parts[1], reason=parts[2] if len(parts) > 2 else "", actor="eve"), indent=2, ensure_ascii=False)[:5000])
+            except Exception as exc:
+                print(f"Erro a mudar estado da missao: {exc}")
+            continue
+        if prompt.lower().startswith("/missao-passo "):
+            try:
+                parts = [part.strip() for part in prompt.split(None, 1)[1].split("|", 3)]
+                print(json.dumps(mission_update_step(parts[0], int(parts[1]), parts[2], note=parts[3] if len(parts) > 3 else "", actor="eve"), indent=2, ensure_ascii=False)[:5000])
+            except Exception as exc:
+                print(f"Erro a atualizar passo da missao: {exc}")
+            continue
+        if prompt.lower().startswith("/missao-log "):
+            try:
+                parts = [part.strip() for part in prompt.split(None, 1)[1].split("|", 1)]
+                print(json.dumps(append_mission_log(parts[0], "eve", parts[1] if len(parts) > 1 else ""), indent=2, ensure_ascii=False)[:5000])
+            except Exception as exc:
+                print(f"Erro no log da missao: {exc}")
+            continue
+        if prompt.lower().startswith("/missao-checkpoint "):
+            try:
+                parts = [part.strip() for part in prompt.split(None, 1)[1].split("|", 2)]
+                data = json.loads(parts[2]) if len(parts) > 2 and parts[2] else {}
+                print(json.dumps(mission_add_checkpoint(parts[0], parts[1], data), indent=2, ensure_ascii=False)[:5000])
+            except Exception as exc:
+                print(f"Erro no checkpoint da missao: {exc}")
+            continue
+        if prompt.lower().startswith("/missao "):
+            try:
+                print(json.dumps(load_mission(prompt.split(None, 1)[1].strip()), indent=2, ensure_ascii=False)[:6000])
+            except Exception as exc:
+                print(f"Erro a ler missao: {exc}")
             continue
         if prompt.lower().startswith("/email-draft "):
             try:
