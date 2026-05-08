@@ -27,6 +27,7 @@ from core.mission_control import (
     next_step,
     update_step,
 )
+from autonomy.autonomy_director import build_autonomy_prompt, run_autonomy_cycle
 
 
 class EveCoreTests(unittest.TestCase):
@@ -253,6 +254,27 @@ class EveCoreTests(unittest.TestCase):
         self.assertEqual(loaded["checkpoints"][-1]["name"], "after_source")
         self.assertEqual(next_step(loaded)["description"], "criar resumo")
         self.assertTrue(any(item["id"] == mission["id"] for item in list_missions()))
+
+    def test_autonomy_director_creates_low_risk_proposed_missions(self):
+        result = run_autonomy_cycle(
+            triggers=["no_active_work"],
+            max_new_missions=2,
+            call_llm=False,
+            cycle_name="unit_autonomy",
+        )
+        self.assertEqual(result["status"], "ok")
+        self.assertLessEqual(len(result["created_missions"]), 2)
+        self.assertTrue(result["created_missions"])
+        self.assertTrue(all(item["status"] == "proposed" for item in result["created_missions"]))
+        self.assertTrue(all(item["risk"] == "low" for item in result["impulses"][: len(result["created_missions"])]))
+
+    def test_autonomy_prompt_marks_no_sensitive_execution(self):
+        prompt = build_autonomy_prompt(
+            [{"kind": "self_review", "title": "Daily self review", "risk": "low", "reason": "test"}],
+            cycle_name="unit",
+        )
+        self.assertIn("Nao executes acoes sensiveis", prompt)
+        self.assertIn("Daily self review", prompt)
 
 
 if __name__ == "__main__":

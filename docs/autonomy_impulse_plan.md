@@ -57,12 +57,25 @@ No autonomous action should exist only in memory or terminal output.
 
 ## First MVP
 
-1. Add `autonomy/impulse_engine.py`.
-2. Generate low-risk impulses from stale missions, recent errors, and scheduled tasks.
-3. Convert accepted low-risk impulses into `proposed` missions.
-4. Add `/impulsos` to list current impulses.
-5. Add `/impulso-aprovar` to convert one impulse into a mission.
+1. Add `autonomy/autonomy_director.py`.
+2. Generate low-risk impulses from stale missions, recent errors, and lack of active work.
+3. Convert low-risk impulses into `proposed` missions.
+4. Add `/autonomia-ciclo` for local no-token review.
+5. Add `/autonomia-llm` for an explicit GPT-backed review cycle.
+6. Add `scripts/run_autonomy_cycle_local.cmd` and `scripts/run_autonomy_cycle_llm.cmd` for Windows Task Scheduler.
 
 ## Eve's Preference
 
 Eve prefers this model because it separates wanting to act from being allowed to act. That gives her initiative without hiding actions or bypassing Sandro's control.
+
+## Token Policy
+
+The local autonomy cycle creates impulses and proposed missions without spending tokens. The LLM-backed cycle is explicit and should be scheduled with a conservative cadence at first, such as once daily for self-review. More frequent cycles should require a token budget, cooldown, and visible reporting.
+
+## Current Implementation
+
+- `autonomy/autonomy_director.py`: creates low-risk impulses, proposed missions, autonomy logs, and optional GPT review.
+- `/autonomia-ciclo`: runs a no-token cycle.
+- `/autonomia-llm`: runs a GPT-backed review cycle.
+- `scripts/run_autonomy_cycle_local.cmd`: scheduled local cycle entrypoint.
+- `scripts/run_autonomy_cycle_llm.cmd`: scheduled GPT-backed cycle entrypoint.
