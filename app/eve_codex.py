@@ -1347,7 +1347,7 @@ def chat() -> None:
             print(f"Daemon stop pedido em: {request_daemon_stop()}")
             continue
         if prompt.lower() == "/autonomia-ciclo":
-            print(json.dumps(run_autonomy_cycle(triggers=["manual"], call_llm=False), indent=2, ensure_ascii=False)[:7000])
+            print(json.dumps(run_autonomy_cycle(triggers=["manual"], call_llm="auto"), indent=2, ensure_ascii=False)[:9000])
             continue
         if prompt.lower() == "/autonomia-llm":
             print(json.dumps(run_autonomy_cycle(triggers=["manual", "llm_review"], call_llm=True), indent=2, ensure_ascii=False)[:9000])

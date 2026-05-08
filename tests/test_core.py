@@ -29,6 +29,7 @@ from core.mission_control import (
 )
 from autonomy.autonomy_director import build_autonomy_prompt, run_autonomy_cycle
 from autonomy.autonomous_executor import execute_autonomous_backlog, execute_autonomous_mission
+from autonomy.token_gate import decide_llm_call, record_llm_call
 
 
 class EveCoreTests(unittest.TestCase):
@@ -264,6 +265,8 @@ class EveCoreTests(unittest.TestCase):
             cycle_name="unit_autonomy",
         )
         self.assertEqual(result["status"], "ok")
+        self.assertFalse(result["llm_called"])
+        self.assertEqual(result["token_decision"]["prompt_type"], "none")
         self.assertLessEqual(len(result["created_missions"]), 2)
         self.assertTrue(result["created_missions"])
         self.assertTrue(all(item["status"] == "proposed" for item in result["created_missions"]))
@@ -311,6 +314,46 @@ class EveCoreTests(unittest.TestCase):
         self.assertTrue(any(item["id"] == allowed["id"] for item in result["executed"]))
         self.assertEqual(load_mission(allowed["id"])["status"], "done")
         self.assertEqual(load_mission(blocked["id"])["status"], "proposed")
+
+    def test_token_gate_calls_llm_for_repeated_error(self):
+        context = {
+            "impulses": [{"kind": "error_review", "risk": "low"}],
+            "recent_errors": [
+                {"error_type": "ModuleNotFoundError", "error_text": "No module named x"},
+                {"error_type": "ModuleNotFoundError", "error_text": "No module named x"},
+            ],
+            "call_history": [],
+            "now": "2026-05-08T10:00:00Z",
+        }
+        decision = decide_llm_call(context)
+        self.assertTrue(decision["should_call_llm"])
+        self.assertEqual(decision["prompt_type"], "error_analysis")
+        self.assertIn("erro repetido", decision["reason"])
+
+    def test_token_gate_blocks_cooldown_and_budget(self):
+        context = {
+            "impulses": [{"kind": "error_review", "risk": "low"}],
+            "recent_errors": [
+                {"error_type": "ValueError", "error_text": "bad"},
+                {"error_type": "ValueError", "error_text": "bad"},
+            ],
+            "call_history": [{"timestamp": "2026-05-08T09:55:00Z", "prompt_type": "error_analysis"}],
+            "now": "2026-05-08T10:00:00Z",
+            "cooldown_minutes": 30,
+        }
+        self.assertFalse(decide_llm_call(context)["should_call_llm"])
+        budget_context = dict(context)
+        budget_context["call_history"] = [
+            {"timestamp": "2026-05-08T08:00:00Z", "prompt_type": "x"},
+            {"timestamp": "2026-05-08T09:00:00Z", "prompt_type": "x"},
+        ]
+        budget_context["daily_budget"] = 2
+        self.assertFalse(decide_llm_call(budget_context)["should_call_llm"])
+
+    def test_token_gate_record_llm_call_is_auditable(self):
+        path = record_llm_call("unit_test", {"reason": "test", "prompt_type": "unit"}, result={"returncode": 0})
+        self.assertTrue(path.exists())
+        self.assertIn("unit_test", path.read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":

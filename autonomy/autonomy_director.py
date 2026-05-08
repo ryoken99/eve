@@ -9,6 +9,7 @@ from pathlib import Path
 from core.mission_control import create_mission, list_missions
 from core.paths import EVE_ROOT, LOGS_DIR, ensure_project_dirs
 from memory.errors.error_memory import recent_errors
+from autonomy.token_gate import decide_llm_call, record_llm_call
 
 
 SENSITIVE_BOUNDARY = (
@@ -153,20 +154,31 @@ def run_autonomy_cycle(
     *,
     triggers: list[str] | None = None,
     max_new_missions: int = 3,
-    call_llm: bool = False,
+    call_llm: bool | str = False,
     cycle_name: str = "daily_self_review",
 ) -> dict:
     ensure_project_dirs()
     impulses = generate_impulses(triggers)
+    errors = recent_errors(limit=10)
     created = []
     for impulse in impulses[: max(0, max_new_missions)]:
         if impulse.get("risk") != "low":
             continue
         created.append(create_mission_from_impulse(impulse, cycle_name=cycle_name))
 
+    token_decision = decide_llm_call({"impulses": impulses, "recent_errors": errors}) if call_llm == "auto" else {
+        "should_call_llm": bool(call_llm),
+        "reason": "chamada LLM pedida explicitamente" if call_llm else "LLM desativado neste ciclo",
+        "prompt_type": "explicit_review" if call_llm else "none",
+        "risk": "low",
+        "budget_ok": True,
+        "cooldown_ok": True,
+    }
+
     llm_result = None
-    if call_llm and impulses:
+    if token_decision["should_call_llm"] and impulses:
         llm_result = call_codex_llm(build_autonomy_prompt(impulses, cycle_name=cycle_name))
+        record_llm_call(cycle_name, token_decision, result=llm_result)
 
     result = {
         "status": "ok",
@@ -184,6 +196,7 @@ def run_autonomy_cycle(
             }
             for mission in created
         ],
+        "token_decision": token_decision,
         "llm_called": bool(llm_result),
         "llm_result": llm_result,
     }

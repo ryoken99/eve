@@ -20,7 +20,7 @@ HEARTBEAT = STATE_DIR / "daemon_heartbeat.json"
 def daemon_tick() -> dict:
     ensure_project_dirs()
     proposals = propose_low_risk_actions()
-    autonomy = run_autonomy_cycle(triggers=["daemon_tick"], max_new_missions=1, call_llm=False, cycle_name="daemon_tick")
+    autonomy = run_autonomy_cycle(triggers=["daemon_tick"], max_new_missions=1, call_llm="auto", cycle_name="daemon_tick")
     autonomous_execution = execute_autonomous_backlog(max_missions=1, notify_chat=True)
     vector = rebuild_memory_index()
     result = {
@@ -29,6 +29,7 @@ def daemon_tick() -> dict:
         "autonomy": {
             "created_missions": autonomy["created_missions"],
             "executed_missions": autonomous_execution["executed"],
+            "token_decision": autonomy["token_decision"],
             "llm_called": autonomy["llm_called"],
         },
         "vector_index": str(vector),
