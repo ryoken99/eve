@@ -7,7 +7,7 @@ from core.self_report import functional_self_report
 from core.paths import SKILLS_DIR, WORKSPACE_DIR
 from core.personality_engine import score_options
 from learning.skill_learning_loop import run_skill_learning_loop, skill_result_successful
-from app.eve_codex import _format_interface_message, _safe_profile_name, normalize_speaker, speaker_role, natural_browser_target, relevant_entity_memory
+from app.eve_codex import _format_interface_message, _safe_profile_name, normalize_speaker, speaker_display_name, speaker_role, natural_browser_target, relevant_entity_memory
 from memory.memory_manager import context_bundle
 from memory.sandro_profile_builder import build_sandro_core_memory
 from dream.dream_cycle import run_dream_cycle
@@ -123,11 +123,12 @@ class EveCoreTests(unittest.TestCase):
     def test_codex_instructor_has_separate_chat_role(self):
         self.assertEqual(normalize_speaker("instrutor"), "codex")
         self.assertEqual(speaker_role("codex"), "codex_instructor")
+        self.assertEqual(speaker_display_name("codex"), "Codex")
         self.assertEqual(speaker_role("sandro"), "user")
 
     def test_interface_message_format_marks_source(self):
-        text = _format_interface_message({"source": "codex_instructor", "timestamp": "2026-05-08T00:00:00Z", "content": "ola"})
-        self.assertIn("codex_instructor -> Eve", text)
+        text = _format_interface_message({"source": "Eve", "target": "Codex", "timestamp": "2026-05-08T00:00:00Z", "content": "ola"})
+        self.assertIn("Eve -> Codex", text)
         self.assertIn("ola", text)
 
     def test_sandro_core_memory_enters_context(self):

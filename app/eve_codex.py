@@ -125,11 +125,12 @@ def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
-def publish_interface_message(source: str, content: str, *, tags: list[str] | None = None) -> None:
+def publish_interface_message(source: str, content: str, *, target: str = "Eve", tags: list[str] | None = None) -> None:
     ensure_dirs()
     entry = {
         "timestamp": now_iso(),
         "source": source,
+        "target": target,
         "content": content,
         "tags": tags or [],
     }
@@ -139,9 +140,10 @@ def publish_interface_message(source: str, content: str, *, tags: list[str] | No
 
 def _format_interface_message(entry: dict) -> str:
     source = entry.get("source") or "external"
+    target = entry.get("target") or "Eve"
     timestamp = entry.get("timestamp") or ""
     content = entry.get("content") or ""
-    return f"\n[{source} -> Eve | {timestamp}]\n{content}\n"
+    return f"\n[{source} -> {target} | {timestamp}]\n{content}\n"
 
 
 def drain_interface_messages(position: int = 0) -> int:
@@ -732,7 +734,14 @@ def normalize_speaker(value: str) -> str:
     return "sandro"
 
 
-def ask(prompt: str, *, speaker: str = "sandro") -> str:
+def speaker_display_name(speaker: str) -> str:
+    role = speaker_role(speaker)
+    if role == "codex_instructor":
+        return "Codex"
+    return "Sandro"
+
+
+def ask(prompt: str, *, speaker: str = "sandro", publish_to_interface: bool = True) -> str:
     auth = refresh_if_needed(load_auth())
     token = auth["tokens"]["access_token"]
     config = load_config()
@@ -740,6 +749,7 @@ def ask(prompt: str, *, speaker: str = "sandro") -> str:
     memory_context = context_bundle()
     entity_context = relevant_entity_memory(prompt, limit=8)
     role = speaker_role(speaker)
+    display_name = speaker_display_name(speaker)
     visible_prompt = prompt
     if role == "codex_instructor":
         visible_prompt = f"[Mensagem de Codex-instrutor para Eve, nao de Sandro]\n{prompt}"
@@ -755,8 +765,8 @@ def ask(prompt: str, *, speaker: str = "sandro") -> str:
         f"RELEVANT ENTITY MEMORY:\n{json.dumps(entity_context, ensure_ascii=False)[:5000]}"
     )
     append_chat(role, prompt, tags=["codex_instructor"] if role == "codex_instructor" else None)
-    if role == "codex_instructor":
-        publish_interface_message("codex_instructor", prompt, tags=["instructor", "incoming"])
+    if publish_to_interface:
+        publish_interface_message(display_name, prompt, target="Eve", tags=["incoming", role])
     body = {
         "model": model,
         "instructions": instructions,
@@ -779,15 +789,15 @@ def ask(prompt: str, *, speaker: str = "sandro") -> str:
     if text:
         print(text)
         append_chat("assistant", text)
-        if role == "codex_instructor":
-            publish_interface_message("eve", text, tags=["reply", "codex_instructor"])
+        if publish_to_interface:
+            publish_interface_message("Eve", text, target=display_name, tags=["reply", role])
         return text
     else:
         text = json.dumps(payload, indent=2)[:4000]
         print(text)
         append_chat("assistant", text)
-        if role == "codex_instructor":
-            publish_interface_message("eve", text, tags=["reply", "codex_instructor"])
+        if publish_to_interface:
+            publish_interface_message("Eve", text, target=display_name, tags=["reply", role])
         return text
 
 
@@ -1458,7 +1468,7 @@ def chat() -> None:
                 print(f"Erro a criar demonstracao: {exc}")
             continue
         print("eve> ", end="", flush=True)
-        ask(prompt, speaker=one_off_speaker)
+        ask(prompt, speaker=one_off_speaker, publish_to_interface=False)
         print()
 
 
@@ -1488,6 +1498,7 @@ def main() -> None:
     sub.add_parser("models")
     ask_p = sub.add_parser("ask")
     ask_p.add_argument("prompt")
+    ask_p.add_argument("--speaker", default="sandro", choices=["sandro", "codex"])
     model_p = sub.add_parser("model")
     model_p.add_argument("model")
     args = parser.parse_args()
@@ -1509,7 +1520,7 @@ def main() -> None:
         for model in KNOWN_MODELS:
             print(f"  {model}")
     elif args.cmd == "ask":
-        ask(args.prompt)
+        ask(args.prompt, speaker=args.speaker)
     elif args.cmd == "model":
         set_model(args.model)
 
