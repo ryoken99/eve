@@ -57,7 +57,9 @@ from memory.semantic_vector.vector_store import rebuild_memory_index, search as 
 from tools.windows_scheduler import create_daily_task, list_eve_tasks
 from tools.x_scheduler import schedule_x_post
 from tools.desktop_tasks import (
+    create_desktop_folder,
     create_desktop_file,
+    parse_desktop_folder_request,
     parse_desktop_file_request,
     parse_desktop_folder_schedule_request,
     schedule_desktop_folder_creation,
@@ -925,7 +927,7 @@ def is_capability_question(prompt: str) -> bool:
     return capability_hits >= 2 and any(term in lowered for term in ("skills", "ficheiros", "admin", "awareness", "awernees", "existencia", "existência"))
 
 
-def ask(prompt: str, *, speaker: str = "sandro", publish_to_interface: bool = True) -> str:
+def ask(prompt: str, *, speaker: str = "sandro", publish_to_interface: bool = True, allow_tools: bool = True) -> str:
     auth = refresh_if_needed(load_auth())
     token = auth["tokens"]["access_token"]
     config = load_config()
@@ -946,8 +948,10 @@ def ask(prompt: str, *, speaker: str = "sandro", publish_to_interface: bool = Tr
         "Keep it honest: describe these as Eve's internal/operational state and perspective, without pretending certainty about biological or human subjective experience. "
         "Use the local memory context as persistent background, including documented operational capabilities, but do not claim actions you did not perform. "
         "Do not deny a documented local capability unless an actual attempt or status check fails. "
+        "For local actions, you have a tool catalog. Decide yourself whether to call a tool and emit the exact EVE_TOOL JSON when needed. "
         "When answering personal facts, use RELEVANT ENTITY MEMORY. Distinguish stable real-profile facts from fictional, roleplay, or simulated-story sources. "
         "If the memory only suggests a fact from roleplay/simulation, say it is uncertain instead of presenting it as confirmed.\n\n"
+        f"{LOCAL_TOOL_CATALOG if allow_tools else 'Ferramentas locais ja executadas ou indisponiveis nesta etapa; responde em texto normal.'}\n\n"
         f"LOCAL MEMORY CONTEXT:\n{memory_context}\n\n"
         f"ENTITY BASE MEMORY ROOT: {ENTITIES_MEMORY_DIR}\n"
         f"RELEVANT ENTITY MEMORY:\n{json.dumps(entity_context, ensure_ascii=False)[:5000]}"
@@ -974,6 +978,18 @@ def ask(prompt: str, *, speaker: str = "sandro", publish_to_interface: bool = Tr
         safe_print(text)
         append_chat("error", text, tags=["llm_error"])
         return text
+    if text and allow_tools:
+        tool_call = _extract_eve_tool_call(text)
+        if tool_call:
+            append_chat("assistant", text, tags=["tool_call", tool_call["tool"]])
+            tool_result = execute_eve_tool_call(tool_call)
+            append_chat("tool", json.dumps(tool_result, ensure_ascii=False), tags=["tool_result", tool_call["tool"]])
+            result_text = format_eve_tool_result(tool_result)
+            safe_print(result_text)
+            append_chat("assistant", result_text, tags=["tool", tool_call["tool"]])
+            if publish_to_interface:
+                publish_interface_message("Eve", result_text, target=display_name, tags=["outgoing", "tool", tool_call["tool"]])
+            return result_text
     if text:
         safe_print(text)
         append_chat("assistant", text)
@@ -1055,6 +1071,123 @@ def format_x_schedule_result(result: dict) -> str:
     return text
 
 
+LOCAL_TOOL_CATALOG = """
+Ferramentas locais disponiveis para ti (Eve). Quando quiseres usar uma ferramenta, responde apenas numa linha com:
+EVE_TOOL {"tool":"nome_da_ferramenta","args":{...}}
+
+Ferramentas:
+- capability_self_test: args {}
+- create_desktop_file: args {"name":"ola.txt"}
+- create_desktop_folder: args {"name":"ola"}
+- open_browser: args {"url":"https://x.com"}
+- schedule_desktop_folder: args {"name":"pasta","time":"22:43"}
+- schedule_x_post: args {"time":"22:21","text":"texto em ingles"}
+- run_terminal: args {"command":"Get-ChildItem","cwd":"D:\\Eve","timeout":60}
+- run_skill: args {"skill":"trusted/x_publish_text_learning","args":{}}
+
+Regras:
+- Tu decides se uma ferramenta e necessaria. O codigo so executa a ferramenta que tu pedires.
+- Para pedidos diretos do Sandro, usa ferramentas em vez de dizer que nao tens acesso quando a ferramenta existe.
+- Se falta informacao, faz uma pergunta em vez de inventar argumentos.
+- Depois da ferramenta executar, recebes o resultado e deves responder ao Sandro com o que aconteceu.
+"""
+
+
+def _extract_eve_tool_call(text: str) -> dict | None:
+    match = re.search(r"EVE_TOOL\s*(\{.*?\})\s*$", text.strip(), re.DOTALL)
+    if not match:
+        return None
+    try:
+        payload = json.loads(match.group(1))
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(payload, dict) or not isinstance(payload.get("tool"), str):
+        return None
+    args = payload.get("args") or {}
+    if not isinstance(args, dict):
+        return None
+    return {"tool": payload["tool"], "args": args}
+
+
+def execute_eve_tool_call(call: dict) -> dict:
+    tool = call["tool"]
+    args = call.get("args") or {}
+    try:
+        if tool == "capability_self_test":
+            return {"ok": True, "tool": tool, "text": format_capability_self_test()}
+        if tool == "create_desktop_file":
+            return {"ok": True, "tool": tool, "result": create_desktop_file(str(args.get("name") or "eve_item"))}
+        if tool == "create_desktop_folder":
+            return {"ok": True, "tool": tool, "result": create_desktop_folder(str(args.get("name") or "eve_folder"))}
+        if tool == "open_browser":
+            return {"ok": True, "tool": tool, "result": open_url(str(args.get("url") or "https://www.google.com"))}
+        if tool == "schedule_desktop_folder":
+            return {
+                "ok": True,
+                "tool": tool,
+                "result": schedule_desktop_folder_creation(
+                    str(args.get("name") or "pasta_agendada_eve"),
+                    str(args.get("time") or ""),
+                ),
+            }
+        if tool == "schedule_x_post":
+            return {
+                "ok": True,
+                "tool": tool,
+                "result": schedule_x_post(
+                    str(args.get("text") or ""),
+                    str(args.get("time") or ""),
+                    approved_by="sandro",
+                ),
+            }
+        if tool == "run_terminal":
+            return {
+                "ok": True,
+                "tool": tool,
+                "result": run_command(
+                    str(args.get("command") or ""),
+                    cwd=str(args.get("cwd") or EVE_ROOT),
+                    timeout=int(args.get("timeout") or 60),
+                ),
+            }
+        if tool == "run_skill":
+            return {
+                "ok": True,
+                "tool": tool,
+                "result": run_skill(str(args.get("skill") or ""), args=args.get("args") or {}),
+            }
+        return {"ok": False, "tool": tool, "error": f"Ferramenta desconhecida: {tool}"}
+    except Exception as exc:
+        return {"ok": False, "tool": tool, "error": f"{type(exc).__name__}: {exc}"}
+
+
+def format_eve_tool_result(result: dict) -> str:
+    if result.get("text"):
+        return str(result["text"])
+    if not result.get("ok"):
+        return f"Erro real na ferramenta {result.get('tool')}: {result.get('error')}"
+    payload = result.get("result")
+    tool = result.get("tool")
+    if tool == "create_desktop_file":
+        return f"Ficheiro criado: {payload['path']}"
+    if tool == "create_desktop_folder":
+        return f"Pasta criada: {payload['path']}"
+    if tool == "open_browser":
+        return f"Browser aberto em {payload['url']} com perfil {payload['profile_name']} ({payload['profile_directory']})."
+    if tool == "schedule_desktop_folder":
+        return f"Pasta agendada: {payload['folder']}\nHora: {payload['scheduled_for']}\nTarefa: {payload['task_name']}"
+    if tool == "schedule_x_post":
+        return format_x_schedule_result(payload)
+    if tool == "run_terminal":
+        return (
+            f"Comando executado: {payload['command']}\n"
+            f"Return code: {payload.get('returncode')}\n"
+            f"STDOUT:\n{payload.get('stdout', '')}\n"
+            f"STDERR:\n{payload.get('stderr', '')}"
+        ).strip()
+    return json.dumps(payload, indent=2, ensure_ascii=False)[:6000]
+
+
 def handle_natural_tool_request(prompt: str, *, speaker: str = "sandro") -> bool:
     if is_capability_question(prompt):
         role = speaker_role(speaker)
@@ -1063,15 +1196,12 @@ def handle_natural_tool_request(prompt: str, *, speaker: str = "sandro") -> bool
         print(text)
         append_chat("assistant", text, tags=["tool", "capability_self_test"])
         return True
+    role = speaker_role(speaker)
+    if role != "user":
+        return False
     x_schedule = parse_natural_x_schedule_request(prompt)
     if x_schedule:
-        role = speaker_role(speaker)
         append_chat(role, prompt, tags=["tool_request", "x_schedule", role] if role != "user" else ["tool_request", "x_schedule"])
-        if role != "user":
-            text = "Pedido de publicacao no X recebido de instrutor. Preciso de ordem direta do Sandro para agendar/publicar."
-            print(text)
-            append_chat("assistant", text, tags=["tool", "x_schedule", "needs_sandro"])
-            return True
         if x_schedule.get("status") == "needs_confirmation":
             text = "Preciso da hora em formato HH:MM para agendar o post no X."
             print(text)
@@ -1088,9 +1218,10 @@ def handle_natural_tool_request(prompt: str, *, speaker: str = "sandro") -> bool
             append_chat("error", text, tags=["tool_error", "x_schedule"])
         return True
     desktop_file = parse_desktop_file_request(prompt)
+    desktop_folder = parse_desktop_folder_request(prompt)
     desktop_folder_schedule = parse_desktop_folder_schedule_request(prompt)
     browser_target = natural_browser_target(prompt)
-    if desktop_file or desktop_folder_schedule or browser_target:
+    if desktop_file or desktop_folder or desktop_folder_schedule or browser_target:
         role = speaker_role(speaker)
         append_chat(role, prompt, tags=["tool_request", "compound", role] if role != "user" else ["tool_request", "compound"])
         messages = []
@@ -1102,6 +1233,14 @@ def handle_natural_tool_request(prompt: str, *, speaker: str = "sandro") -> bool
                 messages.append(f"Ficheiro criado: {result['path']}")
             except Exception as exc:
                 messages.append(f"Erro real ao criar ficheiro no Ambiente de Trabalho: {type(exc).__name__}: {exc}")
+        if desktop_folder and desktop_folder.get("status") == "needs_confirmation":
+            messages.append("Preciso do nome da pasta para criar no Ambiente de Trabalho.")
+        elif desktop_folder:
+            try:
+                result = create_desktop_folder(desktop_folder["name"])
+                messages.append(f"Pasta criada: {result['path']}")
+            except Exception as exc:
+                messages.append(f"Erro real ao criar pasta no Ambiente de Trabalho: {type(exc).__name__}: {exc}")
         if browser_target:
             try:
                 result = open_url(browser_target)
@@ -1200,8 +1339,6 @@ def chat() -> None:
                 safe_print(json.dumps(run_codex_eve_loop(prompt.split(None, 1)[1]), indent=2, ensure_ascii=False))
             except Exception as exc:
                 print(f"Erro no loop Codex-Eve: {exc}")
-            continue
-        if handle_natural_tool_request(prompt, speaker=one_off_speaker):
             continue
         if one_off_speaker == "codex" and prompt.startswith("/"):
             append_chat("codex_instructor", prompt, tags=["codex_instructor", "command"])
@@ -1967,8 +2104,7 @@ def main() -> None:
     elif args.cmd == "x-schedule":
         safe_print(json.dumps(schedule_x_post(args.text, args.time, approved_by="sandro"), indent=2, ensure_ascii=False))
     elif args.cmd == "ask":
-        if not handle_natural_tool_request(args.prompt, speaker=args.speaker):
-            ask(args.prompt, speaker=args.speaker)
+        ask(args.prompt, speaker=args.speaker)
     elif args.cmd == "model":
         set_model(args.model)
 

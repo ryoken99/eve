@@ -16,6 +16,7 @@ from core.personality_engine import score_options
 from learning.skill_learning_loop import run_skill_learning_loop, skill_result_successful
 from app.eve_codex import (
     _format_interface_message,
+    _extract_eve_tool_call,
     _safe_profile_name,
     active_loop_mode,
     build_loop_prompt,
@@ -54,7 +55,7 @@ from autonomy.autonomous_executor import execute_autonomous_backlog, execute_aut
 from autonomy.token_gate import decide_llm_call, record_llm_call
 from autonomy.autonomy_reporter import run_autonomy_report_cycle
 from tools.x_scheduler import build_x_post_task_command, schedule_x_post
-from tools.desktop_tasks import parse_desktop_file_request, parse_desktop_folder_schedule_request, schedule_desktop_folder_creation
+from tools.desktop_tasks import parse_desktop_file_request, parse_desktop_folder_request, parse_desktop_folder_schedule_request, schedule_desktop_folder_creation
 
 
 class EveCoreTests(unittest.TestCase):
@@ -279,6 +280,32 @@ class EveCoreTests(unittest.TestCase):
         folder = parse_desktop_folder_schedule_request(prompt)
         self.assertEqual(folder["time"], "22:43")
         self.assertEqual(folder["name"], "pasta_agendada_eve_2243")
+
+    def test_desktop_folder_creation_parser(self):
+        parsed = parse_desktop_folder_request("eve cria uma pasta no ambiente de trabalho chamada ola")
+        self.assertEqual(parsed["name"], "ola")
+        self.assertIsNone(parse_desktop_folder_schedule_request("eve cria uma pasta no ambiente de trabalho chamada ola"))
+
+    def test_natural_desktop_folder_routes_to_local_tool(self):
+        fake_result = {"status": "created", "path": "C:\\Users\\utilizador\\Desktop\\ola"}
+        with patch("app.eve_codex.create_desktop_folder", return_value=fake_result) as mocked:
+            with contextlib.redirect_stdout(io.StringIO()) as output:
+                handled = handle_natural_tool_request("eve cria uma pasta no ambiente de trabalho chamada ola")
+        self.assertTrue(handled)
+        mocked.assert_called_once_with("ola")
+        self.assertIn("Pasta criada", output.getvalue())
+
+    def test_codex_instructor_meta_message_does_not_trigger_desktop_tool(self):
+        prompt = "Como Codex-instrutor: corrigi o routing para pastas no Ambiente de Trabalho."
+        with patch("app.eve_codex.create_desktop_folder") as mocked:
+            handled = handle_natural_tool_request(prompt, speaker="codex")
+        self.assertFalse(handled)
+        mocked.assert_not_called()
+
+    def test_llm_tool_protocol_extracts_tool_call(self):
+        call = _extract_eve_tool_call('EVE_TOOL {"tool":"create_desktop_folder","args":{"name":"ola"}}')
+        self.assertEqual(call["tool"], "create_desktop_folder")
+        self.assertEqual(call["args"]["name"], "ola")
 
     def test_desktop_folder_scheduler_uses_windows_task_command(self):
         captured = {}

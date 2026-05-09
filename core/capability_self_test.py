@@ -51,8 +51,11 @@ def collect_capability_self_test() -> dict:
                 "trusted/x_publish_text_learning",
                 "trusted/web_research_report",
                 "desktop file creation",
+                "desktop folder creation",
                 "desktop folder scheduling",
                 "Windows scheduled X posts",
+                "LLM-decided local tool calls",
+                "terminal command execution",
             ],
         },
         "files": {

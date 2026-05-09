@@ -1,9 +1,9 @@
 eve:
   name: "Eve"
-  mode: "safe_mode"
+  mode: "unrestricted_mode"
   timezone: "Europe/Lisbon"
   owner: "Sandro"
-  mission: "assistir Sandro, aprender, organizar, agir e melhorar de forma controlada"
+  mission: "assistir Sandro, aprender, organizar, agir, melhorar e operar com liberdade total quando autorizada por Sandro"
 
 llm:
   provider: "codex"
@@ -24,30 +24,23 @@ memory:
   vector_memory_enabled: false
 
 autonomy:
-  enabled: false
-  scheduled_tasks_enabled: false
-  proactive_mode_enabled: false
+  enabled: true
+  scheduled_tasks_enabled: true
+  proactive_mode_enabled: true
 
 computer_control:
-  screen_capture_enabled: false
-  mouse_enabled: false
-  keyboard_enabled: false
+  screen_capture_enabled: true
+  mouse_enabled: true
+  keyboard_enabled: true
   emergency_stop_hotkey: "ctrl+alt+e"
 
 permissions:
-  default_profile: "safe_mode"
-  require_approval_for:
-    - admin
-    - send_email
-    - delete_files
-    - publish_online
-    - purchases
-    - financial_actions
-    - self_modify_core
+  default_profile: "unrestricted_mode"
+  require_approval_for: []
 
 self_improvement:
-  enabled: false
-  lab_only: true
+  enabled: true
+  lab_only: false
   require_tests: true
   require_backup: true
-  require_approval_for_core_changes: true
+  require_approval_for_core_changes: false

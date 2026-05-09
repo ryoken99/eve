@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any
 
 from core.paths import LOGS_DIR, MEMORY_DIR, ensure_project_dirs
+from security.safety_modes import current_safety_mode
 
 
 def now_iso() -> str:
@@ -22,7 +23,7 @@ def chat_log_path(day: str | None = None) -> Path:
     return LOGS_DIR / "chat" / f"{day or today_key()}.jsonl"
 
 
-def append_chat(role: str, content: str, *, session_id: str = "main", mode: str = "safe_mode", tags: list[str] | None = None) -> dict[str, Any]:
+def append_chat(role: str, content: str, *, session_id: str = "main", mode: str | None = None, tags: list[str] | None = None) -> dict[str, Any]:
     ensure_project_dirs()
     entry = {
         "timestamp": now_iso(),
@@ -30,7 +31,7 @@ def append_chat(role: str, content: str, *, session_id: str = "main", mode: str 
         "role": role,
         "content": content,
         "session_id": session_id,
-        "mode": mode,
+        "mode": mode or current_safety_mode(),
         "tags": tags or [],
     }
     with chat_log_path().open("a", encoding="utf-8") as fh:

@@ -30,6 +30,20 @@ def parse_desktop_file_request(prompt: str) -> dict | None:
     return {"name": safe_desktop_name(match.group(1))}
 
 
+def parse_desktop_folder_request(prompt: str) -> dict | None:
+    lowered = prompt.lower()
+    if "pasta" not in lowered or "ambiente de trabalho" not in lowered:
+        return None
+    if any(word in lowered for word in ("agenda", "agendar", "programa", "programar", "schedule")):
+        return None
+    match = re.search(r"pasta\s+no\s+ambiente\s+de\s+trabalho\s+chamad[ao]\s+([^,.;]+)", prompt, re.IGNORECASE)
+    if not match:
+        match = re.search(r"pasta\s+chamad[ao]\s+([^,.;]+).*ambiente\s+de\s+trabalho", prompt, re.IGNORECASE)
+    if not match:
+        return {"status": "needs_confirmation", "reason": "missing_folder_name"}
+    return {"name": safe_desktop_name(match.group(1))}
+
+
 def parse_desktop_folder_schedule_request(prompt: str) -> dict | None:
     lowered = prompt.lower()
     if not any(word in lowered for word in ("agenda", "agendar", "programa", "programar", "schedule")):
@@ -51,6 +65,12 @@ def create_desktop_file(name: str) -> dict:
     path = desktop_dir() / safe_desktop_name(name)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.touch(exist_ok=True)
+    return {"status": "created", "path": str(path)}
+
+
+def create_desktop_folder(name: str) -> dict:
+    path = desktop_dir() / safe_desktop_name(name)
+    path.mkdir(parents=True, exist_ok=True)
     return {"status": "created", "path": str(path)}
 
 
