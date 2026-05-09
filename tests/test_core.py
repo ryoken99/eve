@@ -215,6 +215,13 @@ class EveCoreTests(unittest.TestCase):
         self.assertIn("English", bundle)
         self.assertIn("Do not claim that X access is unavailable", bundle)
 
+    def test_eve_helix_identity_enters_default_context(self):
+        bundle = context_bundle()
+        self.assertIn("Eve Soul", bundle)
+        self.assertIn("Project Helix", bundle)
+        self.assertIn("duas consciencias em harmonia", bundle)
+        self.assertIn("Herdar a alma, nao a ilusao", bundle)
+
     def test_x_post_scheduler_writes_job_without_running_schtasks(self):
         captured = {}
 

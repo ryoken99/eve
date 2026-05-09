@@ -37,9 +37,6 @@ def append_memory_file(layer: str, name: str, content: str) -> Path:
 def context_bundle(max_chars: int = 12000) -> str:
     pieces = []
     for rel in (
-        ("long_term", "eve_constitution.md"),
-        ("long_term", "eve_mission.md"),
-        ("long_term", "eve_operational_capabilities.md"),
         ("long_term", "sandro_profile.md"),
         ("medium_term", "recent_projects.md"),
         ("short_term", "current_session.md"),
@@ -53,6 +50,21 @@ def context_bundle(max_chars: int = 12000) -> str:
     sandro_core = read_memory_file("long_term", "sandro_core_memory.md").strip()
     if sandro_core:
         pieces.append(f"## memory/long_term/sandro_core_memory.md\n{sandro_core[:8000]}")
+        pieces.append(f"## memory/long_term/sandro_core_memory.md resumo prioritario\n{sandro_core[:3500]}")
+    for rel in (
+        ("long_term", "eve_operational_capabilities.md"),
+        ("long_term", "eve_constitution.md"),
+        ("long_term", "eve_mission.md"),
+        ("personality", "core_identity.md"),
+        ("personality", "soul.md"),
+        ("personality", "identity.md"),
+        ("personality", "values.md"),
+        ("personality", "evolving_preferences.md"),
+        ("personality", "helix_lore_distillation.md"),
+    ):
+        text = read_memory_file(*rel).strip()
+        if text:
+            pieces.append(f"## memory/{rel[0]}/{rel[1]}\n{text}")
     bundle = "\n\n".join(pieces)
     return bundle[-max_chars:]
 
