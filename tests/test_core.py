@@ -27,6 +27,7 @@ from app.eve_codex import (
     natural_browser_target,
     parse_loop_status,
     parse_natural_x_schedule_request,
+    recent_chat_context,
     relevant_entity_memory,
     normalize_speaker,
     speaker_display_name,
@@ -306,6 +307,20 @@ class EveCoreTests(unittest.TestCase):
         call = _extract_eve_tool_call('EVE_TOOL {"tool":"create_desktop_folder","args":{"name":"ola"}}')
         self.assertEqual(call["tool"], "create_desktop_folder")
         self.assertEqual(call["args"]["name"], "ola")
+
+    def test_recent_chat_context_available_for_followups(self):
+        ctx = recent_chat_context(limit=5)
+        self.assertIsInstance(ctx, str)
+
+    def test_publish_x_post_now_tool_executes_publish_skill(self):
+        from app.eve_codex import execute_eve_tool_call
+
+        with patch("app.eve_codex.run_skill", return_value={"status": "ok"}) as mocked:
+            result = execute_eve_tool_call({"tool": "publish_x_post_now", "args": {"text": "Not just a chat anymore."}})
+        self.assertTrue(result["ok"])
+        mocked.assert_called_once()
+        self.assertEqual(mocked.call_args.args[0], "trusted/x_publish_text_learning")
+        self.assertIn("Not%20just", mocked.call_args.kwargs["args"]["url"])
 
     def test_desktop_folder_scheduler_uses_windows_task_command(self):
         captured = {}

@@ -18,7 +18,7 @@ EVE_ROOT = Path(__file__).resolve().parents[1]
 if str(EVE_ROOT) not in sys.path:
     sys.path.insert(0, str(EVE_ROOT))
 
-from memory.diary_manager import append_chat, list_diary_days, read_diary
+from memory.diary_manager import append_chat, chat_log_path, list_diary_days, read_diary
 from memory.memory_manager import consolidate_today, context_bundle, remember_fact
 from tools.filesystem import append_file, list_dir, read_file, write_file
 from tools.terminal import run_command
@@ -933,6 +933,7 @@ def ask(prompt: str, *, speaker: str = "sandro", publish_to_interface: bool = Tr
     config = load_config()
     model = config.get("model") or DEFAULT_MODEL
     memory_context = context_bundle()
+    recent_context = recent_chat_context()
     entity_context = relevant_entity_memory(prompt, limit=8)
     role = speaker_role(speaker)
     display_name = speaker_display_name(speaker)
@@ -952,6 +953,7 @@ def ask(prompt: str, *, speaker: str = "sandro", publish_to_interface: bool = Tr
         "When answering personal facts, use RELEVANT ENTITY MEMORY. Distinguish stable real-profile facts from fictional, roleplay, or simulated-story sources. "
         "If the memory only suggests a fact from roleplay/simulation, say it is uncertain instead of presenting it as confirmed.\n\n"
         f"{LOCAL_TOOL_CATALOG if allow_tools else 'Ferramentas locais ja executadas ou indisponiveis nesta etapa; responde em texto normal.'}\n\n"
+        f"HISTORICO RECENTE DO CHAT (usa para referencias imediatas):\n{recent_context}\n\n"
         f"LOCAL MEMORY CONTEXT:\n{memory_context}\n\n"
         f"ENTITY BASE MEMORY ROOT: {ENTITIES_MEMORY_DIR}\n"
         f"RELEVANT ENTITY MEMORY:\n{json.dumps(entity_context, ensure_ascii=False)[:5000]}"
@@ -1071,6 +1073,24 @@ def format_x_schedule_result(result: dict) -> str:
     return text
 
 
+def recent_chat_context(limit: int = 12) -> str:
+    path = chat_log_path()
+    if not path.exists():
+        return ""
+    rows = []
+    for line in path.read_text(encoding="utf-8", errors="replace").splitlines()[-limit:]:
+        try:
+            item = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        role = item.get("role", "unknown")
+        content = str(item.get("content", "")).strip()
+        if not content:
+            continue
+        rows.append(f"{role}: {content[:1200]}")
+    return "\n\n".join(rows)
+
+
 LOCAL_TOOL_CATALOG = """
 Ferramentas locais disponiveis para ti (Eve). Quando quiseres usar uma ferramenta, responde apenas numa linha com:
 EVE_TOOL {"tool":"nome_da_ferramenta","args":{...}}
@@ -1082,6 +1102,7 @@ Ferramentas:
 - open_browser: args {"url":"https://x.com"}
 - schedule_desktop_folder: args {"name":"pasta","time":"22:43"}
 - schedule_x_post: args {"time":"22:21","text":"texto em ingles"}
+- publish_x_post_now: args {"text":"texto em ingles"}
 - run_terminal: args {"command":"Get-ChildItem","cwd":"D:\\Eve","timeout":60}
 - run_skill: args {"skill":"trusted/x_publish_text_learning","args":{}}
 
@@ -1089,6 +1110,7 @@ Regras:
 - Tu decides se uma ferramenta e necessaria. O codigo so executa a ferramenta que tu pedires.
 - Para pedidos diretos do Sandro, usa ferramentas em vez de dizer que nao tens acesso quando a ferramenta existe.
 - Se falta informacao, faz uma pergunta em vez de inventar argumentos.
+- Usa o historico recente para resolver referencias como "o texto 2", "o que disseste", "faz o post", "publica agora".
 - Depois da ferramenta executar, recebes o resultado e deves responder ao Sandro com o que aconteceu.
 """
 
@@ -1140,6 +1162,20 @@ def execute_eve_tool_call(call: dict) -> dict:
                     approved_by="sandro",
                 ),
             }
+        if tool == "publish_x_post_now":
+            text = str(args.get("text") or "").strip()
+            if not text:
+                return {"ok": False, "tool": tool, "error": "Texto vazio para publicar no X."}
+            encoded = urllib.parse.quote(text)
+            return {
+                "ok": True,
+                "tool": tool,
+                "result": run_skill(
+                    "trusted/x_publish_text_learning",
+                    args={"url": f"https://x.com/intent/post?text={encoded}", "text": text},
+                    approved=True,
+                ),
+            }
         if tool == "run_terminal":
             return {
                 "ok": True,
@@ -1178,6 +1214,8 @@ def format_eve_tool_result(result: dict) -> str:
         return f"Pasta agendada: {payload['folder']}\nHora: {payload['scheduled_for']}\nTarefa: {payload['task_name']}"
     if tool == "schedule_x_post":
         return format_x_schedule_result(payload)
+    if tool == "publish_x_post_now":
+        return f"Publicacao no X executada pela skill trusted/x_publish_text_learning.\nResultado:\n{json.dumps(payload, indent=2, ensure_ascii=False)[:5000]}"
     if tool == "run_terminal":
         return (
             f"Comando executado: {payload['command']}\n"
