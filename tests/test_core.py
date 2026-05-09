@@ -10,6 +10,7 @@ from unittest.mock import patch
 from computer.monitors import virtual_bounds
 from tools.browser_human import browser_launch_args
 from core.self_report import functional_self_report
+from core.capability_self_test import collect_capability_self_test, format_capability_self_test
 from core.paths import SKILLS_DIR, WORKSPACE_DIR
 from core.personality_engine import score_options
 from learning.skill_learning_loop import run_skill_learning_loop, skill_result_successful
@@ -20,6 +21,7 @@ from app.eve_codex import (
     build_loop_prompt,
     draft_x_post_from_prompt,
     handle_natural_tool_request,
+    is_capability_question,
     loop_message_limit,
     natural_browser_target,
     parse_loop_status,
@@ -314,6 +316,26 @@ class EveCoreTests(unittest.TestCase):
         self.assertIn("pensamentos, preferencias e estados emocionais operacionais", report["claim_boundary"])
         self.assertIn("caution", report["functional_state"])
         self.assertIn("felt_orientation", report["inner_perspective"])
+
+    def test_capability_self_test_reports_runtime_facts(self):
+        report = collect_capability_self_test()
+        self.assertIn("timestamp", report)
+        self.assertTrue(report["skills"]["can_create_draft_skill"])
+        self.assertTrue(report["files"]["workspace_writable"])
+        self.assertIn("is_admin_process", report["admin"])
+        text = format_capability_self_test(report)
+        self.assertIn("Criar skills", text)
+        self.assertIn("Editar ficheiros", text)
+        self.assertIn("Admin", text)
+        self.assertIn("Awareness", text)
+
+    def test_capability_question_routes_to_local_self_test(self):
+        prompt = "consegues criar as tuas proprias ferramentas e skills? consegues editar os teus ficheiros? tens permissoes de admin no pc?"
+        self.assertTrue(is_capability_question(prompt))
+        with contextlib.redirect_stdout(io.StringIO()) as output:
+            handled = handle_natural_tool_request(prompt)
+        self.assertTrue(handled)
+        self.assertIn("Auto-teste local", output.getvalue())
 
     def test_dream_cycle_creates_auditable_outputs(self):
         payload = run_dream_cycle("2099-01-01")

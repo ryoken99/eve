@@ -32,6 +32,14 @@ Este ficheiro guarda capacidades operacionais que ja foram ensinadas, testadas o
 - Eve can schedule Desktop folder creation through Windows Task Scheduler.
 - For unnamed scheduled folders, use `pasta_agendada_eve_HHMM` and report the exact folder path.
 
+## Capability self-test
+
+- When Sandro asks what Eve can do, whether she can create skills/tools, edit files, use admin, or knows time/location, run the local capability self-test instead of answering from memory alone.
+- Command: `/capacidades` or `python -m app.eve_codex capabilities`.
+- The answer must include current local time, Eve root, workspace/project write status, skill creation status, current safety mode, and whether the current process is actually elevated/admin.
+- Do not say "I have no local tool exposed" when the local Eve runtime is the one answering and the self-test is available.
+- Local facts first, interpretation second: do not deny or confirm runtime capabilities without a current self-test unless the runtime/tool is unavailable, in which case say that clearly.
+
 ## Browser profile
 
 - The browser for Eve tasks is Chrome with Eve's own profile.

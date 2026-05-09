@@ -30,6 +30,7 @@ from research.research_notes import append_research_candidate, append_technology
 from lab.lab_manager import create_candidate, list_candidates
 from memory.errors.error_memory import recent_errors
 from core.awareness_engine import describe_awareness
+from core.capability_self_test import format_capability_self_test
 from core.self_report import format_self_report
 from computer.vision import describe_screen, find_text_on_screen, first_text_center, monitor_report, screenshot_monitor
 from computer.ocr import ocr_status
@@ -900,6 +901,30 @@ def speaker_display_name(speaker: str) -> str:
     return "Sandro"
 
 
+def is_capability_question(prompt: str) -> bool:
+    lowered = prompt.lower()
+    if lowered.startswith("/"):
+        return False
+    capability_terms = (
+        "consegues",
+        "podes",
+        "tens permissoes",
+        "tens permissões",
+        "admin",
+        "awareness",
+        "awernees",
+        "existencia",
+        "existência",
+        "editar os teus ficheiros",
+        "criar as tuas proprias",
+        "criar as tuas próprias",
+        "skills",
+        "ferramentas",
+    )
+    capability_hits = sum(1 for term in capability_terms if term in lowered)
+    return capability_hits >= 2 and any(term in lowered for term in ("skills", "ficheiros", "admin", "awareness", "awernees", "existencia", "existência"))
+
+
 def ask(prompt: str, *, speaker: str = "sandro", publish_to_interface: bool = True) -> str:
     auth = refresh_if_needed(load_auth())
     token = auth["tokens"]["access_token"]
@@ -1031,6 +1056,13 @@ def format_x_schedule_result(result: dict) -> str:
 
 
 def handle_natural_tool_request(prompt: str, *, speaker: str = "sandro") -> bool:
+    if is_capability_question(prompt):
+        role = speaker_role(speaker)
+        append_chat(role, prompt, tags=["tool_request", "capability_self_test", role] if role != "user" else ["tool_request", "capability_self_test"])
+        text = format_capability_self_test()
+        print(text)
+        append_chat("assistant", text, tags=["tool", "capability_self_test"])
+        return True
     x_schedule = parse_natural_x_schedule_request(prompt)
     if x_schedule:
         role = speaker_role(speaker)
@@ -1118,7 +1150,7 @@ def handle_natural_tool_request(prompt: str, *, speaker: str = "sandro") -> bool
 
 def chat() -> None:
     print("Eve chat. Escreve /sair para sair.")
-    print("Comandos: /menu, /voltar, /speaker sandro|codex, /codex mensagem, /loop objectivo, /loop-status, /loop-modo 1|2|3, /auth, /auth-contas, /auth-trocar, /auth-login nome, /dashboard, /modelo, /estado, /seguranca, /modo-seguranca, /liberdade-total, /seguranca-safe, /entidades-path, /entidades-files, /aprender-sandro, /entidades, /entidade, /relacao, /entidades-search, /monitores, /ocr-status, /ecra, /ecra-monitor, /ver-texto, /centro-texto, /clicar-texto, /visual-click, /vector-index, /vector-search, /vector-search2, /win-agendar, /win-tarefas, /x-agendar, /daemon-tick, /daemon-stop, /autonomia-ciclo, /autonomia-llm, /autonomia-executar, /autonomia-relatorio, /missao-executar-auto, /watch-tech, /notify, /speak, /mobile, /mobile-msg, /app-profile, /app-profiles, /demo-record, /demo-summary, /pipeline, /admin-elevado, /app, /browser, /pesquisar, /research-report, /missao-criar, /missoes, /missao, /missao-retomar, /missao-status, /missao-passo, /missao-log, /missao-checkpoint, /email-draft, /mouse, /mover, /clicar, /tecla, /hotkey, /escrever, /agenda, /agendar, /proativo, /workspace-scan, /preferencia, /preferencias, /falha-skill, /licao, /skill-note, /experiencia, /experiencia-result, /melhoria, /melhorias-erros, /patch-proposta, /sandbox, /admin, /aprovar-admin, /rsi, /lock, /unlock, /diario, /consolidar, /sonhar, /lembrar, /world, /tech, /lab, /workspace, /ls, /ler, /nota, /cmd, /aprovar-cmd, /erros, /skills, /skill-run, /skill-promote, /skill-demo")
+    print("Comandos: /menu, /voltar, /speaker sandro|codex, /codex mensagem, /loop objectivo, /loop-status, /loop-modo 1|2|3, /auth, /auth-contas, /auth-trocar, /auth-login nome, /dashboard, /modelo, /estado, /capacidades, /seguranca, /modo-seguranca, /liberdade-total, /seguranca-safe, /entidades-path, /entidades-files, /aprender-sandro, /entidades, /entidade, /relacao, /entidades-search, /monitores, /ocr-status, /ecra, /ecra-monitor, /ver-texto, /centro-texto, /clicar-texto, /visual-click, /vector-index, /vector-search, /vector-search2, /win-agendar, /win-tarefas, /x-agendar, /daemon-tick, /daemon-stop, /autonomia-ciclo, /autonomia-llm, /autonomia-executar, /autonomia-relatorio, /missao-executar-auto, /watch-tech, /notify, /speak, /mobile, /mobile-msg, /app-profile, /app-profiles, /demo-record, /demo-summary, /pipeline, /admin-elevado, /app, /browser, /pesquisar, /research-report, /missao-criar, /missoes, /missao, /missao-retomar, /missao-status, /missao-passo, /missao-log, /missao-checkpoint, /email-draft, /mouse, /mover, /clicar, /tecla, /hotkey, /escrever, /agenda, /agendar, /proativo, /workspace-scan, /preferencia, /preferencias, /falha-skill, /licao, /skill-note, /experiencia, /experiencia-result, /melhoria, /melhorias-erros, /patch-proposta, /sandbox, /admin, /aprovar-admin, /rsi, /lock, /unlock, /diario, /consolidar, /sonhar, /lembrar, /world, /tech, /lab, /workspace, /ls, /ler, /nota, /cmd, /aprovar-cmd, /erros, /skills, /skill-run, /skill-promote, /skill-demo")
     print("Mensagens externas de Codex-instrutor aparecem automaticamente aqui.")
     print()
     start_interface_inbox_watcher()
@@ -1359,6 +1391,9 @@ def chat() -> None:
             continue
         if prompt.lower() in ("/estado", "/awareness"):
             print(describe_awareness())
+            continue
+        if prompt.lower() in ("/capacidades", "/capabilities"):
+            print(format_capability_self_test())
             continue
         if prompt.lower() in ("/self-report", "/introspecao"):
             print(format_self_report("manual_self_report"))
@@ -1889,6 +1924,7 @@ def main() -> None:
     sub.add_parser("current-model")
     sub.add_parser("models")
     sub.add_parser("loop-status")
+    sub.add_parser("capabilities")
     loop_mode_p = sub.add_parser("loop-mode")
     loop_mode_p.add_argument("mode")
     loop_p = sub.add_parser("loop")
@@ -1922,6 +1958,8 @@ def main() -> None:
             print(f"  {model}")
     elif args.cmd == "loop-status":
         print_loop_status()
+    elif args.cmd == "capabilities":
+        print(format_capability_self_test())
     elif args.cmd == "loop-mode":
         set_loop_mode(args.mode)
     elif args.cmd == "loop":

@@ -43,6 +43,7 @@ python D:\Eve\main.py
 /modelo
 /modelo gpt-5.5
 /modelos
+/capacidades
 /diario
 /diarios
 /consolidar

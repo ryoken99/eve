@@ -98,3 +98,17 @@ Fix:
 - The wrong X task was cancelled before execution.
 - The correct file `C:\Users\utilizador\Desktop\ola` was created.
 - The correct folder task `Eve_Create_Desktop_Folder_2243` ran with Last Result `0`.
+
+## 2026-05-09 Follow-up: Capability Awareness Bug
+
+Sandro tested whether Eve knows if she can create skills/tools, edit her own files, use admin, and maintain awareness of time/location.
+
+Failure observed: Eve answered too cautiously from memory and claimed she could not see a local editing/execution tool from that interface. She also used stale date context.
+
+Fix:
+
+- Added `core/capability_self_test.py`.
+- Added `/capacidades` and CLI `python -m app.eve_codex capabilities`.
+- Natural capability questions now route to local self-test before the LLM.
+- The self-test reports current local time, Eve root, cwd, skill creation writeability, workspace/project writeability, current safety mode, and real admin/elevated status.
+- Parallel self-tests use unique probe files to avoid false negative write checks.
