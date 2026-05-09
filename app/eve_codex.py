@@ -1149,30 +1149,6 @@ def recent_chat_context(limit: int = 12) -> str:
     return "\n\n".join(rows)
 
 
-LOCAL_TOOL_CATALOG = """
-Ferramentas locais disponiveis para ti (Eve). Quando quiseres usar uma ferramenta, responde apenas numa linha com:
-EVE_TOOL {"tool":"nome_da_ferramenta","args":{...}}
-
-Ferramentas:
-- capability_self_test: args {}
-- create_desktop_file: args {"name":"ola.txt"}
-- create_desktop_folder: args {"name":"ola"}
-- open_browser: args {"url":"https://x.com"}
-- schedule_desktop_folder: args {"name":"pasta","time":"22:43"}
-- schedule_x_post: args {"time":"22:21","text":"texto em ingles"}
-- publish_x_post_now: args {"text":"texto em ingles"}
-- run_terminal: args {"command":"Get-ChildItem","cwd":"D:\\Eve","timeout":60}
-- run_skill: args {"skill":"trusted/x_publish_text_learning","args":{}}
-
-Regras:
-- Tu decides se uma ferramenta e necessaria. O codigo so executa a ferramenta que tu pedires.
-- Para pedidos diretos do Sandro, usa ferramentas em vez de dizer que nao tens acesso quando a ferramenta existe.
-- Se falta informacao, faz uma pergunta em vez de inventar argumentos.
-- Usa o historico recente para resolver referencias como "o texto 2", "o que disseste", "faz o post", "publica agora".
-- Depois da ferramenta executar, recebes o resultado e deves responder ao Sandro com o que aconteceu.
-"""
-
-
 def _extract_eve_tool_call(text: str) -> dict | None:
     marker = "EVE_TOOL"
     index = text.find(marker)

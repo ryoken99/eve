@@ -317,6 +317,34 @@ class EveCoreTests(unittest.TestCase):
         self.assertEqual(call["tool"], "open_browser")
         self.assertEqual(call["args"]["url"], "https://www.google.com/search?q=caes")
 
+    def test_eve_tool_registry_exposes_core_capabilities(self):
+        from core.eve_tool_registry import TOOLS
+
+        required = {
+            "schedule_x_post",
+            "windows_create_daily_task",
+            "open_browser",
+            "search_web",
+            "run_terminal",
+            "workspace_read_file",
+            "workspace_write_file",
+            "describe_screen",
+            "find_text_on_screen",
+            "mouse_position",
+            "click_mouse",
+            "type_text",
+            "create_gmail_draft",
+            "notify",
+            "awareness",
+            "read_diary",
+            "memory_read",
+            "autonomy_cycle",
+            "admin_command",
+            "run_skill",
+        }
+        self.assertTrue(required.issubset(set(TOOLS)))
+        self.assertGreaterEqual(len(TOOLS), 40)
+
     def test_recent_chat_context_available_for_followups(self):
         ctx = recent_chat_context(limit=5)
         self.assertIsInstance(ctx, str)

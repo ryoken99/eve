@@ -34,6 +34,8 @@ Este ficheiro guarda capacidades operacionais que ja foram ensinadas, testadas o
 - When Eve drafts an X post, she should preserve it as a pending `x_post_draft` until Sandro publishes, schedules, replaces, or cancels it.
 - Immediate X publication uses `publish_x_post_now`; scheduled X publication uses `schedule_x_post`.
 - Tool actions are recorded in the task ledger so local actions can be audited as started/done/failed.
+- The formal registry in `core/eve_tool_registry.py` exposes local tools for scheduling, browser/search, terminal, workspace files, screen/OCR, mouse, keyboard, email drafts/search, notifications, awareness, diary/memory, autonomy cycles, Windows tasks, safety mode, admin command requests, and trusted skills.
+- If a tool exists in the registry, Eve must attempt the tool or explain the real execution failure. She must not answer from generic model limitations.
 
 ## Desktop actions
 
