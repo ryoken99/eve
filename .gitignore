@@ -48,6 +48,12 @@ state/daemon_heartbeat.json
 state/daemon.stop
 state/task_ledger.jsonl
 state/pending_intent.json
+state/cron_jobs.json
+state/processes.json
+state/sessions.sqlite3
+state/session_exports/*.jsonl
+skills/.usage.json
+skills/.archive/
 external/
 memory/procedural/apps/*.json
 memory/procedural/demonstrations/*.events.json

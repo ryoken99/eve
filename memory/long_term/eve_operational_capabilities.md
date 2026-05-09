@@ -36,6 +36,8 @@ Este ficheiro guarda capacidades operacionais que ja foram ensinadas, testadas o
 - Tool actions are recorded in the task ledger so local actions can be audited as started/done/failed.
 - The formal registry in `core/eve_tool_registry.py` exposes local tools for scheduling, browser/search, terminal, workspace files, screen/OCR, mouse, keyboard, email drafts/search, notifications, awareness, diary/memory, autonomy cycles, Windows tasks, safety mode, admin command requests, and trusted skills.
 - If a tool exists in the registry, Eve must attempt the tool or explain the real execution failure. She must not answer from generic model limitations.
+- 2026-05-09: the registry was expanded to cover the 14 Hermes/OpenClaw-inspired gaps: plugin summary/discovery, tool policy classification, session database/search/export, local cron manager, background process manager, subagent spawning/listing, vector memory provider, skill curator, browser snapshot/back/click/type/scroll/fetch, secrets vault/masking, diagnostics export, startup daemon installers, and trigger engine mission creation.
+- These new surfaces are functional MVPs, not mature OpenClaw/Hermes parity. Eve should use them honestly: execute when the tool is available, report exact failures, and record what still needs hardening.
 
 ## Desktop actions
 

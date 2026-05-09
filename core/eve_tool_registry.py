@@ -5,25 +5,38 @@ import urllib.parse
 from dataclasses import dataclass
 from typing import Callable
 
+from autonomy.cron_manager import add_cron_job, list_cron_jobs, run_due_jobs, set_cron_enabled
+from autonomy.startup_service import install_startup_console_task, install_startup_daemon_task
+from autonomy.trigger_engine import create_missions_from_triggers, discover_triggers
 from autonomy.autonomy_reporter import run_autonomy_report_cycle
 from computer.keyboard_control import hotkey, press_key, type_text
 from computer.mouse_control import click, double_click, mouse_position, move_mouse, scroll
 from computer.ocr import ocr_status
 from computer.vision import describe_screen, find_text_on_screen, first_text_center, monitor_report, screenshot_monitor
 from core.awareness_engine import collect_awareness, describe_awareness
+from core.diagnostics import build_diagnostics_bundle
+from core.plugin_registry import plugin_summary
 from core.paths import EVE_ROOT
 from core.capability_self_test import format_capability_self_test
+from core.session_store import add_session_message, export_session, search_sessions
+from core.subagent_manager import list_subagents, spawn_subagent
 from dream.diary_consolidator import consolidate
+from learning.skill_curator import curate_skills, record_skill_usage
 from learning.skill_manager import run_skill
 from memory.diary_manager import read_diary
 from memory.memory_manager import append_memory_file, context_bundle, read_memory_file, remember_fact, write_memory_file
+from memory.vector_provider import rebuild_vector_memory, vector_prefetch
+from security.secrets_vault import get_secret, list_secrets, mask_secret, store_secret
 from security.safety_modes import current_safety_mode, describe_safety, set_safety_mode
+from security.tool_policy import classify_tool
 from tools.admin_executor import launch_elevated_powershell, run_admin_command
+from tools.browser_advanced import browser_back, browser_click_text, browser_fetch_url, browser_scroll, browser_snapshot, browser_type_text
 from tools.browser_human import open_url, search_web
 from tools.desktop_tasks import create_desktop_file, create_desktop_folder, schedule_desktop_folder_creation
 from tools.email_human import create_gmail_draft, gmail_search_visual
 from tools.filesystem import append_file, list_dir, read_file, write_file
 from tools.notification import notify
+from tools.process_manager import list_processes, poll_process, start_process, stop_process
 from tools.terminal import run_command
 from tools.web_research import run_web_research_report
 from tools.windows_scheduler import create_daily_task, list_eve_tasks
@@ -330,6 +343,165 @@ def _launch_elevated_powershell(args: dict) -> dict:
     return {"ok": True, "tool": "launch_elevated_powershell", "result": launch_elevated_powershell(str(args.get("command") or ""))}
 
 
+def _tool_policy(args: dict) -> dict:
+    tool = str(args.get("tool") or "")
+    return {"ok": True, "tool": "tool_policy", "result": classify_tool(tool, args.get("args") or {}).as_dict()}
+
+
+def _plugin_summary(args: dict) -> dict:
+    return {"ok": True, "tool": "plugin_summary", "result": plugin_summary()}
+
+
+def _session_add_message(args: dict) -> dict:
+    return {
+        "ok": True,
+        "tool": "session_add_message",
+        "result": add_session_message(
+            str(args.get("session_id") or "main"),
+            str(args.get("role") or "note"),
+            str(args.get("content") or ""),
+            args.get("metadata") or {},
+        ),
+    }
+
+
+def _session_search(args: dict) -> dict:
+    return {"ok": True, "tool": "session_search", "result": search_sessions(str(args.get("query") or ""), limit=int(args.get("limit") or 20))}
+
+
+def _session_export(args: dict) -> dict:
+    return {"ok": True, "tool": "session_export", "result": export_session(str(args.get("session_id") or "main"))}
+
+
+def _cron_add(args: dict) -> dict:
+    return {
+        "ok": True,
+        "tool": "cron_add",
+        "result": add_cron_job(str(args.get("name") or "Eve Cron"), str(args.get("schedule") or "1h"), str(args.get("command") or "")),
+    }
+
+
+def _cron_list(args: dict) -> dict:
+    return {"ok": True, "tool": "cron_list", "result": list_cron_jobs()}
+
+
+def _cron_set_enabled(args: dict) -> dict:
+    return {"ok": True, "tool": "cron_set_enabled", "result": set_cron_enabled(str(args.get("job_id") or ""), bool(args.get("enabled", True)))}
+
+
+def _cron_run_due(args: dict) -> dict:
+    return {"ok": True, "tool": "cron_run_due", "result": run_due_jobs(dry_run=bool(args.get("dry_run", False)))}
+
+
+def _start_process(args: dict) -> dict:
+    return {"ok": True, "tool": "start_process", "result": start_process(str(args.get("command") or ""), cwd=args.get("cwd"))}
+
+
+def _list_processes(args: dict) -> dict:
+    return {"ok": True, "tool": "list_processes", "result": list_processes()}
+
+
+def _poll_process(args: dict) -> dict:
+    return {"ok": True, "tool": "poll_process", "result": poll_process(str(args.get("process_id") or ""))}
+
+
+def _stop_process(args: dict) -> dict:
+    return {"ok": True, "tool": "stop_process", "result": stop_process(str(args.get("process_id") or ""))}
+
+
+def _spawn_subagent(args: dict) -> dict:
+    return {"ok": True, "tool": "spawn_subagent", "result": spawn_subagent(str(args.get("goal") or ""), role=str(args.get("role") or "worker"), context=str(args.get("context") or ""))}
+
+
+def _list_subagents(args: dict) -> dict:
+    return {"ok": True, "tool": "list_subagents", "result": list_subagents()}
+
+
+def _vector_rebuild(args: dict) -> dict:
+    return {"ok": True, "tool": "vector_rebuild", "result": rebuild_vector_memory()}
+
+
+def _vector_prefetch(args: dict) -> dict:
+    return {"ok": True, "tool": "vector_prefetch", "result": vector_prefetch(str(args.get("query") or ""), limit=int(args.get("limit") or 5))}
+
+
+def _skill_record_usage(args: dict) -> dict:
+    return {"ok": True, "tool": "skill_record_usage", "result": record_skill_usage(str(args.get("skill") or ""), event=str(args.get("event") or "run"))}
+
+
+def _skill_curate(args: dict) -> dict:
+    return {
+        "ok": True,
+        "tool": "skill_curate",
+        "result": curate_skills(
+            stale_after_days=int(args.get("stale_after_days") or 30),
+            archive_after_days=int(args.get("archive_after_days") or 90),
+            dry_run=bool(args.get("dry_run", True)),
+        ),
+    }
+
+
+def _browser_snapshot(args: dict) -> dict:
+    return {"ok": True, "tool": "browser_snapshot", "result": browser_snapshot()}
+
+
+def _browser_back(args: dict) -> dict:
+    return {"ok": True, "tool": "browser_back", "result": browser_back()}
+
+
+def _browser_click_text(args: dict) -> dict:
+    return {"ok": True, "tool": "browser_click_text", "result": browser_click_text(str(args.get("text") or ""), args.get("verify_text"))}
+
+
+def _browser_type_text(args: dict) -> dict:
+    return {"ok": True, "tool": "browser_type_text", "result": browser_type_text(str(args.get("text") or ""), submit=bool(args.get("submit", False)))}
+
+
+def _browser_scroll(args: dict) -> dict:
+    return {"ok": True, "tool": "browser_scroll", "result": browser_scroll(int(args.get("amount") or -5))}
+
+
+def _browser_fetch_url(args: dict) -> dict:
+    return {"ok": True, "tool": "browser_fetch_url", "result": browser_fetch_url(str(args.get("url") or ""))}
+
+
+def _secrets_store(args: dict) -> dict:
+    return {"ok": True, "tool": "secrets_store", "result": store_secret(str(args.get("name") or ""), str(args.get("value") or ""), note=str(args.get("note") or ""))}
+
+
+def _secrets_get(args: dict) -> dict:
+    return {"ok": True, "tool": "secrets_get", "result": get_secret(str(args.get("name") or ""), reveal=bool(args.get("reveal", False)))}
+
+
+def _secrets_list(args: dict) -> dict:
+    return {"ok": True, "tool": "secrets_list", "result": list_secrets()}
+
+
+def _secrets_mask(args: dict) -> dict:
+    value = str(args.get("value") or "")
+    return {"ok": True, "tool": "secrets_mask", "result": {"masked": mask_secret(value)}}
+
+
+def _diagnostics_export(args: dict) -> dict:
+    return {"ok": True, "tool": "diagnostics_export", "result": build_diagnostics_bundle(str(args.get("note") or ""))}
+
+
+def _install_startup_daemon(args: dict) -> dict:
+    return {"ok": True, "tool": "install_startup_daemon", "result": install_startup_daemon_task(time_hhmm=str(args.get("time") or "09:00"))}
+
+
+def _install_startup_console(args: dict) -> dict:
+    return {"ok": True, "tool": "install_startup_console", "result": install_startup_console_task(time_hhmm=str(args.get("time") or "09:01"))}
+
+
+def _triggers_discover(args: dict) -> dict:
+    return {"ok": True, "tool": "triggers_discover", "result": discover_triggers()}
+
+
+def _triggers_create_missions(args: dict) -> dict:
+    return {"ok": True, "tool": "triggers_create_missions", "result": create_missions_from_triggers(max_new=int(args.get("max_new") or 2))}
+
+
 TOOLS: dict[str, EveTool] = {
     "capability_self_test": EveTool("capability_self_test", "Verifica capacidades locais atuais da Eve.", {}, _capability_self_test),
     "create_desktop_file": EveTool("create_desktop_file", "Cria ficheiro no Ambiente de Trabalho.", {"name": "ola.txt"}, _create_desktop_file),
@@ -378,6 +550,40 @@ TOOLS: dict[str, EveTool] = {
     "set_safety_mode": EveTool("set_safety_mode", "Altera modo de seguranca da Eve.", {"mode": "unrestricted_mode", "reason": "Sandro pediu"}, _set_safety_mode),
     "admin_command": EveTool("admin_command", "Executa comando admin quando aprovado/liberado.", {"command": "Get-Process", "reason": "diagnostico", "approved": True}, _admin_command),
     "launch_elevated_powershell": EveTool("launch_elevated_powershell", "Abre PowerShell elevado temporario com comando.", {"command": "Write-Host Eve"}, _launch_elevated_powershell),
+    "tool_policy": EveTool("tool_policy", "Classifica risco/aprovacao de uma ferramenta.", {"tool": "run_terminal", "args": {}}, _tool_policy),
+    "plugin_summary": EveTool("plugin_summary", "Lista plugins locais da Eve.", {}, _plugin_summary),
+    "session_add_message": EveTool("session_add_message", "Grava mensagem numa session database pesquisavel.", {"session_id": "main", "role": "user", "content": "texto", "metadata": {}}, _session_add_message),
+    "session_search": EveTool("session_search", "Pesquisa conversas/sessoes guardadas.", {"query": "browser", "limit": 20}, _session_search),
+    "session_export": EveTool("session_export", "Exporta sessao para JSONL.", {"session_id": "main"}, _session_export),
+    "cron_add": EveTool("cron_add", "Cria cron local simples da Eve.", {"name": "dream", "schedule": "1h", "command": "python -m app.eve_codex daemon-tick"}, _cron_add),
+    "cron_list": EveTool("cron_list", "Lista cron jobs locais da Eve.", {}, _cron_list),
+    "cron_set_enabled": EveTool("cron_set_enabled", "Ativa/pausa cron job local.", {"job_id": "cron_x", "enabled": False}, _cron_set_enabled),
+    "cron_run_due": EveTool("cron_run_due", "Executa cron jobs vencidos.", {"dry_run": True}, _cron_run_due),
+    "start_process": EveTool("start_process", "Inicia processo PowerShell em background.", {"command": "Start-Sleep 30", "cwd": "D:\\Eve"}, _start_process),
+    "list_processes": EveTool("list_processes", "Lista processos geridos pela Eve.", {}, _list_processes),
+    "poll_process": EveTool("poll_process", "Consulta estado de processo gerido.", {"process_id": "proc_x"}, _poll_process),
+    "stop_process": EveTool("stop_process", "Para processo gerido pela Eve.", {"process_id": "proc_x"}, _stop_process),
+    "spawn_subagent": EveTool("spawn_subagent", "Cria subagente local em background.", {"goal": "investigar X", "role": "worker", "context": ""}, _spawn_subagent),
+    "list_subagents": EveTool("list_subagents", "Lista subagentes/processos de subagente.", {}, _list_subagents),
+    "vector_rebuild": EveTool("vector_rebuild", "Reconstrui indice semantico local.", {}, _vector_rebuild),
+    "vector_prefetch": EveTool("vector_prefetch", "Pesquisa memoria semantica local antes de responder.", {"query": "Sandro karate", "limit": 5}, _vector_prefetch),
+    "skill_record_usage": EveTool("skill_record_usage", "Regista uso/view de uma skill.", {"skill": "trusted/x_publish_text_learning", "event": "run"}, _skill_record_usage),
+    "skill_curate": EveTool("skill_curate", "Curadoria de skills: stale/archive dry-run ou real.", {"stale_after_days": 30, "archive_after_days": 90, "dry_run": True}, _skill_curate),
+    "browser_snapshot": EveTool("browser_snapshot", "Snapshot visual/OCR do browser/ecra.", {}, _browser_snapshot),
+    "browser_back": EveTool("browser_back", "Voltar pagina no browser.", {}, _browser_back),
+    "browser_click_text": EveTool("browser_click_text", "Clica texto no browser por OCR.", {"text": "Publicar", "verify_text": ""}, _browser_click_text),
+    "browser_type_text": EveTool("browser_type_text", "Escreve no foco atual do browser.", {"text": "texto", "submit": False}, _browser_type_text),
+    "browser_scroll": EveTool("browser_scroll", "Scroll no browser.", {"amount": -5}, _browser_scroll),
+    "browser_fetch_url": EveTool("browser_fetch_url", "Extrai texto de URL por HTTP leve.", {"url": "https://example.com"}, _browser_fetch_url),
+    "secrets_store": EveTool("secrets_store", "Guarda segredo mascarado no vault local.", {"name": "api_key", "value": "secret", "note": ""}, _secrets_store),
+    "secrets_get": EveTool("secrets_get", "Le segredo mascarado por defeito.", {"name": "api_key", "reveal": False}, _secrets_get),
+    "secrets_list": EveTool("secrets_list", "Lista nomes de segredos mascarados.", {}, _secrets_list),
+    "secrets_mask": EveTool("secrets_mask", "Mascara texto sensivel para logs/respostas.", {"value": "secret"}, _secrets_mask),
+    "diagnostics_export": EveTool("diagnostics_export", "Exporta diagnostico/trajectory basica da Eve.", {"note": "debug"}, _diagnostics_export),
+    "install_startup_daemon": EveTool("install_startup_daemon", "Instala tarefa Windows para tick autonomo recorrente.", {"time": "09:00"}, _install_startup_daemon),
+    "install_startup_console": EveTool("install_startup_console", "Instala tarefa Windows para abrir consola Eve.", {"time": "09:01"}, _install_startup_console),
+    "triggers_discover": EveTool("triggers_discover", "Descobre impulsos/triggers autonomos.", {}, _triggers_discover),
+    "triggers_create_missions": EveTool("triggers_create_missions", "Cria missoes propostas a partir de triggers.", {"max_new": 2}, _triggers_create_missions),
 }
 
 
@@ -411,6 +617,8 @@ def execute_eve_tool(call: dict) -> dict:
     if not tool:
         return {"ok": False, "tool": tool_name, "error": f"Ferramenta desconhecida: {tool_name}"}
     try:
-        return tool.handler(args)
+        result = tool.handler(args)
+        result.setdefault("policy", classify_tool(tool_name, args).as_dict())
+        return result
     except Exception as exc:
-        return {"ok": False, "tool": tool_name, "error": f"{type(exc).__name__}: {exc}"}
+        return {"ok": False, "tool": tool_name, "error": f"{type(exc).__name__}: {exc}", "policy": classify_tool(tool_name, args).as_dict()}

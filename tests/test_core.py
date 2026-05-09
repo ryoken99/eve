@@ -58,6 +58,14 @@ from autonomy.token_gate import decide_llm_call, record_llm_call
 from autonomy.autonomy_reporter import run_autonomy_report_cycle
 from tools.x_scheduler import build_x_post_task_command, schedule_x_post
 from tools.desktop_tasks import parse_desktop_file_request, parse_desktop_folder_request, parse_desktop_folder_schedule_request, schedule_desktop_folder_creation
+from security.tool_policy import classify_tool
+from core.session_store import add_session_message, search_sessions
+from autonomy.cron_manager import add_cron_job, list_cron_jobs, run_due_jobs
+from tools.process_manager import start_process, poll_process, stop_process
+from core.plugin_registry import plugin_summary
+from memory.vector_provider import LocalVectorMemoryProvider
+from learning.skill_curator import record_skill_usage, curate_skills
+from security.secrets_vault import mask_secret
 
 
 class EveCoreTests(unittest.TestCase):
@@ -341,9 +349,56 @@ class EveCoreTests(unittest.TestCase):
             "autonomy_cycle",
             "admin_command",
             "run_skill",
+            "tool_policy",
+            "plugin_summary",
+            "session_search",
+            "cron_add",
+            "start_process",
+            "spawn_subagent",
+            "vector_prefetch",
+            "skill_curate",
+            "browser_snapshot",
+            "secrets_mask",
+            "diagnostics_export",
+            "install_startup_daemon",
+            "triggers_discover",
         }
         self.assertTrue(required.issubset(set(TOOLS)))
-        self.assertGreaterEqual(len(TOOLS), 40)
+        self.assertGreaterEqual(len(TOOLS), 80)
+
+    def test_tool_policy_classifies_core_risks(self):
+        self.assertEqual(classify_tool("workspace_read_file").approval_class, "readonly")
+        self.assertEqual(classify_tool("run_terminal").approval_class, "exec_capable")
+        self.assertEqual(classify_tool("publish_x_post_now").approval_class, "public_or_external")
+
+    def test_session_store_searches_messages(self):
+        add_session_message("unit-session", "user", "Eve session searchable unique needle", {"unit": True})
+        rows = search_sessions("unique needle", limit=5)
+        self.assertTrue(any(row["session_id"] == "unit-session" for row in rows))
+
+    def test_cron_manager_dry_run(self):
+        job = add_cron_job("unit cron", "2020-01-01T00:00:00Z", "Write-Output ok")
+        self.assertTrue(any(item["id"] == job["id"] for item in list_cron_jobs()))
+        result = run_due_jobs(dry_run=True)
+        self.assertGreaterEqual(result["count"], 1)
+
+    def test_process_manager_lifecycle(self):
+        proc = start_process("Start-Sleep -Seconds 20", cwd="D:\\Eve")
+        polled = poll_process(proc["id"])
+        self.assertIn(polled["status"], {"running", "exited"})
+        stopped = stop_process(proc["id"])
+        self.assertEqual(stopped["status"], "stopped")
+
+    def test_supporting_gap_modules_smoke(self):
+        self.assertIn("plugin_root", plugin_summary())
+        provider = LocalVectorMemoryProvider()
+        sync = provider.sync_turn([{"role": "user", "content": "Eve vector provider smoke"}])
+        self.assertEqual(sync["indexed"], 1)
+        self.assertTrue(provider.prefetch("vector provider", limit=1))
+        usage = record_skill_usage("trusted/x_publish_text_learning")
+        self.assertGreaterEqual(usage["use_count"], 1)
+        self.assertIn("actions", curate_skills(dry_run=True))
+        self.assertEqual(mask_secret("1234567890"), "1234**7890")
 
     def test_recent_chat_context_available_for_followups(self):
         ctx = recent_chat_context(limit=5)

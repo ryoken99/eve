@@ -10,6 +10,7 @@ LOGS_DIR = EVE_ROOT / "logs"
 WORKSPACE_DIR = EVE_ROOT / "workspace"
 SCRIPTS_DIR = EVE_ROOT / "scripts"
 SKILLS_DIR = EVE_ROOT / "skills"
+PLUGINS_DIR = EVE_ROOT / "plugins"
 STATE_DIR = EVE_ROOT / "state"
 BACKUPS_DIR = EVE_ROOT / "backups"
 LAB_DIR = EVE_ROOT / "lab"
@@ -47,6 +48,7 @@ def ensure_project_dirs() -> None:
         LOGS_DIR / "email_drafts",
         WORKSPACE_DIR,
         SCRIPTS_DIR,
+        PLUGINS_DIR,
         SKILLS_DIR / "draft",
         SKILLS_DIR / "trusted",
         SKILLS_DIR / "app_specific",

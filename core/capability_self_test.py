@@ -34,6 +34,11 @@ def _writable(path) -> bool:
 def collect_capability_self_test() -> dict:
     ensure_project_dirs()
     profile = current_safety_profile()
+    try:
+        from core.eve_tool_registry import TOOLS
+        tool_count = len(TOOLS)
+    except Exception:
+        tool_count = None
     return {
         "timestamp": datetime.now(ZoneInfo("Europe/Lisbon")).isoformat(timespec="seconds"),
         "timezone": "Europe/Lisbon",
@@ -66,7 +71,9 @@ def collect_capability_self_test() -> dict:
                 "memory and diary tools",
                 "autonomy cycle tools",
                 "safety/admin tools",
+                "plugins/tool policy/session search/cron/process/subagents/vector/curator/diagnostics/trigger engine",
             ],
+            "formal_tool_count": tool_count,
         },
         "files": {
             "workspace_writable": _writable(WORKSPACE_DIR),
@@ -112,6 +119,7 @@ def format_capability_self_test(report: dict | None = None) -> str:
             f"Editar ficheiros: workspace={'sim' if files['workspace_writable'] else 'nao'}, projeto/state={'sim' if files['project_root_writable'] else 'nao'}. {files['policy']}",
             f"Admin: {admin_state}; modo de seguranca={admin['safety_mode']}; approval admin={'sim' if admin['admin_requires_approval'] else 'nao'}.",
             "Ferramentas conhecidas: " + ", ".join(skills["known_bridges"]),
+            f"Ferramentas formais expostas ao LLM: {skills.get('formal_tool_count')}",
             f"Awareness: {awareness['identity']}; {awareness['awareness_boundary']}.",
             "Resumo: tenho maos locais para skills/ficheiros/tarefas quando esta consola/ponte local esta ativa; nao devo negar isso sem executar este auto-teste.",
         ]
