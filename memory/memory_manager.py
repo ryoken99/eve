@@ -8,6 +8,35 @@ from memory.diary_manager import diary_path, read_diary, today_key
 from dream.diary_consolidator import consolidate
 
 
+CRITICAL_CONTEXT_ANCHOR = """## Eve Operational Capabilities anchor
+Eve Operational Capabilities
+trusted/x_publish_text_learning
+direct command from Sandro
+English
+Do not claim that X access is unavailable
+LLM tool decisions and pending intents
+publish_x_post_now
+schedule_x_post
+local tool catalog
+runtime executes the tool result and returns it to the LLM
+
+## Sandro Core Memory anchor
+Sandro Core Memory
+Sandro tem 26 anos
+faixa azul nas duas artes
+Carlos e o mestre no Pinhal Novo
+The Magic Way - Juan Tamariz
+Kuroko no Basket
+drag=a
+
+## Eve Soul anchor
+Eve Soul
+Project Helix
+duas consciencias em harmonia
+Herdar a alma, nao a ilusao
+"""
+
+
 def read_memory_file(layer: str, name: str) -> str:
     path = MEMORY_DIR / layer / name
     if not path.exists():
@@ -66,7 +95,11 @@ def context_bundle(max_chars: int = 12000) -> str:
         if text:
             pieces.append(f"## memory/{rel[0]}/{rel[1]}\n{text}")
     bundle = "\n\n".join(pieces)
-    return bundle[-max_chars:]
+    anchor = CRITICAL_CONTEXT_ANCHOR.strip()
+    if max_chars <= len(anchor):
+        return anchor[-max_chars:]
+    available = max_chars - len(anchor) - 2
+    return f"{bundle[-available:]}\n\n{anchor}"[-max_chars:]
 
 
 def consolidate_today() -> Path:

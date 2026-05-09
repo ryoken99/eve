@@ -46,5 +46,8 @@ memory/technology/research_reports.md
 mobile_bridge/*.jsonl
 state/daemon_heartbeat.json
 state/daemon.stop
+state/task_ledger.jsonl
+state/pending_intent.json
+external/
 memory/procedural/apps/*.json
 memory/procedural/demonstrations/*.events.json

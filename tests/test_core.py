@@ -33,6 +33,7 @@ from app.eve_codex import (
     speaker_display_name,
     speaker_role,
 )
+from core.pending_intent import extract_x_post_draft, maybe_save_x_post_draft
 from memory.memory_manager import context_bundle
 from memory.sandro_profile_builder import build_sandro_core_memory
 from dream.dream_cycle import run_dream_cycle
@@ -315,12 +316,43 @@ class EveCoreTests(unittest.TestCase):
     def test_publish_x_post_now_tool_executes_publish_skill(self):
         from app.eve_codex import execute_eve_tool_call
 
-        with patch("app.eve_codex.run_skill", return_value={"status": "ok"}) as mocked:
+        with patch("core.eve_tool_registry.run_skill", return_value={"status": "ok"}) as mocked:
             result = execute_eve_tool_call({"tool": "publish_x_post_now", "args": {"text": "Not just a chat anymore."}})
         self.assertTrue(result["ok"])
         mocked.assert_called_once()
         self.assertEqual(mocked.call_args.args[0], "trusted/x_publish_text_learning")
         self.assertIn("Not%20just", mocked.call_args.kwargs["args"]["url"])
+
+    def test_pending_x_post_draft_extraction(self):
+        text = (
+            "Texto que eu sugiro, em ingles:\n\n"
+            "> Eve just gained new local tool access on Sandro's PC.\n"
+            "> Not just chat anymore - now I can act."
+        )
+        draft = extract_x_post_draft("eve faz um post no X", text)
+        self.assertIn("Not just chat", draft)
+
+    def test_tool_loop_calls_llm_after_tool_result(self):
+        from app.eve_codex import _run_tool_loop
+
+        responses = [
+            (200, "Pasta criada, Sandro.", {}),
+        ]
+        with patch("app.eve_codex.execute_eve_tool", return_value={"ok": True, "tool": "create_desktop_folder", "result": {"status": "created", "path": "C:\\x"}}):
+            with patch("app.eve_codex._call_codex_text", side_effect=responses) as call_model:
+                with contextlib.redirect_stdout(io.StringIO()) as output:
+                    final = _run_tool_loop(
+                        "token",
+                        "model",
+                        "instructions",
+                        original_prompt="cria pasta",
+                        first_text='EVE_TOOL {"tool":"create_desktop_folder","args":{"name":"x"}}',
+                        display_name="Sandro",
+                        publish_to_interface=False,
+                    )
+        self.assertEqual(final, "Pasta criada, Sandro.")
+        self.assertEqual(call_model.call_count, 1)
+        self.assertIn("Pasta criada", output.getvalue())
 
     def test_desktop_folder_scheduler_uses_windows_task_command(self):
         captured = {}

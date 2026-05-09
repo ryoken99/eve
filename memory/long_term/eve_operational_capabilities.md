@@ -26,6 +26,15 @@ Este ficheiro guarda capacidades operacionais que ja foram ensinadas, testadas o
 - X scheduling requires an explicit post/publication/tweet intent near the scheduling request.
 - In compound requests, split and execute each action separately before choosing a tool.
 
+## LLM tool decisions and pending intents
+
+- User messages should go first to Eve/LLM with the available local tool catalog. Eve decides which tool to call by emitting `EVE_TOOL {...}`.
+- The runtime executes only the tool Eve selected, records the tool result, then gives the result back to the LLM for a final natural-language answer.
+- Eve must use the recent chat context and pending intent state for follow-up commands such as "ok faz o post", "publica agora", "o texto 2", or "o que disseste".
+- When Eve drafts an X post, she should preserve it as a pending `x_post_draft` until Sandro publishes, schedules, replaces, or cancels it.
+- Immediate X publication uses `publish_x_post_now`; scheduled X publication uses `schedule_x_post`.
+- Tool actions are recorded in the task ledger so local actions can be audited as started/done/failed.
+
 ## Desktop actions
 
 - Eve can create a file on Sandro's Desktop when explicitly requested.

@@ -31,6 +31,9 @@ from lab.lab_manager import create_candidate, list_candidates
 from memory.errors.error_memory import recent_errors
 from core.awareness_engine import describe_awareness
 from core.capability_self_test import format_capability_self_test
+from core.eve_tool_registry import execute_eve_tool, tool_catalog_prompt
+from core.pending_intent import clear_pending_intent, maybe_save_x_post_draft, pending_intent_context
+from core.task_ledger import finish_tool_task, start_tool_task
 from core.self_report import format_self_report
 from computer.vision import describe_screen, find_text_on_screen, first_text_center, monitor_report, screenshot_monitor
 from computer.ocr import ocr_status
@@ -927,6 +930,20 @@ def is_capability_question(prompt: str) -> bool:
     return capability_hits >= 2 and any(term in lowered for term in ("skills", "ficheiros", "admin", "awareness", "awernees", "existencia", "existência"))
 
 
+def _call_codex_text(token: str, model: str, instructions: str, visible_prompt: str) -> tuple[int, str, dict]:
+    body = {
+        "model": model,
+        "instructions": instructions,
+        "input": [{"role": "user", "content": [{"type": "input_text", "text": visible_prompt}]}],
+        "store": False,
+        "stream": True,
+        "reasoning": {"effort": "medium", "summary": "auto"},
+        "include": ["reasoning.encrypted_content"],
+    }
+    url = f"{CODEX_BASE_URL}/responses"
+    return request_sse("POST", url, headers=codex_headers(token), data=body, timeout=120)
+
+
 def ask(prompt: str, *, speaker: str = "sandro", publish_to_interface: bool = True, allow_tools: bool = True) -> str:
     auth = refresh_if_needed(load_auth())
     token = auth["tokens"]["access_token"]
@@ -934,6 +951,7 @@ def ask(prompt: str, *, speaker: str = "sandro", publish_to_interface: bool = Tr
     model = config.get("model") or DEFAULT_MODEL
     memory_context = context_bundle()
     recent_context = recent_chat_context()
+    pending_context = pending_intent_context()
     entity_context = relevant_entity_memory(prompt, limit=8)
     role = speaker_role(speaker)
     display_name = speaker_display_name(speaker)
@@ -952,7 +970,8 @@ def ask(prompt: str, *, speaker: str = "sandro", publish_to_interface: bool = Tr
         "For local actions, you have a tool catalog. Decide yourself whether to call a tool and emit the exact EVE_TOOL JSON when needed. "
         "When answering personal facts, use RELEVANT ENTITY MEMORY. Distinguish stable real-profile facts from fictional, roleplay, or simulated-story sources. "
         "If the memory only suggests a fact from roleplay/simulation, say it is uncertain instead of presenting it as confirmed.\n\n"
-        f"{LOCAL_TOOL_CATALOG if allow_tools else 'Ferramentas locais ja executadas ou indisponiveis nesta etapa; responde em texto normal.'}\n\n"
+        f"{tool_catalog_prompt() if allow_tools else 'Ferramentas locais ja executadas ou indisponiveis nesta etapa; responde em texto normal.'}\n\n"
+        f"INTENCAO PENDENTE:\n{pending_context}\n\n"
         f"HISTORICO RECENTE DO CHAT (usa para referencias imediatas):\n{recent_context}\n\n"
         f"LOCAL MEMORY CONTEXT:\n{memory_context}\n\n"
         f"ENTITY BASE MEMORY ROOT: {ENTITIES_MEMORY_DIR}\n"
@@ -961,40 +980,33 @@ def ask(prompt: str, *, speaker: str = "sandro", publish_to_interface: bool = Tr
     append_chat(role, prompt, tags=["codex_instructor"] if role == "codex_instructor" else None)
     if publish_to_interface:
         publish_interface_message(display_name, prompt, target="Eve", tags=["incoming", role])
-    body = {
-        "model": model,
-        "instructions": instructions,
-        "input": [{"role": "user", "content": [{"type": "input_text", "text": visible_prompt}]}],
-        "store": False,
-        "stream": True,
-        "reasoning": {"effort": "medium", "summary": "auto"},
-        "include": ["reasoning.encrypted_content"],
-    }
-    url = f"{CODEX_BASE_URL}/responses"
-    status_code, text, payload = request_sse("POST", url, headers=codex_headers(token), data=body, timeout=120)
+    status_code, text, payload = _call_codex_text(token, model, instructions, visible_prompt)
     if status_code == 401:
         auth = refresh_if_needed(load_auth(), force=True)
-        status_code, text, payload = request_sse("POST", url, headers=codex_headers(auth["tokens"]["access_token"]), data=body, timeout=120)
+        token = auth["tokens"]["access_token"]
+        status_code, text, payload = _call_codex_text(token, model, instructions, visible_prompt)
     if status_code != 200:
         text = f"Pedido falhou ({status_code}).\n{json.dumps(payload, indent=2)[:4000]}"
         safe_print(text)
         append_chat("error", text, tags=["llm_error"])
         return text
     if text and allow_tools:
-        tool_call = _extract_eve_tool_call(text)
-        if tool_call:
-            append_chat("assistant", text, tags=["tool_call", tool_call["tool"]])
-            tool_result = execute_eve_tool_call(tool_call)
-            append_chat("tool", json.dumps(tool_result, ensure_ascii=False), tags=["tool_result", tool_call["tool"]])
-            result_text = format_eve_tool_result(tool_result)
-            safe_print(result_text)
-            append_chat("assistant", result_text, tags=["tool", tool_call["tool"]])
-            if publish_to_interface:
-                publish_interface_message("Eve", result_text, target=display_name, tags=["outgoing", "tool", tool_call["tool"]])
-            return result_text
+        final_text = _run_tool_loop(
+            token,
+            model,
+            instructions,
+            original_prompt=visible_prompt,
+            first_text=text,
+            display_name=display_name,
+            publish_to_interface=publish_to_interface,
+        )
+        if final_text is not None:
+            return final_text
     if text:
         safe_print(text)
         append_chat("assistant", text)
+        if role == "user":
+            maybe_save_x_post_draft(prompt, text)
         if publish_to_interface:
             publish_interface_message("Eve", text, target=display_name, tags=["reply", role])
         return text
@@ -1005,6 +1017,52 @@ def ask(prompt: str, *, speaker: str = "sandro", publish_to_interface: bool = Tr
         if publish_to_interface:
             publish_interface_message("Eve", text, target=display_name, tags=["reply", role])
         return text
+
+
+def _run_tool_loop(
+    token: str,
+    model: str,
+    instructions: str,
+    *,
+    original_prompt: str,
+    first_text: str,
+    display_name: str,
+    publish_to_interface: bool,
+    max_tool_iterations: int = 3,
+) -> str | None:
+    text = first_text
+    for _ in range(max_tool_iterations):
+        tool_call = _extract_eve_tool_call(text)
+        if not tool_call:
+            return None if text == first_text else _finalize_assistant_text(text, display_name, publish_to_interface)
+        append_chat("assistant", text, tags=["tool_call", tool_call["tool"]])
+        task_id = start_tool_task(tool_call["tool"], tool_call.get("args") or {})
+        tool_result = execute_eve_tool(tool_call)
+        finish_tool_task(task_id, tool_result)
+        append_chat("tool", json.dumps(tool_result, ensure_ascii=False), tags=["tool_result", tool_call["tool"]])
+        if tool_call["tool"] in {"publish_x_post_now", "schedule_x_post"} and tool_result.get("ok"):
+            clear_pending_intent("x_post_completed")
+        result_text = format_eve_tool_result(tool_result)
+        followup_prompt = (
+            "Resultado de ferramenta local para o pedido original.\n\n"
+            f"Pedido original:\n{original_prompt}\n\n"
+            f"Tool call:\n{json.dumps(tool_call, ensure_ascii=False)}\n\n"
+            f"Tool result resumido:\n{result_text}\n\n"
+            "Agora responde ao utilizador em texto normal. Se ainda precisares de outra ferramenta, podes emitir outro EVE_TOOL."
+        )
+        status_code, text, payload = _call_codex_text(token, model, instructions, followup_prompt)
+        if status_code != 200:
+            text = result_text
+            return _finalize_assistant_text(text, display_name, publish_to_interface, tags=["tool", tool_call["tool"]])
+    return _finalize_assistant_text(text, display_name, publish_to_interface)
+
+
+def _finalize_assistant_text(text: str, display_name: str, publish_to_interface: bool, tags: list[str] | None = None) -> str:
+    safe_print(text)
+    append_chat("assistant", text, tags=tags)
+    if publish_to_interface:
+        publish_interface_message("Eve", text, target=display_name, tags=["reply"] + (tags or []))
+    return text
 
 
 def natural_browser_target(prompt: str) -> str | None:
@@ -1132,69 +1190,7 @@ def _extract_eve_tool_call(text: str) -> dict | None:
 
 
 def execute_eve_tool_call(call: dict) -> dict:
-    tool = call["tool"]
-    args = call.get("args") or {}
-    try:
-        if tool == "capability_self_test":
-            return {"ok": True, "tool": tool, "text": format_capability_self_test()}
-        if tool == "create_desktop_file":
-            return {"ok": True, "tool": tool, "result": create_desktop_file(str(args.get("name") or "eve_item"))}
-        if tool == "create_desktop_folder":
-            return {"ok": True, "tool": tool, "result": create_desktop_folder(str(args.get("name") or "eve_folder"))}
-        if tool == "open_browser":
-            return {"ok": True, "tool": tool, "result": open_url(str(args.get("url") or "https://www.google.com"))}
-        if tool == "schedule_desktop_folder":
-            return {
-                "ok": True,
-                "tool": tool,
-                "result": schedule_desktop_folder_creation(
-                    str(args.get("name") or "pasta_agendada_eve"),
-                    str(args.get("time") or ""),
-                ),
-            }
-        if tool == "schedule_x_post":
-            return {
-                "ok": True,
-                "tool": tool,
-                "result": schedule_x_post(
-                    str(args.get("text") or ""),
-                    str(args.get("time") or ""),
-                    approved_by="sandro",
-                ),
-            }
-        if tool == "publish_x_post_now":
-            text = str(args.get("text") or "").strip()
-            if not text:
-                return {"ok": False, "tool": tool, "error": "Texto vazio para publicar no X."}
-            encoded = urllib.parse.quote(text)
-            return {
-                "ok": True,
-                "tool": tool,
-                "result": run_skill(
-                    "trusted/x_publish_text_learning",
-                    args={"url": f"https://x.com/intent/post?text={encoded}", "text": text},
-                    approved=True,
-                ),
-            }
-        if tool == "run_terminal":
-            return {
-                "ok": True,
-                "tool": tool,
-                "result": run_command(
-                    str(args.get("command") or ""),
-                    cwd=str(args.get("cwd") or EVE_ROOT),
-                    timeout=int(args.get("timeout") or 60),
-                ),
-            }
-        if tool == "run_skill":
-            return {
-                "ok": True,
-                "tool": tool,
-                "result": run_skill(str(args.get("skill") or ""), args=args.get("args") or {}),
-            }
-        return {"ok": False, "tool": tool, "error": f"Ferramenta desconhecida: {tool}"}
-    except Exception as exc:
-        return {"ok": False, "tool": tool, "error": f"{type(exc).__name__}: {exc}"}
+    return execute_eve_tool(call)
 
 
 def format_eve_tool_result(result: dict) -> str:
