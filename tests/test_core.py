@@ -309,6 +309,14 @@ class EveCoreTests(unittest.TestCase):
         self.assertEqual(call["tool"], "create_desktop_folder")
         self.assertEqual(call["args"]["name"], "ola")
 
+    def test_llm_tool_protocol_extracts_tool_call_with_trailing_answer(self):
+        call = _extract_eve_tool_call(
+            'EVE_TOOL {"tool":"open_browser","args":{"url":"https://www.google.com/search?q=caes"}}'
+            "Abri o browser, Sandro."
+        )
+        self.assertEqual(call["tool"], "open_browser")
+        self.assertEqual(call["args"]["url"], "https://www.google.com/search?q=caes")
+
     def test_recent_chat_context_available_for_followups(self):
         ctx = recent_chat_context(limit=5)
         self.assertIsInstance(ctx, str)

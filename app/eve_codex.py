@@ -1174,11 +1174,13 @@ Regras:
 
 
 def _extract_eve_tool_call(text: str) -> dict | None:
-    match = re.search(r"EVE_TOOL\s*(\{.*?\})\s*$", text.strip(), re.DOTALL)
-    if not match:
+    marker = "EVE_TOOL"
+    index = text.find(marker)
+    if index < 0:
         return None
+    payload_text = text[index + len(marker) :].lstrip()
     try:
-        payload = json.loads(match.group(1))
+        payload, _ = json.JSONDecoder().raw_decode(payload_text)
     except json.JSONDecodeError:
         return None
     if not isinstance(payload, dict) or not isinstance(payload.get("tool"), str):
