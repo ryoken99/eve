@@ -17,6 +17,7 @@ memory/long_term/sandro_core_memory_sources.json
 memory/long_term/sandro_profile_comparison.md
 lab/**/__pycache__/
 lab/candidate_improvements/*.json
+lab/candidate_improvements/verified_updates/**
 !lab/candidate_improvements/.gitkeep
 lab/experiments/*.json
 !lab/experiments/.gitkeep

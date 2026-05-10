@@ -89,7 +89,7 @@ UI_TOOLS = {
     "browser_visual_steps",
 }
 ADMIN_TOOLS = {"admin_command", "launch_elevated_powershell"}
-SELF_MODIFY_TOOLS = {"patch_core", "self_improvement_cycle"}
+SELF_MODIFY_TOOLS = {"patch_core", "self_improvement_cycle", "verified_self_update"}
 
 
 @dataclass(frozen=True)

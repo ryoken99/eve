@@ -31,6 +31,7 @@ from memory.vector_provider import rebuild_vector_memory, vector_prefetch
 from security.secrets_vault import get_secret, list_secrets, mask_secret, store_secret
 from security.safety_modes import current_safety_mode, describe_safety, set_safety_mode
 from security.tool_policy import classify_tool, decide_tool_execution
+from self_improvement.verified_self_update import verified_core_update
 from tools.admin_executor import launch_elevated_powershell, run_admin_command
 from tools.browser_advanced import browser_back, browser_click_text, browser_fetch_url, browser_scroll, browser_snapshot, browser_type_text
 from tools.browser_human import browser_visual_task, navigate_address_bar, open_url, search_web
@@ -576,6 +577,20 @@ def _internal_plan(args: dict) -> dict:
     }
 
 
+def _verified_self_update(args: dict) -> dict:
+    return {
+        "ok": True,
+        "tool": "verified_self_update",
+        "result": verified_core_update(
+            str(args.get("path") or ""),
+            str(args.get("content") or ""),
+            tests=args.get("tests") or ["py_compile_candidate"],
+            max_attempts=int(args.get("max_attempts") or 1),
+            approved=bool(args.get("approved")),
+        ),
+    }
+
+
 TOOLS: dict[str, EveTool] = {
     "capability_self_test": EveTool("capability_self_test", "Verifica capacidades locais atuais da Eve.", {}, _capability_self_test),
     "create_desktop_file": EveTool("create_desktop_file", "Cria ficheiro no Ambiente de Trabalho.", {"name": "ola.txt"}, _create_desktop_file),
@@ -666,6 +681,7 @@ TOOLS: dict[str, EveTool] = {
     "session_resume": EveTool("session_resume", "Le o handoff ativo para retomar o fio da conversa.", {"max_chars": 7000}, _session_resume),
     "session_rotate": EveTool("session_rotate", "Cria checkpoint e muda para nova sessao ativa.", {"reason": "contexto grande", "new_session_id": ""}, _session_rotate),
     "internal_plan": EveTool("internal_plan", "Planeia que ferramentas internas usar para um pedido natural.", {"prompt": "trabalha em loop nesta tarefa", "limit": 5}, _internal_plan),
+    "verified_self_update": EveTool("verified_self_update", "Auto-melhoria verificada: testa candidato em sandbox e so aplica se os testes passarem.", {"path": "core/example.py", "content": "codigo", "tests": ["py_compile_candidate"], "max_attempts": 1, "approved": True}, _verified_self_update),
 }
 
 
@@ -689,6 +705,7 @@ def tool_catalog_prompt() -> str:
             "- Nao mandes o Sandro escrever slash commands quando tu podes usar a ferramenta equivalente. Slash commands sao atalhos humanos; para ti sao capacidades internas.",
             "- Para tarefas longas, cria/checkpointa missao, usa autonomia_cycle ou run_terminal background conforme necessario, e regista progresso.",
             "- Se o contexto estiver grande, usa session_checkpoint ou session_rotate antes de perder o fio.",
+            "- Para auto-melhoria ou edicao do teu core, usa verified_self_update: testar candidato primeiro, corrigir se falhar, aplicar so depois de passar.",
             "- Usa a intencao pendente e o historico recente para resolver referencias como \"o texto 2\", \"o que disseste\", \"faz o post\", \"publica agora\".",
             "- Se falta informacao real, faz uma pergunta em vez de inventar argumentos.",
             "- Depois da ferramenta executar, recebes o resultado e deves responder ao Sandro com o que aconteceu.",

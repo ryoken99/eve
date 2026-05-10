@@ -69,6 +69,7 @@ from core.plugin_registry import plugin_summary
 from memory.vector_provider import LocalVectorMemoryProvider
 from learning.skill_curator import record_skill_usage, curate_skills
 from security.secrets_vault import mask_secret
+from self_improvement.verified_self_update import verified_core_update
 
 
 class EveCoreTests(unittest.TestCase):
@@ -408,6 +409,7 @@ class EveCoreTests(unittest.TestCase):
             "session_rotate",
             "context_status",
             "internal_plan",
+            "verified_self_update",
         }
         self.assertTrue(required.issubset(set(TOOLS)))
         self.assertGreaterEqual(len(TOOLS), 80)
@@ -449,6 +451,65 @@ class EveCoreTests(unittest.TestCase):
         self.assertIn("run_terminal", tools)
         formatted = format_internal_plan("trocar de sessao sem perder o fio")
         self.assertIn("session_checkpoint", formatted)
+        self.assertIn("verified_self_update", format_internal_plan("auto melhorar e corrigir o meu core com testes"))
+
+    def test_verified_self_update_does_not_apply_failing_candidate(self):
+        target = WORKSPACE_DIR / "unit_self_update_block.py"
+        original = "VALUE = 1\n"
+        target.write_text(original, encoding="utf-8")
+        result = verified_core_update(
+            str(target.relative_to(WORKSPACE_DIR.parent)),
+            "def broken(:\n",
+            tests=["py_compile_candidate"],
+            approved=True,
+        )
+        self.assertFalse(result["applied"])
+        self.assertEqual(target.read_text(encoding="utf-8"), original)
+        self.assertEqual(result["status"], "failed_tests")
+        target.unlink(missing_ok=True)
+
+    def test_verified_self_update_repairs_then_applies_candidate(self):
+        target = WORKSPACE_DIR / "unit_self_update_repair.py"
+        target.write_text("VALUE = 1\n", encoding="utf-8")
+
+        def repair(content, test_result):
+            return "VALUE = 2\n"
+
+        result = verified_core_update(
+            str(target.relative_to(WORKSPACE_DIR.parent)),
+            "def broken(:\n",
+            tests=["py_compile_candidate"],
+            repair_func=repair,
+            max_attempts=2,
+            approved=True,
+        )
+        self.assertTrue(result["applied"])
+        self.assertEqual(result["status"], "applied")
+        self.assertIn("VALUE = 2", target.read_text(encoding="utf-8"))
+        self.assertEqual(result["attempts"], 2)
+        target.unlink(missing_ok=True)
+
+    def test_verified_self_update_tool_requires_tests_before_apply(self):
+        from app.eve_codex import execute_eve_tool_call
+
+        target = WORKSPACE_DIR / "unit_self_update_tool.py"
+        target.write_text("VALUE = 1\n", encoding="utf-8")
+        set_safety_mode("unrestricted_mode", "unit verified self update")
+        result = execute_eve_tool_call(
+            {
+                "tool": "verified_self_update",
+                "args": {
+                    "path": str(target.relative_to(WORKSPACE_DIR.parent)),
+                    "content": "def broken(:\n",
+                    "tests": ["py_compile_candidate"],
+                    "approved": True,
+                },
+            }
+        )
+        self.assertTrue(result["ok"])
+        self.assertFalse(result["result"]["applied"])
+        self.assertEqual(target.read_text(encoding="utf-8"), "VALUE = 1\n")
+        target.unlink(missing_ok=True)
 
     def test_cron_manager_dry_run(self):
         job = add_cron_job("unit cron", "2020-01-01T00:00:00Z", "Write-Output ok")

@@ -103,6 +103,13 @@ INTERNAL_ACTIONS = [
         {"cycle_name": "autonomous_internal", "call_llm": "auto", "max_new_missions": 1, "execute_max": 1, "notify_chat": True},
         ("autonomia", "proativa", "proactivo", "impulso", "daemon", "melhoria continua", "recursive"),
     ),
+    InternalAction(
+        "verified_self_update",
+        "verified_self_update",
+        "Auto-melhoria autorizada deve criar candidato, testar em sandbox, corrigir se falhar e aplicar so depois de passar.",
+        {"path": "core/module.py", "content": "candidate code", "tests": ["py_compile_candidate"], "max_attempts": 2, "approved": True},
+        ("auto melhorar", "auto-melhoria", "self improve", "self-improvement", "corrigir o meu core", "melhorar o meu core", "reescrever"),
+    ),
 ]
 
 
