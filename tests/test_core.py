@@ -71,6 +71,7 @@ from learning.skill_curator import record_skill_usage, curate_skills
 from security.secrets_vault import mask_secret
 from self_improvement.verified_self_update import verified_core_update
 from memory.daily_transcripts import append_transcript, ensure_daily_transcript_files, transcript_date_key, transcript_path
+from app.eve_web import check_access_code, render_index
 
 
 class EveCoreTests(unittest.TestCase):
@@ -530,6 +531,14 @@ class EveCoreTests(unittest.TestCase):
         self.assertTrue(result["ok"])
         self.assertTrue(result["verification"]["ok"])
         self.assertIn("runtime", result)
+
+    def test_web_interface_has_access_code_and_account_switcher(self):
+        self.assertTrue(check_access_code("172099"))
+        self.assertFalse(check_access_code("000000"))
+        html = render_index()
+        self.assertIn("Código de entrada", html)
+        self.assertIn("Conta Codex", html)
+        self.assertIn("/api/chat", html)
 
     def test_cron_manager_dry_run(self):
         job = add_cron_job("unit cron", "2020-01-01T00:00:00Z", "Write-Output ok")

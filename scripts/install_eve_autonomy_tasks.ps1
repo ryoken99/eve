@@ -4,7 +4,7 @@ param(
 )
 
 $eveRoot = "D:\Eve"
-$startupCmd = Join-Path $eveRoot "scripts\start_eve_console_and_daemon.cmd"
+$startupCmd = Join-Path $eveRoot "scripts\start_eve_interface.cmd"
 $llmCmd = Join-Path $eveRoot "scripts\run_autonomy_cycle_llm.cmd"
 
 schtasks /Create /TN "Eve_Console_And_Daemon_AtLogon" /SC ONLOGON /TR $startupCmd /F | Out-Host
