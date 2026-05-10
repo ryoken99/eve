@@ -38,6 +38,15 @@ def discover_triggers() -> list[dict[str, Any]]:
             "plan": ["Escolher tema", "Pesquisar", "Enviar para lab se util"],
         }
     )
+    triggers.append(
+        {
+            "kind": "capability_review",
+            "risk": "low",
+            "reason": "Roadmap dos 17 pontos deve guiar melhorias autonomas.",
+            "objective": "Rever os 17 pontos da Eve e criar proxima melhoria segura.",
+            "plan": ["Auditar pontos", "Escolher lacuna", "Criar candidato no lab"],
+        }
+    )
     return triggers
 
 
@@ -55,4 +64,3 @@ def create_missions_from_triggers(*, max_new: int = 2) -> dict[str, Any]:
     result = {"created": [{"id": item["mission"]["id"], "kind": item["trigger"]["kind"]} for item in created]}
     log_event("trigger_engine_created_missions", result)
     return result
-

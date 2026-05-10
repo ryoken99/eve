@@ -9,6 +9,7 @@ from pathlib import Path
 from core.mission_control import create_mission, list_missions
 from core.paths import EVE_ROOT, LOGS_DIR, ensure_project_dirs
 from memory.errors.error_memory import recent_errors
+from autonomy.capability_roadmap import rotating_capability_impulses
 from autonomy.token_gate import decide_llm_call, record_llm_call
 
 
@@ -48,6 +49,8 @@ def active_or_proposed_missions() -> list[dict]:
 def generate_impulses(triggers: list[str] | None = None) -> list[dict]:
     triggers = triggers or []
     impulses: list[dict] = []
+    if "capability_review" in triggers:
+        impulses.extend(rotating_capability_impulses(limit=3))
     errors = recent_errors(limit=5)
     if errors:
         impulses.append(

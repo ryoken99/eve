@@ -10,6 +10,7 @@ from autonomy.autonomy_director import run_autonomy_cycle
 from autonomy.autonomous_executor import execute_autonomous_backlog
 from autonomy.cron_manager import run_due_jobs
 from autonomy.trigger_engine import create_missions_from_triggers, discover_triggers
+from autonomy.capability_roadmap import capability_audit, write_capability_audit
 from core.mission_control import list_missions
 from core.paths import LOGS_DIR, STATE_DIR, ensure_project_dirs
 from memory.vector_provider import rebuild_vector_memory
@@ -40,6 +41,8 @@ def daemon_tick() -> dict:
     )
     autonomous_execution = execute_autonomous_backlog(max_missions=1, notify_chat=True)
     vector = rebuild_vector_memory()
+    capability_path = write_capability_audit()
+    capability = capability_audit()
     result = {
         "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         "transcripts": transcripts,
@@ -53,6 +56,11 @@ def daemon_tick() -> dict:
             "llm_called": autonomy["llm_called"],
         },
         "vector_index": vector,
+        "capability_roadmap": {
+            "summary": capability["summary"],
+            "weakest": capability["weakest"],
+            "path": str(capability_path),
+        },
     }
     HEARTBEAT.write_text(json.dumps(result, indent=2, ensure_ascii=False), encoding="utf-8")
     return result

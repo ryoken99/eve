@@ -7,13 +7,15 @@ from pathlib import Path
 from core.mission_control import add_checkpoint, append_mission_log, list_missions, load_mission, set_mission_status, update_step
 from core.paths import MEMORY_DIR, ensure_project_dirs
 from core.self_report import functional_self_report
+from autonomy.capability_roadmap import capability_audit, write_capability_audit
+from lab.lab_manager import create_candidate
 from memory.errors.error_memory import recent_errors
 from memory.memory_manager import context_bundle
 from research.research_notes import append_technology_learning
 from tools.interface_bus import publish_interface_message
 
 
-ALLOWED_AUTONOMOUS_KINDS = {"error_review", "self_review", "memory_hygiene", "research_reflection"}
+ALLOWED_AUTONOMOUS_KINDS = {"error_review", "self_review", "memory_hygiene", "research_reflection", "capability_improvement"}
 
 
 def mission_kind(mission: dict) -> str:
@@ -80,6 +82,31 @@ def _research_reflection() -> dict:
     return {"summary": "Registei uma reflexao tecnica de baixo risco para proxima melhoria de research.", "path": str(path)}
 
 
+def _capability_improvement() -> dict:
+    audit_path = write_capability_audit()
+    audit = capability_audit()
+    target = audit["weakest"][0]
+    title = f"Capability {target['id']} - {target['title']}"
+    hypothesis = (
+        f"Melhorar o ponto {target['id']} aumenta a aproximacao da Eve ao objetivo do Sandro. "
+        f"Estado atual: {target['status']} / {target['maturity']}. Objetivo: {target['desired']}."
+    )
+    candidate = create_candidate(title, hypothesis, metric="capability_roadmap_score")
+    body = (
+        f"Auditoria guardada: {audit_path}\n"
+        f"Candidato criado no lab: {candidate}\n"
+        f"Ponto escolhido: {target['id']} - {target['title']}\n"
+        f"Proxima acao segura: desenhar patch pequeno e testavel antes de alterar core."
+    )
+    path = _append_report("medium_term/autonomous_capability_improvements.md", "Autonomous Capability Improvement", body)
+    return {
+        "summary": f"Auditei os 17 pontos e criei candidato de lab para o ponto {target['id']}.",
+        "path": str(path),
+        "audit": str(audit_path),
+        "candidate": str(candidate),
+    }
+
+
 def _run_handler(kind: str) -> dict:
     if kind == "error_review":
         return _error_review()
@@ -89,6 +116,8 @@ def _run_handler(kind: str) -> dict:
         return _memory_hygiene()
     if kind == "research_reflection":
         return _research_reflection()
+    if kind == "capability_improvement":
+        return _capability_improvement()
     raise ValueError(f"tipo autonomo nao suportado: {kind}")
 
 

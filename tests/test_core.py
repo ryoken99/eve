@@ -56,6 +56,7 @@ from core.mission_control import (
 )
 from autonomy.autonomy_director import build_autonomy_prompt, run_autonomy_cycle
 from autonomy.autonomous_executor import execute_autonomous_backlog, execute_autonomous_mission
+from autonomy.capability_roadmap import capability_audit, capability_impulses, rotating_capability_impulses, write_capability_audit
 from autonomy.token_gate import decide_llm_call, record_llm_call
 from autonomy.autonomy_reporter import run_autonomy_report_cycle
 from tools.x_scheduler import build_x_post_task_command, schedule_repeated_x_posts, schedule_x_post
@@ -859,6 +860,42 @@ class EveCoreTests(unittest.TestCase):
         self.assertTrue(result["created_missions"])
         self.assertTrue(all(item["status"] == "proposed" for item in result["created_missions"]))
         self.assertTrue(all(item["risk"] == "low" for item in result["impulses"][: len(result["created_missions"])]))
+
+    def test_capability_roadmap_tracks_all_17_points(self):
+        audit = capability_audit()
+        self.assertEqual(audit["summary"]["total"], 17)
+        self.assertEqual(len(audit["points"]), 17)
+        self.assertTrue(capability_impulses(limit=1))
+        path = write_capability_audit()
+        self.assertTrue(path.exists())
+        self.assertIn("17. Autonomia", path.read_text(encoding="utf-8"))
+
+    def test_capability_roadmap_rotates_focus_points(self):
+        first = rotating_capability_impulses(limit=1)[0]["capability_point"]["id"]
+        second = rotating_capability_impulses(limit=1)[0]["capability_point"]["id"]
+        self.assertNotEqual(first, second)
+
+    def test_autonomy_cycle_can_create_capability_improvement_mission(self):
+        result = run_autonomy_cycle(
+            triggers=["capability_review"],
+            max_new_missions=1,
+            call_llm=False,
+            cycle_name="unit_capability",
+        )
+        self.assertTrue(any(item["objective"].startswith("Melhorar ponto") for item in result["created_missions"]))
+        self.assertTrue(any(item["kind"] == "capability_improvement" for item in result["impulses"]))
+
+    def test_autonomous_executor_runs_capability_improvement_into_lab(self):
+        mission = create_mission(
+            "Unit capability improvement",
+            plan=["auditar", "criar candidato"],
+            permissions=["read_memory", "write_memory"],
+            status="proposed",
+            source="autonomy:unit:capability_improvement",
+        )
+        result = execute_autonomous_mission(mission["id"], notify_chat=False)
+        self.assertEqual(result["status"], "done")
+        self.assertIn("candidate", result["output"])
 
     def test_autonomy_prompt_marks_no_sensitive_execution(self):
         prompt = build_autonomy_prompt(
