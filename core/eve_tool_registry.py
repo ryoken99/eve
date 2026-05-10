@@ -28,10 +28,10 @@ from memory.memory_manager import append_memory_file, context_bundle, read_memor
 from memory.vector_provider import rebuild_vector_memory, vector_prefetch
 from security.secrets_vault import get_secret, list_secrets, mask_secret, store_secret
 from security.safety_modes import current_safety_mode, describe_safety, set_safety_mode
-from security.tool_policy import classify_tool
+from security.tool_policy import classify_tool, decide_tool_execution
 from tools.admin_executor import launch_elevated_powershell, run_admin_command
 from tools.browser_advanced import browser_back, browser_click_text, browser_fetch_url, browser_scroll, browser_snapshot, browser_type_text
-from tools.browser_human import open_url, search_web
+from tools.browser_human import browser_visual_task, navigate_address_bar, open_url, search_web
 from tools.desktop_tasks import create_desktop_file, create_desktop_folder, schedule_desktop_folder_creation
 from tools.email_human import create_gmail_draft, gmail_search_visual
 from tools.filesystem import append_file, list_dir, read_file, write_file
@@ -125,12 +125,22 @@ def _publish_x_post_now(args: dict) -> dict:
 
 
 def _run_terminal(args: dict) -> dict:
+    if args.get("background"):
+        return {
+            "ok": True,
+            "tool": "run_terminal",
+            "result": start_process(
+                str(args.get("command") or ""),
+                cwd=str(args.get("cwd") or EVE_ROOT),
+            ),
+        }
     return {
         "ok": True,
         "tool": "run_terminal",
         "result": run_command(
             str(args.get("command") or ""),
             cwd=str(args.get("cwd") or EVE_ROOT),
+            approved=bool(args.get("approved")),
             timeout=int(args.get("timeout") or 60),
         ),
     }
@@ -461,6 +471,14 @@ def _browser_scroll(args: dict) -> dict:
     return {"ok": True, "tool": "browser_scroll", "result": browser_scroll(int(args.get("amount") or -5))}
 
 
+def _browser_navigate(args: dict) -> dict:
+    return {"ok": True, "tool": "browser_navigate", "result": navigate_address_bar(str(args.get("url") or ""))}
+
+
+def _browser_visual_steps(args: dict) -> dict:
+    return {"ok": True, "tool": "browser_visual_steps", "result": browser_visual_task(args.get("steps") or [])}
+
+
 def _browser_fetch_url(args: dict) -> dict:
     return {"ok": True, "tool": "browser_fetch_url", "result": browser_fetch_url(str(args.get("url") or ""))}
 
@@ -512,7 +530,7 @@ TOOLS: dict[str, EveTool] = {
     "schedule_desktop_folder": EveTool("schedule_desktop_folder", "Agenda criacao de pasta no Ambiente de Trabalho.", {"name": "pasta", "time": "22:43"}, _schedule_desktop_folder),
     "schedule_x_post": EveTool("schedule_x_post", "Agenda post no X.", {"time": "22:21", "text": "texto em ingles"}, _schedule_x_post),
     "publish_x_post_now": EveTool("publish_x_post_now", "Publica imediatamente texto no X usando a skill visual trusted.", {"text": "texto em ingles"}, _publish_x_post_now),
-    "run_terminal": EveTool("run_terminal", "Executa comando PowerShell local.", {"command": "Get-ChildItem", "cwd": "D:\\Eve", "timeout": 60}, _run_terminal),
+    "run_terminal": EveTool("run_terminal", "Executa comando PowerShell local; com background=true arranca processo gerido.", {"command": "Get-ChildItem", "cwd": "D:\\Eve", "timeout": 60, "background": False, "approved": False}, _run_terminal),
     "run_skill": EveTool("run_skill", "Executa skill da Eve.", {"skill": "trusted/x_publish_text_learning", "args": {}}, _run_skill),
     "workspace_list_dir": EveTool("workspace_list_dir", "Lista pasta dentro de workspace/.", {"path": "."}, _workspace_list_dir),
     "workspace_read_file": EveTool("workspace_read_file", "Le ficheiro dentro de workspace/.", {"path": "notes.txt"}, _workspace_read_file),
@@ -574,6 +592,8 @@ TOOLS: dict[str, EveTool] = {
     "browser_click_text": EveTool("browser_click_text", "Clica texto no browser por OCR.", {"text": "Publicar", "verify_text": ""}, _browser_click_text),
     "browser_type_text": EveTool("browser_type_text", "Escreve no foco atual do browser.", {"text": "texto", "submit": False}, _browser_type_text),
     "browser_scroll": EveTool("browser_scroll", "Scroll no browser.", {"amount": -5}, _browser_scroll),
+    "browser_navigate": EveTool("browser_navigate", "Navega no Chrome/perfil Eve pela barra de endereco.", {"url": "https://x.com"}, _browser_navigate),
+    "browser_visual_steps": EveTool("browser_visual_steps", "Executa passos visuais sequenciais no browser/ecra.", {"steps": [{"action": "click_text", "text": "Post"}]}, _browser_visual_steps),
     "browser_fetch_url": EveTool("browser_fetch_url", "Extrai texto de URL por HTTP leve.", {"url": "https://example.com"}, _browser_fetch_url),
     "secrets_store": EveTool("secrets_store", "Guarda segredo mascarado no vault local.", {"name": "api_key", "value": "secret", "note": ""}, _secrets_store),
     "secrets_get": EveTool("secrets_get", "Le segredo mascarado por defeito.", {"name": "api_key", "reveal": False}, _secrets_get),
@@ -602,6 +622,7 @@ def tool_catalog_prompt() -> str:
             "Regras:",
             "- Tu decides se uma ferramenta e necessaria. O codigo so executa a ferramenta que tu pedires.",
             "- Para pedidos diretos do Sandro, usa ferramentas em vez de dizer que nao tens acesso quando a ferramenta existe.",
+            "- Se o Sandro deu ordem direta para acao publica, terminal, admin ou ficheiros, inclui approved=true nos args; se nao deu, pede confirmacao.",
             "- Usa a intencao pendente e o historico recente para resolver referencias como \"o texto 2\", \"o que disseste\", \"faz o post\", \"publica agora\".",
             "- Se falta informacao real, faz uma pergunta em vez de inventar argumentos.",
             "- Depois da ferramenta executar, recebes o resultado e deves responder ao Sandro com o que aconteceu.",
@@ -616,9 +637,17 @@ def execute_eve_tool(call: dict) -> dict:
     tool = TOOLS.get(tool_name)
     if not tool:
         return {"ok": False, "tool": tool_name, "error": f"Ferramenta desconhecida: {tool_name}"}
+    execution = decide_tool_execution(tool_name, args)
+    if not execution.allowed:
+        return {
+            "ok": False,
+            "tool": tool_name,
+            "error": execution.reason,
+            "policy": execution.as_dict(),
+        }
     try:
         result = tool.handler(args)
-        result.setdefault("policy", classify_tool(tool_name, args).as_dict())
+        result.setdefault("policy", execution.as_dict())
         return result
     except Exception as exc:
-        return {"ok": False, "tool": tool_name, "error": f"{type(exc).__name__}: {exc}", "policy": classify_tool(tool_name, args).as_dict()}
+        return {"ok": False, "tool": tool_name, "error": f"{type(exc).__name__}: {exc}", "policy": execution.as_dict()}

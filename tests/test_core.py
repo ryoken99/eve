@@ -58,7 +58,7 @@ from autonomy.token_gate import decide_llm_call, record_llm_call
 from autonomy.autonomy_reporter import run_autonomy_report_cycle
 from tools.x_scheduler import build_x_post_task_command, schedule_x_post
 from tools.desktop_tasks import parse_desktop_file_request, parse_desktop_folder_request, parse_desktop_folder_schedule_request, schedule_desktop_folder_creation
-from security.tool_policy import classify_tool
+from security.tool_policy import classify_tool, decide_tool_execution
 from core.session_store import add_session_message, search_sessions
 from autonomy.cron_manager import add_cron_job, list_cron_jobs, run_due_jobs
 from tools.process_manager import start_process, poll_process, stop_process
@@ -358,6 +358,8 @@ class EveCoreTests(unittest.TestCase):
             "vector_prefetch",
             "skill_curate",
             "browser_snapshot",
+            "browser_navigate",
+            "browser_visual_steps",
             "secrets_mask",
             "diagnostics_export",
             "install_startup_daemon",
@@ -370,6 +372,11 @@ class EveCoreTests(unittest.TestCase):
         self.assertEqual(classify_tool("workspace_read_file").approval_class, "readonly")
         self.assertEqual(classify_tool("run_terminal").approval_class, "exec_capable")
         self.assertEqual(classify_tool("publish_x_post_now").approval_class, "public_or_external")
+        set_safety_mode("safe_mode", "unit policy")
+        self.assertFalse(decide_tool_execution("run_terminal", {"command": "Get-ChildItem"}).allowed)
+        self.assertTrue(decide_tool_execution("run_terminal", {"command": "Get-ChildItem", "approved": True}).allowed)
+        set_safety_mode("unrestricted_mode", "unit policy")
+        self.assertTrue(decide_tool_execution("admin_command", {"command": "Get-Process"}).allowed)
 
     def test_session_store_searches_messages(self):
         add_session_message("unit-session", "user", "Eve session searchable unique needle", {"unit": True})
@@ -389,6 +396,18 @@ class EveCoreTests(unittest.TestCase):
         stopped = stop_process(proc["id"])
         self.assertEqual(stopped["status"], "stopped")
 
+    def test_run_terminal_tool_can_start_background_process(self):
+        from app.eve_codex import execute_eve_tool_call
+
+        set_safety_mode("unrestricted_mode", "unit background")
+        result = execute_eve_tool_call(
+            {"tool": "run_terminal", "args": {"command": "Start-Sleep -Seconds 20", "cwd": "D:\\Eve", "background": True}}
+        )
+        self.assertTrue(result["ok"])
+        process_id = result["result"]["id"]
+        self.assertIn(poll_process(process_id)["status"], {"running", "exited"})
+        stop_process(process_id)
+
     def test_supporting_gap_modules_smoke(self):
         self.assertIn("plugin_root", plugin_summary())
         provider = LocalVectorMemoryProvider()
@@ -407,6 +426,7 @@ class EveCoreTests(unittest.TestCase):
     def test_publish_x_post_now_tool_executes_publish_skill(self):
         from app.eve_codex import execute_eve_tool_call
 
+        set_safety_mode("unrestricted_mode", "unit publish")
         with patch("core.eve_tool_registry.run_skill", return_value={"status": "ok"}) as mocked:
             result = execute_eve_tool_call({"tool": "publish_x_post_now", "args": {"text": "Not just a chat anymore."}})
         self.assertTrue(result["ok"])

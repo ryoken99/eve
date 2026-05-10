@@ -33,6 +33,7 @@ from core.awareness_engine import describe_awareness
 from core.capability_self_test import format_capability_self_test
 from core.eve_tool_registry import execute_eve_tool, tool_catalog_prompt
 from core.pending_intent import clear_pending_intent, maybe_save_x_post_draft, pending_intent_context
+from core.session_store import add_session_message
 from core.task_ledger import finish_tool_task, start_tool_task
 from core.self_report import format_self_report
 from computer.vision import describe_screen, find_text_on_screen, first_text_center, monitor_report, screenshot_monitor
@@ -96,6 +97,7 @@ from core.mission_control import (
 )
 from memory.entity_memory import list_base_memory_files, list_entities, relate_entities, remember_entity, search_entities
 from memory.sandro_profile_builder import TARGET_FILES as SANDRO_MEMORY_FILES, build_sandro_core_memory
+from memory.vector_provider import LocalVectorMemoryProvider, vector_prefetch
 
 SECRETS_DIR = EVE_ROOT / "secrets"
 LOG_DIR = EVE_ROOT / "logs"
@@ -111,6 +113,7 @@ CODEX_OAUTH_CLIENT_ID = "app_EMoamEEZ73f0CkXaXp7hrann"
 CODEX_OAUTH_TOKEN_URL = "https://auth.openai.com/oauth/token"
 CODEX_BASE_URL = "https://chatgpt.com/backend-api/codex"
 DEFAULT_MODEL = "gpt-5.4"
+SESSION_ID = "main"
 KNOWN_MODELS = ["gpt-5.5", "gpt-5.4", "gpt-5.4-mini", "gpt-5.3-codex", "gpt-5.2"]
 LOOP_MODES = {
     "1": {"message_limit": 10, "description": "Modo 1: loop curto, 10 mensagens"},
@@ -177,6 +180,38 @@ def publish_interface_message(source: str, content: str, *, target: str = "Eve",
     }
     with INTERFACE_INBOX_PATH.open("a", encoding="utf-8") as fh:
         fh.write(json.dumps(entry, ensure_ascii=False) + "\n")
+
+
+def _record_session_message(role: str, content: str, metadata: dict | None = None) -> None:
+    try:
+        add_session_message(SESSION_ID, role, content, metadata or {})
+    except Exception as exc:
+        append_loop_event("session_store_error", {"error": f"{type(exc).__name__}: {exc}", "role": role})
+
+
+def _sync_vector_message(role: str, content: str) -> None:
+    try:
+        LocalVectorMemoryProvider().sync_turn([{"role": role, "content": content}])
+    except Exception as exc:
+        append_loop_event("vector_sync_error", {"error": f"{type(exc).__name__}: {exc}", "role": role})
+
+
+def _format_vector_context(query: str, limit: int = 5) -> str:
+    try:
+        rows = vector_prefetch(query, limit=limit)
+    except Exception as exc:
+        append_loop_event("vector_prefetch_error", {"error": f"{type(exc).__name__}: {exc}"})
+        return ""
+    if not rows:
+        return ""
+    parts = []
+    for row in rows[:limit]:
+        source = row.get("source") or row.get("path") or "vector_memory"
+        score = row.get("score")
+        content = str(row.get("content") or row.get("text") or row.get("excerpt") or "").strip()
+        if content:
+            parts.append(f"- {source} score={score}: {content[:800]}")
+    return "\n".join(parts)
 
 
 def append_loop_event(event: str, payload: dict) -> Path:
@@ -953,6 +988,7 @@ def ask(prompt: str, *, speaker: str = "sandro", publish_to_interface: bool = Tr
     recent_context = recent_chat_context()
     pending_context = pending_intent_context()
     entity_context = relevant_entity_memory(prompt, limit=8)
+    vector_context = _format_vector_context(prompt)
     role = speaker_role(speaker)
     display_name = speaker_display_name(speaker)
     visible_prompt = prompt
@@ -973,11 +1009,14 @@ def ask(prompt: str, *, speaker: str = "sandro", publish_to_interface: bool = Tr
         f"{tool_catalog_prompt() if allow_tools else 'Ferramentas locais ja executadas ou indisponiveis nesta etapa; responde em texto normal.'}\n\n"
         f"INTENCAO PENDENTE:\n{pending_context}\n\n"
         f"HISTORICO RECENTE DO CHAT (usa para referencias imediatas):\n{recent_context}\n\n"
+        f"VECTOR MEMORY PREFETCH (memorias semanticamente parecidas, se existirem):\n{vector_context}\n\n"
         f"LOCAL MEMORY CONTEXT:\n{memory_context}\n\n"
         f"ENTITY BASE MEMORY ROOT: {ENTITIES_MEMORY_DIR}\n"
         f"RELEVANT ENTITY MEMORY:\n{json.dumps(entity_context, ensure_ascii=False)[:5000]}"
     )
     append_chat(role, prompt, tags=["codex_instructor"] if role == "codex_instructor" else None)
+    _record_session_message(role, prompt, {"speaker": speaker, "display_name": display_name})
+    _sync_vector_message(role, prompt)
     if publish_to_interface:
         publish_interface_message(display_name, prompt, target="Eve", tags=["incoming", role])
     status_code, text, payload = _call_codex_text(token, model, instructions, visible_prompt)
@@ -989,6 +1028,8 @@ def ask(prompt: str, *, speaker: str = "sandro", publish_to_interface: bool = Tr
         text = f"Pedido falhou ({status_code}).\n{json.dumps(payload, indent=2)[:4000]}"
         safe_print(text)
         append_chat("error", text, tags=["llm_error"])
+        _record_session_message("error", text, {"status_code": status_code})
+        _sync_vector_message("error", text)
         return text
     if text and allow_tools:
         final_text = _run_tool_loop(
@@ -1005,6 +1046,8 @@ def ask(prompt: str, *, speaker: str = "sandro", publish_to_interface: bool = Tr
     if text:
         safe_print(text)
         append_chat("assistant", text)
+        _record_session_message("assistant", text, {"reply_to": display_name})
+        _sync_vector_message("assistant", text)
         if role == "user":
             maybe_save_x_post_draft(prompt, text)
         if publish_to_interface:
@@ -1014,6 +1057,8 @@ def ask(prompt: str, *, speaker: str = "sandro", publish_to_interface: bool = Tr
         text = json.dumps(payload, indent=2)[:4000]
         safe_print(text)
         append_chat("assistant", text)
+        _record_session_message("assistant", text, {"reply_to": display_name, "payload_fallback": True})
+        _sync_vector_message("assistant", text)
         if publish_to_interface:
             publish_interface_message("Eve", text, target=display_name, tags=["reply", role])
         return text
@@ -1036,10 +1081,14 @@ def _run_tool_loop(
         if not tool_call:
             return None if text == first_text else _finalize_assistant_text(text, display_name, publish_to_interface)
         append_chat("assistant", text, tags=["tool_call", tool_call["tool"]])
+        _record_session_message("assistant", text, {"tool_call": tool_call["tool"]})
+        _sync_vector_message("assistant", text)
         task_id = start_tool_task(tool_call["tool"], tool_call.get("args") or {})
         tool_result = execute_eve_tool(tool_call)
         finish_tool_task(task_id, tool_result)
         append_chat("tool", json.dumps(tool_result, ensure_ascii=False), tags=["tool_result", tool_call["tool"]])
+        _record_session_message("tool", json.dumps(tool_result, ensure_ascii=False), {"tool": tool_call["tool"]})
+        _sync_vector_message("tool", json.dumps(tool_result, ensure_ascii=False))
         if tool_call["tool"] in {"publish_x_post_now", "schedule_x_post"} and tool_result.get("ok"):
             clear_pending_intent("x_post_completed")
         result_text = format_eve_tool_result(tool_result)
@@ -1060,6 +1109,8 @@ def _run_tool_loop(
 def _finalize_assistant_text(text: str, display_name: str, publish_to_interface: bool, tags: list[str] | None = None) -> str:
     safe_print(text)
     append_chat("assistant", text, tags=tags)
+    _record_session_message("assistant", text, {"reply_to": display_name, "tags": tags or []})
+    _sync_vector_message("assistant", text)
     if publish_to_interface:
         publish_interface_message("Eve", text, target=display_name, tags=["reply"] + (tags or []))
     return text

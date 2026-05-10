@@ -8,8 +8,11 @@ from pathlib import Path
 from autonomy.proactive_decider import propose_low_risk_actions
 from autonomy.autonomy_director import run_autonomy_cycle
 from autonomy.autonomous_executor import execute_autonomous_backlog
+from autonomy.cron_manager import run_due_jobs
+from autonomy.trigger_engine import create_missions_from_triggers, discover_triggers
+from core.mission_control import list_missions
 from core.paths import LOGS_DIR, STATE_DIR, ensure_project_dirs
-from memory.semantic_vector.vector_store import rebuild_memory_index
+from memory.vector_provider import rebuild_vector_memory
 from research.technology_watcher import run_technology_watch
 
 
@@ -19,12 +22,26 @@ HEARTBEAT = STATE_DIR / "daemon_heartbeat.json"
 
 def daemon_tick() -> dict:
     ensure_project_dirs()
+    cron = run_due_jobs(dry_run=False)
+    triggers = discover_triggers()
+    proposed_backlog = list_missions(status="proposed", limit=10)
+    trigger_missions = {"created": []}
+    if not proposed_backlog:
+        trigger_missions = create_missions_from_triggers(max_new=1)
     proposals = propose_low_risk_actions()
-    autonomy = run_autonomy_cycle(triggers=["daemon_tick"], max_new_missions=1, call_llm="auto", cycle_name="daemon_tick")
+    trigger_kinds = [str(item.get("kind") or "trigger") for item in triggers[:5]]
+    autonomy = run_autonomy_cycle(
+        triggers=["daemon_tick", *trigger_kinds],
+        max_new_missions=1,
+        call_llm="auto",
+        cycle_name="daemon_tick",
+    )
     autonomous_execution = execute_autonomous_backlog(max_missions=1, notify_chat=True)
-    vector = rebuild_memory_index()
+    vector = rebuild_vector_memory()
     result = {
         "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "cron": cron,
+        "triggers": {"discovered": trigger_kinds, "created_missions": trigger_missions.get("created", [])},
         "proposals": proposals,
         "autonomy": {
             "created_missions": autonomy["created_missions"],
@@ -32,7 +49,7 @@ def daemon_tick() -> dict:
             "token_decision": autonomy["token_decision"],
             "llm_called": autonomy["llm_called"],
         },
-        "vector_index": str(vector),
+        "vector_index": vector,
     }
     HEARTBEAT.write_text(json.dumps(result, indent=2, ensure_ascii=False), encoding="utf-8")
     return result

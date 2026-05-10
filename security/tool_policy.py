@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from security.safety_modes import current_safety_mode, current_safety_profile
+
 
 READONLY_TOOLS = {
     "capability_self_test",
@@ -78,6 +80,8 @@ UI_TOOLS = {
     "browser_click_text",
     "browser_type_text",
     "browser_scroll",
+    "browser_navigate",
+    "browser_visual_steps",
 }
 ADMIN_TOOLS = {"admin_command", "launch_elevated_powershell"}
 SELF_MODIFY_TOOLS = {"patch_core", "self_improvement_cycle"}
@@ -99,6 +103,27 @@ class ToolPolicyDecision:
         }
 
 
+@dataclass(frozen=True)
+class ToolExecutionDecision:
+    allowed: bool
+    policy: ToolPolicyDecision
+    mode: str
+    reason: str
+    requires_approval: bool = False
+
+    def as_dict(self) -> dict[str, Any]:
+        data = self.policy.as_dict()
+        data.update(
+            {
+                "allowed": self.allowed,
+                "mode": self.mode,
+                "execution_reason": self.reason,
+                "requires_approval": self.requires_approval,
+            }
+        )
+        return data
+
+
 def classify_tool(tool: str, args: dict[str, Any] | None = None) -> ToolPolicyDecision:
     if tool in READONLY_TOOLS:
         return ToolPolicyDecision(tool, "readonly", True, "Ferramenta apenas le estado/local context.")
@@ -117,3 +142,61 @@ def classify_tool(tool: str, args: dict[str, Any] | None = None) -> ToolPolicyDe
     if tool in MUTATING_TOOLS:
         return ToolPolicyDecision(tool, "mutating", False, "Altera ficheiros, memoria, tarefas ou estado.")
     return ToolPolicyDecision(tool, "unknown", False, "Ferramenta sem classificacao explicita.")
+
+
+def decide_tool_execution(tool: str, args: dict[str, Any] | None = None) -> ToolExecutionDecision:
+    args = args or {}
+    policy = classify_tool(tool, args)
+    mode = current_safety_mode()
+    profile = current_safety_profile()
+    approved = bool(args.get("approved") or args.get("approval") or args.get("sandro_approved"))
+
+    if mode == "unrestricted_mode":
+        return ToolExecutionDecision(True, policy, mode, "unrestricted_mode ativo; guards internos desligados.")
+
+    if policy.auto_approve:
+        return ToolExecutionDecision(True, policy, mode, "Ferramenta auto-aprovada pela policy.")
+
+    if approved:
+        return ToolExecutionDecision(True, policy, mode, "Aprovacao explicita incluida nos argumentos.")
+
+    if policy.approval_class == "ui_control" and profile.get("ui_control"):
+        return ToolExecutionDecision(True, policy, mode, "Perfil atual permite controlo UI.")
+
+    if policy.approval_class == "mutating" and not profile.get("action_guard", True):
+        return ToolExecutionDecision(True, policy, mode, "Action guard desligado no perfil atual.")
+
+    if policy.approval_class == "exec_capable" and not profile.get("command_guard", True):
+        return ToolExecutionDecision(True, policy, mode, "Command guard desligado no perfil atual.")
+
+    if policy.approval_class == "public_or_external":
+        return ToolExecutionDecision(
+            False,
+            policy,
+            mode,
+            "Acao publica/externa sem approved=true no pedido da ferramenta.",
+            requires_approval=True,
+        )
+
+    if policy.approval_class == "admin" and profile.get("admin_requires_approval", True):
+        return ToolExecutionDecision(False, policy, mode, "Acao admin requer aprovacao explicita.", requires_approval=True)
+
+    if policy.approval_class == "self_modify" and profile.get("self_modify_requires_approval", True):
+        return ToolExecutionDecision(
+            False,
+            policy,
+            mode,
+            "Auto-modificacao requer aprovacao explicita.",
+            requires_approval=True,
+        )
+
+    if policy.approval_class in {"exec_capable", "unknown"}:
+        return ToolExecutionDecision(
+            False,
+            policy,
+            mode,
+            "Ferramenta executavel/desconhecida requer approved=true fora de unrestricted_mode.",
+            requires_approval=True,
+        )
+
+    return ToolExecutionDecision(True, policy, mode, "Permitido pelo perfil atual.")
