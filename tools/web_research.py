@@ -10,7 +10,7 @@ from html.parser import HTMLParser
 from pathlib import Path
 
 from core.paths import LOGS_DIR, MEMORY_DIR, ensure_project_dirs
-from tools.browser_human import open_url, search_web
+from tools.browser_human import close_browser_page, open_url, search_web
 
 
 class _LinkParser(HTMLParser):
@@ -302,47 +302,55 @@ def run_web_research_report(
         raise ValueError("query vazia")
     ensure_project_dirs()
     browser_evidence = None
-    if open_visible_browser:
-        browser_evidence = search_web(query)
+    browser_closed = None
+    try:
+        if open_visible_browser:
+            browser_evidence = search_web(query)
 
-    seeds = list(seed_urls or [])
-    if not seeds and _is_url(query):
-        seeds.append(query)
-    pages: list[dict] = []
-    seed_pages: list[dict] = []
-    candidates: list[str] = []
-    failures: list[dict] = []
+        seeds = list(seed_urls or [])
+        if not seeds and _is_url(query):
+            seeds.append(query)
+        pages: list[dict] = []
+        seed_pages: list[dict] = []
+        candidates: list[str] = []
+        failures: list[dict] = []
 
-    for seed in seeds:
-        try:
-            if open_visible_browser:
-                open_url(seed)
-            page = fetch_url(seed)
-            seed_pages.append({key: value for key, value in page.items() if key != "html"})
-            candidates.extend(candidate_article_links(extract_links(page["html"], seed, allowed_domains=allowed_domains)))
-        except Exception as exc:
-            failures.append({"url": seed, "error": f"{type(exc).__name__}: {exc}"})
+        for seed in seeds:
+            try:
+                if open_visible_browser:
+                    open_url(seed)
+                page = fetch_url(seed)
+                seed_pages.append({key: value for key, value in page.items() if key != "html"})
+                candidates.extend(candidate_article_links(extract_links(page["html"], seed, allowed_domains=allowed_domains)))
+            except Exception as exc:
+                failures.append({"url": seed, "error": f"{type(exc).__name__}: {exc}"})
 
-    for url in candidates:
-        if len(pages) >= max_pages:
-            break
-        try:
-            page = fetch_url(url)
-            text = page.get("text", "")
-            if recent_enough_for_query(query, page.get("date", "")) and any(
-                term in text.lower() or term in page.get("title", "").lower() for term in _query_terms(query)
-            ):
-                pages.append({key: value for key, value in page.items() if key != "html"})
-        except Exception as exc:
-            failures.append({"url": url, "error": f"{type(exc).__name__}: {exc}"})
+        for url in candidates:
+            if len(pages) >= max_pages:
+                break
+            try:
+                page = fetch_url(url)
+                text = page.get("text", "")
+                if recent_enough_for_query(query, page.get("date", "")) and any(
+                    term in text.lower() or term in page.get("title", "").lower() for term in _query_terms(query)
+                ):
+                    pages.append({key: value for key, value in page.items() if key != "html"})
+            except Exception as exc:
+                failures.append({"url": url, "error": f"{type(exc).__name__}: {exc}"})
 
-    if not pages:
-        pages = seed_pages[:max_pages]
+        if not pages:
+            pages = seed_pages[:max_pages]
 
-    report = build_research_report_from_pages(query, pages)
-    report["browser_evidence"] = browser_evidence
-    report["seed_urls"] = seeds
-    report["allowed_domains"] = allowed_domains or []
-    report["failed_pages"] = failures[:10]
-    paths = save_research_report(report)
-    return {"status": "ok", "report": report, "paths": paths}
+        report = build_research_report_from_pages(query, pages)
+        report["browser_evidence"] = browser_evidence
+        report["seed_urls"] = seeds
+        report["allowed_domains"] = allowed_domains or []
+        report["failed_pages"] = failures[:10]
+        paths = save_research_report(report)
+        result = {"status": "ok", "report": report, "paths": paths}
+    finally:
+        if open_visible_browser:
+            browser_closed = close_browser_page("web_research_finished")
+    if browser_closed is not None:
+        result["browser_closed"] = browser_closed
+    return result

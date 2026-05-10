@@ -44,7 +44,7 @@ from security.permission_manager import check_action, check_command
 from security.safety_modes import set_safety_mode
 from research.technology_watcher import classify_research_item
 from learning.skill_manager import run_skill
-from tools.web_research import build_research_report_from_pages, candidate_article_links, extract_links, recent_enough_for_query
+from tools.web_research import build_research_report_from_pages, candidate_article_links, extract_links, recent_enough_for_query, run_web_research_report
 from core.mission_control import (
     add_checkpoint,
     append_mission_log,
@@ -819,6 +819,13 @@ class EveCoreTests(unittest.TestCase):
         self.assertTrue(recent_enough_for_query("last 3 months papers", "Apr 2, 2026", now="2026-05-08"))
         self.assertFalse(recent_enough_for_query("last 3 months papers", "Dec 18, 2025", now="2026-05-08"))
         self.assertTrue(recent_enough_for_query("papers", "Dec 18, 2025", now="2026-05-08"))
+
+    def test_web_research_closes_visible_browser_when_finished(self):
+        with patch("tools.web_research.search_web", return_value={"url": "https://www.google.com/search?q=unit"}):
+            with patch("tools.web_research.close_browser_page", return_value={"status": "closed_requested"}) as close_page:
+                result = run_web_research_report("unit research close browser", open_visible_browser=True, max_pages=1)
+        close_page.assert_called_once()
+        self.assertEqual(result["browser_closed"]["status"], "closed_requested")
 
     def test_mission_control_creates_and_resumes_auditable_mission(self):
         mission = create_mission(

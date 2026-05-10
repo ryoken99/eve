@@ -131,6 +131,23 @@ def navigate_address_bar(url: str) -> dict:
     return payload
 
 
+def close_browser_page(reason: str = "task_finished") -> dict:
+    before = take_screenshot("before_close_browser_page", scope="all")
+    action = hotkey("ctrl", "w")
+    time.sleep(1)
+    after = take_screenshot("after_close_browser_page", scope="all")
+    payload = {
+        "status": "closed_requested",
+        "reason": reason,
+        "method": "ctrl+w",
+        "before": str(before),
+        "after": str(after),
+        "action": action,
+    }
+    log_ui_action("browser_close_page", payload)
+    return payload
+
+
 def browser_visual_task(steps: list[dict]) -> dict:
     return run_visual_steps(steps)
 

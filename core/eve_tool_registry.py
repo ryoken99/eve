@@ -36,7 +36,7 @@ from security.tool_policy import classify_tool, decide_tool_execution
 from self_improvement.verified_self_update import verified_core_update
 from tools.admin_executor import launch_elevated_powershell, run_admin_command
 from tools.browser_advanced import browser_back, browser_click_text, browser_fetch_url, browser_scroll, browser_snapshot, browser_type_text
-from tools.browser_human import browser_visual_task, navigate_address_bar, open_url, search_web
+from tools.browser_human import browser_visual_task, close_browser_page, navigate_address_bar, open_url, search_web
 from tools.desktop_tasks import create_desktop_file, create_desktop_folder, schedule_desktop_folder_creation
 from tools.email_human import create_gmail_draft, gmail_search_visual
 from tools.filesystem import append_file, list_dir, read_file, write_file
@@ -71,6 +71,10 @@ def _create_desktop_folder(args: dict) -> dict:
 
 def _open_browser(args: dict) -> dict:
     return {"ok": True, "tool": "open_browser", "result": open_url(str(args.get("url") or "https://www.google.com"))}
+
+
+def _close_browser(args: dict) -> dict:
+    return {"ok": True, "tool": "browser_close", "result": close_browser_page(str(args.get("reason") or "task_finished"))}
 
 
 def _search_web(args: dict) -> dict:
@@ -613,6 +617,7 @@ TOOLS: dict[str, EveTool] = {
     "create_desktop_file": EveTool("create_desktop_file", "Cria ficheiro no Ambiente de Trabalho.", {"name": "ola.txt"}, _create_desktop_file),
     "create_desktop_folder": EveTool("create_desktop_folder", "Cria pasta no Ambiente de Trabalho.", {"name": "ola"}, _create_desktop_folder),
     "open_browser": EveTool("open_browser", "Abre URL no Chrome/perfil Eve.", {"url": "https://x.com"}, _open_browser),
+    "browser_close": EveTool("browser_close", "Fecha a pagina/separador ativo do browser quando a tarefa web terminou.", {"reason": "task_finished"}, _close_browser),
     "search_web": EveTool("search_web", "Abre pesquisa Google no Chrome/perfil Eve.", {"query": "caes golden retriever"}, _search_web),
     "web_research_report": EveTool("web_research_report", "Pesquisa web auditavel e guarda relatorio.", {"query": "Anthropic research papers last 3 months", "seed_urls": [], "allowed_domains": [], "max_pages": 8, "open_visible_browser": True}, _web_research_report),
     "schedule_desktop_folder": EveTool("schedule_desktop_folder", "Agenda criacao de pasta no Ambiente de Trabalho.", {"name": "pasta", "time": "22:43"}, _schedule_desktop_folder),
