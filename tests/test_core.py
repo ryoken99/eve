@@ -17,6 +17,7 @@ from learning.skill_learning_loop import run_skill_learning_loop, skill_result_s
 from app.eve_codex import (
     _format_interface_message,
     _extract_eve_tool_call,
+    _extract_eve_tool_calls,
     _safe_profile_name,
     active_loop_mode,
     build_loop_prompt,
@@ -672,6 +673,37 @@ class EveCoreTests(unittest.TestCase):
         self.assertEqual(final, "Pasta criada, Sandro.")
         self.assertEqual(call_model.call_count, 1)
         self.assertIn("Pasta criada", output.getvalue())
+
+    def test_tool_loop_executes_all_tool_calls_in_one_assistant_message(self):
+        from app.eve_codex import _run_tool_loop
+
+        first_text = (
+            'EVE_TOOL {"tool":"schedule_x_post","args":{"time":"21:00","text":"one"}}'
+            'EVE_TOOL {"tool":"schedule_x_post","args":{"time":"21:05","text":"two"}}'
+            'EVE_TOOL {"tool":"schedule_desktop_folder","args":{"name":"231","time":"21:08"}}'
+        )
+        tool_results = [
+            {"ok": True, "tool": "schedule_x_post", "result": {"status": "scheduled", "scheduled_for": "2026-05-10T21:00:00", "task_name": "x1", "job_path": "D:\\Eve\\state\\x1.json", "text": "one"}},
+            {"ok": True, "tool": "schedule_x_post", "result": {"status": "scheduled", "scheduled_for": "2026-05-10T21:05:00", "task_name": "x2", "job_path": "D:\\Eve\\state\\x2.json", "text": "two"}},
+            {"ok": True, "tool": "schedule_desktop_folder", "result": {"status": "scheduled", "scheduled_for": "2026-05-10T21:08:00", "task_name": "folder", "folder": "C:\\Users\\utilizador\\Desktop\\231"}},
+        ]
+        with patch("app.eve_codex.execute_eve_tool", side_effect=tool_results) as execute_tool:
+            with patch("app.eve_codex._call_codex_text", return_value=(200, "As 3 acoes foram agendadas.", {})) as call_model:
+                final = _run_tool_loop(
+                    "token",
+                    "model",
+                    "instructions",
+                    original_prompt="agenda 3 coisas",
+                    first_text=first_text,
+                    display_name="Sandro",
+                    publish_to_interface=False,
+                )
+        self.assertEqual(final, "As 3 acoes foram agendadas.")
+        self.assertEqual(execute_tool.call_count, 3)
+        self.assertEqual(len(_extract_eve_tool_calls(first_text)), 3)
+        followup_prompt = call_model.call_args.args[3]
+        self.assertIn("Total tool calls executadas: 3", followup_prompt)
+        self.assertIn("schedule_desktop_folder", followup_prompt)
 
     def test_desktop_folder_scheduler_uses_windows_task_command(self):
         captured = {}

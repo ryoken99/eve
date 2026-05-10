@@ -1019,6 +1019,8 @@ def ask(prompt: str, *, speaker: str = "sandro", publish_to_interface: bool = Tr
         "Use the local memory context as persistent background, including documented operational capabilities, but do not claim actions you did not perform. "
         "Do not deny a documented local capability unless an actual attempt or status check fails. "
         "For local actions, you have a tool catalog. Decide yourself whether to call a tool and emit the exact EVE_TOOL JSON when needed. "
+        "For requests with multiple concrete actions, emit every required EVE_TOOL call; the runtime will execute them as a guarded batch and verify each one before final reply. "
+        "Never summarize a multi-action task as complete until every requested action has a tool result and verification status. "
         "Slash commands are only human shortcuts; you should use tools/internal actions directly instead of telling Sandro to type commands. "
         "For long tasks, use missions, checkpoints, autonomous cycles, background processes, and session handoffs to preserve continuity. "
         "When answering personal facts, use RELEVANT ENTITY MEMORY. Distinguish stable real-profile facts from fictional, roleplay, or simulated-story sources. "
@@ -1096,32 +1098,51 @@ def _run_tool_loop(
 ) -> str | None:
     text = first_text
     for _ in range(max_tool_iterations):
-        tool_call = _extract_eve_tool_call(text)
-        if not tool_call:
+        tool_calls = _extract_eve_tool_calls(text)
+        if not tool_calls:
             return None if text == first_text else _finalize_assistant_text(text, display_name, publish_to_interface)
-        append_chat("assistant", text, tags=["tool_call", tool_call["tool"]])
-        _record_session_message("assistant", text, {"tool_call": tool_call["tool"]})
+        append_chat("assistant", text, tags=["tool_call_batch", f"count:{len(tool_calls)}"])
+        _record_session_message("assistant", text, {"tool_calls": [call["tool"] for call in tool_calls]})
         _sync_vector_message("assistant", text)
-        task_id = start_tool_task(tool_call["tool"], tool_call.get("args") or {})
-        tool_result = execute_eve_tool(tool_call)
-        finish_tool_task(task_id, tool_result)
-        append_chat("tool", json.dumps(tool_result, ensure_ascii=False), tags=["tool_result", tool_call["tool"]])
-        _record_session_message("tool", json.dumps(tool_result, ensure_ascii=False), {"tool": tool_call["tool"]})
-        _sync_vector_message("tool", json.dumps(tool_result, ensure_ascii=False))
-        if tool_call["tool"] in {"publish_x_post_now", "schedule_x_post", "schedule_repeated_x_posts"} and tool_result.get("ok"):
-            clear_pending_intent("x_post_completed")
-        result_text = format_eve_tool_result(tool_result)
+        batch_results = []
+        for index, tool_call in enumerate(tool_calls, start=1):
+            task_id = start_tool_task(tool_call["tool"], tool_call.get("args") or {})
+            tool_result = execute_eve_tool(tool_call)
+            finish_tool_task(task_id, tool_result)
+            append_chat("tool", json.dumps(tool_result, ensure_ascii=False), tags=["tool_result", tool_call["tool"], f"batch:{index}/{len(tool_calls)}"])
+            _record_session_message("tool", json.dumps(tool_result, ensure_ascii=False), {"tool": tool_call["tool"], "batch_index": index, "batch_total": len(tool_calls)})
+            _sync_vector_message("tool", json.dumps(tool_result, ensure_ascii=False))
+            if tool_call["tool"] in {"publish_x_post_now", "schedule_x_post", "schedule_repeated_x_posts"} and tool_result.get("ok"):
+                clear_pending_intent("x_post_completed")
+            batch_results.append(
+                {
+                    "index": index,
+                    "tool_call": tool_call,
+                    "tool_result": tool_result,
+                    "result_text": format_eve_tool_result(tool_result),
+                    "verified": bool((tool_result.get("verification") or {}).get("ok", tool_result.get("ok", False))),
+                }
+            )
+        failed = [item for item in batch_results if not item["verified"]]
+        result_text = "\n\n".join(
+            f"[{item['index']}/{len(batch_results)}] {item['tool_call']['tool']}\n{item['result_text']}"
+            for item in batch_results
+        )
         followup_prompt = (
             "Resultado de ferramenta local para o pedido original.\n\n"
             f"Pedido original:\n{original_prompt}\n\n"
-            f"Tool call:\n{json.dumps(tool_call, ensure_ascii=False)}\n\n"
-            f"Tool result resumido:\n{result_text}\n\n"
-            "Agora responde ao utilizador em texto normal. Se ainda precisares de outra ferramenta, podes emitir outro EVE_TOOL."
+            f"Total tool calls executadas: {len(batch_results)}\n"
+            f"Total verificadas: {len(batch_results) - len(failed)}\n"
+            f"Total falhadas/nao verificadas: {len(failed)}\n\n"
+            f"Tool calls:\n{json.dumps([item['tool_call'] for item in batch_results], ensure_ascii=False)}\n\n"
+            f"Tool results resumidos:\n{result_text}\n\n"
+            "Agora responde ao utilizador em texto normal. "
+            "Se alguma ferramenta falhou ou ficou nao verificada, nao digas que a tarefa ficou feita; corrige com nova EVE_TOOL ou reporta a falha real. "
+            "Se ainda precisares de outra ferramenta para completar todos os itens do pedido original, emite outro EVE_TOOL."
         )
         status_code, text, payload = _call_codex_text(token, model, instructions, followup_prompt)
         if status_code != 200:
-            text = result_text
-            return _finalize_assistant_text(text, display_name, publish_to_interface, tags=["tool", tool_call["tool"]])
+            return _finalize_assistant_text(result_text, display_name, publish_to_interface, tags=["tool_batch"])
     return _finalize_assistant_text(text, display_name, publish_to_interface)
 
 
@@ -1256,21 +1277,30 @@ def recent_chat_context(limit: int = 12) -> str:
 
 
 def _extract_eve_tool_call(text: str) -> dict | None:
+    calls = _extract_eve_tool_calls(text)
+    return calls[0] if calls else None
+
+
+def _extract_eve_tool_calls(text: str) -> list[dict]:
     marker = "EVE_TOOL"
-    index = text.find(marker)
-    if index < 0:
-        return None
-    payload_text = text[index + len(marker) :].lstrip()
-    try:
-        payload, _ = json.JSONDecoder().raw_decode(payload_text)
-    except json.JSONDecodeError:
-        return None
-    if not isinstance(payload, dict) or not isinstance(payload.get("tool"), str):
-        return None
-    args = payload.get("args") or {}
-    if not isinstance(args, dict):
-        return None
-    return {"tool": payload["tool"], "args": args}
+    calls = []
+    search_from = 0
+    while True:
+        index = text.find(marker, search_from)
+        if index < 0:
+            break
+        payload_text = text[index + len(marker) :].lstrip()
+        try:
+            payload, consumed = json.JSONDecoder().raw_decode(payload_text)
+        except json.JSONDecodeError:
+            search_from = index + len(marker)
+            continue
+        if isinstance(payload, dict) and isinstance(payload.get("tool"), str):
+            args = payload.get("args") or {}
+            if isinstance(args, dict):
+                calls.append({"tool": payload["tool"], "args": args})
+        search_from = index + len(marker) + consumed
+    return calls
 
 
 def execute_eve_tool_call(call: dict) -> dict:
