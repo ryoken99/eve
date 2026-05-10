@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+from autonomy.cron_manager import add_cron_job, list_cron_jobs
 from core.paths import EVE_ROOT, LAB_DIR, LOGS_DIR, MEMORY_DIR, STATE_DIR, ensure_project_dirs
 
 
@@ -33,21 +34,89 @@ def _exists(relative: str) -> bool:
     return path.exists()
 
 
+def _count_files(relative: str, pattern: str = "*") -> int:
+    path = (EVE_ROOT / relative).resolve()
+    if not path.exists():
+        return 0
+    if path.is_file():
+        return 1
+    return sum(1 for item in path.rglob(pattern) if item.is_file())
+
+
+def _habit_score(point_id: int) -> tuple[float, list[str]]:
+    evidence: list[str] = []
+    checks = {
+        1: [("logs/admin_actions", 1), ("backups/files", 1)],
+        2: [("logs/transcripts/chat", 1), ("memory/diary", 1)],
+        3: [("memory/medium_term", 1), ("memory/dream_reports", 1)],
+        4: [("memory/short_term", 1), ("memory/medium_term", 1), ("memory/long_term", 1)],
+        5: [("memory/semantic_vector", 1)],
+        6: [("memory/dream_reports", 1)],
+        7: [("logs/ui_actions", 1), ("state/daemon_heartbeat.json", 1)],
+        8: [("memory/personality", 1), ("memory/medium_term/autonomous_capability_improvements.md", 1)],
+        9: [("lab/candidate_improvements", 1), ("lab/reports", 1)],
+        10: [("logs/transcripts/errors", 1), ("memory/errors", 1)],
+        11: [("memory/technology", 1), ("logs/browser", 1)],
+        12: [("memory/technology/research_candidates.md", 1), ("lab/candidate_improvements", 1)],
+        13: [("memory/world/world_learning.md", 1), ("memory/technology/technology_learning.md", 1)],
+        14: [("logs/autonomy", 1), ("lab/candidate_improvements", 1)],
+        15: [("logs/ui_actions", 1), ("logs/browser", 1)],
+        16: [("backups/tmp", 1), ("lab/candidate_improvements/verified_updates", 1)],
+        17: [("state/daemon_heartbeat.json", 1), ("state/missions", 1), ("logs/autonomy", 1)],
+    }
+    selected = checks.get(point_id, [])
+    passed = 0
+    for relative, minimum in selected:
+        count = _count_files(relative)
+        if count >= minimum:
+            passed += 1
+            evidence.append(f"{relative} ({count})")
+    return (passed / max(1, len(selected))), evidence
+
+
+def _improvement_score(point_id: int) -> tuple[float, list[str]]:
+    evidence: list[str] = []
+    candidate_count = _count_files("lab/candidate_improvements", "*.json")
+    report_count = _count_files("memory/medium_term", "*capability*.md")
+    if candidate_count:
+        evidence.append(f"lab/candidate_improvements ({candidate_count})")
+    if report_count:
+        evidence.append(f"memory/medium_term capability reports ({report_count})")
+    score = 0.0
+    if candidate_count:
+        score += 0.5
+    if report_count:
+        score += 0.25
+    if (STATE_DIR / "capability_roadmap_state.json").exists():
+        score += 0.25
+        evidence.append("state/capability_roadmap_state.json")
+    return min(1.0, score), evidence
+
+
 def _score_point(point: dict[str, Any]) -> dict[str, Any]:
     paths = point.get("paths") or []
     existing = [path for path in paths if _exists(str(path))]
-    ratio = len(existing) / max(1, len(paths))
-    if ratio >= 1:
+    base_score = len(existing) / max(1, len(paths))
+    habit_score, habit_evidence = _habit_score(int(point["id"]))
+    improvement_score, improvement_evidence = _improvement_score(int(point["id"]))
+    closeness = round(base_score * 0.45 + habit_score * 0.35 + improvement_score * 0.20, 2)
+    improvement_headroom = round(1.0 - closeness, 2)
+    if base_score >= 1:
         status = "implemented_base"
-    elif ratio > 0:
+    elif base_score > 0:
         status = "partial"
     else:
         status = "missing"
-    maturity = {
-        "implemented_base": "needs_autonomous_habit",
-        "partial": "needs_core_work",
-        "missing": "needs_foundation",
-    }[status]
+    if status == "missing":
+        maturity = "needs_foundation"
+    elif status == "partial":
+        maturity = "needs_core_work"
+    elif closeness >= 0.85:
+        maturity = "improve_quality"
+    elif habit_score >= 0.5:
+        maturity = "needs_depth"
+    else:
+        maturity = "needs_autonomous_habit"
     return {
         "id": point["id"],
         "title": point["title"],
@@ -55,8 +124,15 @@ def _score_point(point: dict[str, Any]) -> dict[str, Any]:
         "maturity": maturity,
         "desired": point["desired"],
         "evidence": existing,
+        "habit_evidence": habit_evidence,
+        "improvement_evidence": improvement_evidence,
         "missing_paths": [path for path in paths if path not in existing],
-        "score": round(ratio, 2),
+        "base_score": round(base_score, 2),
+        "habit_score": round(habit_score, 2),
+        "improvement_score": round(improvement_score, 2),
+        "closeness": closeness,
+        "improvement_headroom": improvement_headroom,
+        "score": closeness,
     }
 
 
@@ -69,6 +145,7 @@ def capability_audit() -> dict[str, Any]:
         "partial": sum(1 for point in points if point["status"] == "partial"),
         "missing": sum(1 for point in points if point["status"] == "missing"),
         "needs_autonomous_habit": sum(1 for point in points if point["maturity"] == "needs_autonomous_habit"),
+        "average_closeness": round(sum(point["closeness"] for point in points) / max(1, len(points)), 2),
     }
     weakest = sorted(points, key=lambda item: (item["score"], item["id"]))[:5]
     return {"summary": summary, "points": points, "weakest": weakest}
@@ -137,9 +214,39 @@ def write_capability_audit() -> Path:
         lines.append(f"## {point['id']}. {point['title']}")
         lines.append(f"- Estado: {point['status']}")
         lines.append(f"- Maturidade: {point['maturity']}")
+        lines.append(f"- Proximidade: {point['closeness']} | Margem de melhoria: {point['improvement_headroom']}")
+        lines.append(f"- Scores: base={point['base_score']} habito={point['habit_score']} melhoria={point['improvement_score']}")
         lines.append(f"- Objetivo: {point['desired']}")
         lines.append(f"- Evidencia: {', '.join(point['evidence']) or 'nenhuma'}")
+        lines.append(f"- Habito autonomo: {', '.join(point['habit_evidence']) or 'nenhum'}")
+        lines.append(f"- Evidencia de melhoria: {', '.join(point['improvement_evidence']) or 'nenhuma'}")
         lines.append(f"- Falta: {', '.join(point['missing_paths']) or 'nenhum caminho base'}")
         lines.append("")
     path.write_text("\n".join(lines), encoding="utf-8")
     return path
+
+
+def append_capability_review_history() -> Path:
+    audit = capability_audit()
+    path = LOGS_DIR / "autonomy" / "capability_reviews.jsonl"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    row = {
+        "summary": audit["summary"],
+        "weakest": audit["weakest"],
+    }
+    with path.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(row, ensure_ascii=False) + "\n")
+    return path
+
+
+def ensure_capability_review_schedule(*, schedule: str = "6h") -> dict[str, Any]:
+    command = "Set-Location D:\\Eve; python scripts\\capability_review.py"
+    existing = [
+        job
+        for job in list_cron_jobs()
+        if job.get("name") == "Eve Capability Roadmap Review"
+    ]
+    if existing:
+        return {"status": "exists", "job": existing[0]}
+    job = add_cron_job("Eve Capability Roadmap Review", schedule, command, enabled=True)
+    return {"status": "created", "job": job}

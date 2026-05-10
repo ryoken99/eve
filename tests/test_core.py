@@ -56,7 +56,7 @@ from core.mission_control import (
 )
 from autonomy.autonomy_director import build_autonomy_prompt, run_autonomy_cycle
 from autonomy.autonomous_executor import execute_autonomous_backlog, execute_autonomous_mission
-from autonomy.capability_roadmap import capability_audit, capability_impulses, rotating_capability_impulses, write_capability_audit
+from autonomy.capability_roadmap import append_capability_review_history, capability_audit, capability_impulses, ensure_capability_review_schedule, rotating_capability_impulses, write_capability_audit
 from autonomy.token_gate import decide_llm_call, record_llm_call
 from autonomy.autonomy_reporter import run_autonomy_report_cycle
 from tools.x_scheduler import build_x_post_task_command, schedule_repeated_x_posts, schedule_x_post
@@ -865,10 +865,21 @@ class EveCoreTests(unittest.TestCase):
         audit = capability_audit()
         self.assertEqual(audit["summary"]["total"], 17)
         self.assertEqual(len(audit["points"]), 17)
+        self.assertIn("average_closeness", audit["summary"])
+        self.assertIn("improvement_headroom", audit["points"][0])
         self.assertTrue(capability_impulses(limit=1))
         path = write_capability_audit()
         self.assertTrue(path.exists())
         self.assertIn("17. Autonomia", path.read_text(encoding="utf-8"))
+        self.assertIn("Proximidade", path.read_text(encoding="utf-8"))
+
+    def test_capability_roadmap_writes_history_and_schedule(self):
+        history = append_capability_review_history()
+        self.assertTrue(history.exists())
+        scheduled = ensure_capability_review_schedule(schedule="6h")
+        self.assertIn(scheduled["status"], {"created", "exists"})
+        self.assertEqual(scheduled["job"]["name"], "Eve Capability Roadmap Review")
+        self.assertIn("capability_review.py", scheduled["job"]["command"])
 
     def test_capability_roadmap_rotates_focus_points(self):
         first = rotating_capability_impulses(limit=1)[0]["capability_point"]["id"]

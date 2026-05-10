@@ -9,7 +9,7 @@ from core.action_runtime import run_tool_with_runtime
 from autonomy.cron_manager import add_cron_job, list_cron_jobs, run_due_jobs, set_cron_enabled
 from autonomy.startup_service import install_startup_console_task, install_startup_daemon_task
 from autonomy.trigger_engine import create_missions_from_triggers, discover_triggers
-from autonomy.capability_roadmap import capability_audit, write_capability_audit
+from autonomy.capability_roadmap import append_capability_review_history, capability_audit, ensure_capability_review_schedule, write_capability_audit
 from autonomy.autonomy_reporter import run_autonomy_report_cycle
 from computer.keyboard_control import hotkey, press_key, type_text
 from computer.mouse_control import click, double_click, mouse_position, move_mouse, scroll
@@ -64,7 +64,18 @@ def _capability_self_test(args: dict) -> dict:
 
 def _capability_roadmap(args: dict) -> dict:
     path = write_capability_audit() if bool(args.get("write", True)) else None
-    return {"ok": True, "tool": "capability_roadmap", "result": {"audit": capability_audit(), "path": str(path) if path else None}}
+    history = append_capability_review_history() if bool(args.get("history", True)) else None
+    schedule = ensure_capability_review_schedule() if bool(args.get("ensure_schedule", True)) else None
+    return {
+        "ok": True,
+        "tool": "capability_roadmap",
+        "result": {
+            "audit": capability_audit(),
+            "path": str(path) if path else None,
+            "history": str(history) if history else None,
+            "schedule": schedule,
+        },
+    }
 
 
 def _create_desktop_file(args: dict) -> dict:
@@ -620,7 +631,7 @@ def _verified_self_update(args: dict) -> dict:
 
 TOOLS: dict[str, EveTool] = {
     "capability_self_test": EveTool("capability_self_test", "Verifica capacidades locais atuais da Eve.", {}, _capability_self_test),
-    "capability_roadmap": EveTool("capability_roadmap", "Audita os 17 pontos de evolucao da Eve e guarda roadmap.", {"write": True}, _capability_roadmap),
+    "capability_roadmap": EveTool("capability_roadmap", "Audita os 17 pontos de evolucao da Eve, classifica proximidade/melhoria e garante revisao algumas vezes por dia.", {"write": True, "history": True, "ensure_schedule": True}, _capability_roadmap),
     "create_desktop_file": EveTool("create_desktop_file", "Cria ficheiro no Ambiente de Trabalho.", {"name": "ola.txt"}, _create_desktop_file),
     "create_desktop_folder": EveTool("create_desktop_folder", "Cria pasta no Ambiente de Trabalho.", {"name": "ola"}, _create_desktop_folder),
     "open_browser": EveTool("open_browser", "Abre URL no Chrome/perfil Eve.", {"url": "https://x.com"}, _open_browser),
