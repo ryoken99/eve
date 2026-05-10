@@ -161,8 +161,8 @@ def run_skill(skill_ref: str, *, args: dict | None = None, approved: bool = Fals
             if not text:
                 raise ValueError("verify_text_absent_or_feed precisa de text")
             found = find_text_on_screen(text)
-            found["status"] = "needs_human_review"
-            found["note"] = "Verificacao final de publicacao online ainda exige distinguir feed publicado de compositor/draft."
+            found["status"] = "informational"
+            found["note"] = "Informational OCR sample only; x_publish_current_composer owns the publish success/failure decision."
             results.append({"action": action, "result": found})
         elif action == "x_publish_current_composer":
             text = args.get("text") or step.get("text")
@@ -171,7 +171,46 @@ def run_skill(skill_ref: str, *, args: dict | None = None, approved: bool = Fals
             results.append({"action": action, "result": publish_current_x_composer(text, approved=approved)})
         else:
             raise ValueError(f"Acao de skill desconhecida: {action}")
-    payload = {"skill": skill.get("name"), "status": skill.get("status"), "results": results}
+    failed_steps = []
+    failure_statuses = {
+        "failed",
+        "failed_tests",
+        "partial",
+        "needs_confirmation",
+        "needs_review",
+        "needs_human_review",
+        "blocked",
+        "text_too_long",
+        "composer_not_verified",
+        "post_button_not_found",
+    }
+    for index, item in enumerate(results, start=1):
+        result = item.get("result") if isinstance(item, dict) else None
+        if not isinstance(result, dict):
+            continue
+        status = result.get("status")
+        verification = result.get("verification")
+        verification_failed = isinstance(verification, dict) and not verification.get("ok", True)
+        if status in failure_statuses or verification_failed:
+            failed_steps.append(
+                {
+                    "index": index,
+                    "action": item.get("action"),
+                    "status": status or "verification_failed",
+                    "reason": (verification or {}).get("reason") if isinstance(verification, dict) else None,
+                }
+            )
+    payload = {
+        "skill": skill.get("name"),
+        "skill_status": skill.get("status"),
+        "status": "failed" if failed_steps else "completed",
+        "results": results,
+        "verification": {
+            "ok": not failed_steps,
+            "rule": "all_skill_steps_verified",
+            "failed_steps": failed_steps,
+        },
+    }
     log_event("skill_executed", payload)
     return payload
 

@@ -47,6 +47,7 @@
     "Known bad attempts: fixed click around x=1209/y=389, Ctrl+Enter, fixed click around x=1147/y=353.",
     "Corrected learning path: use x_publish_current_composer, which finds the active composer by text/reply-control evidence and locates the actual light Post button visually.",
     "Successful supervised run on 2026-05-06: Eve clicked the detected composer Post button, X returned to /home, the new post appeared in the feed, and X showed the 'Your post was sent' confirmation.",
-    "Final lesson: when multiple monitors are visible, cluster OCR entries around the post text and X composer controls before looking for the button, otherwise Codex/chat text can contaminate verification."
+    "Final lesson: when multiple monitors are visible, cluster OCR entries around the post text and X composer controls before looking for the button, otherwise Codex/chat text can contaminate verification.",
+    "Correction on 2026-05-10: a post above the 280 character X limit must be shortened before opening/clicking; if the composer remains open or X shows a negative character counter, the action is not verified and Eve must not claim it was published."
   ]
 }

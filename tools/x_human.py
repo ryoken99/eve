@@ -16,6 +16,52 @@ from learning.adaptive_learning import record_adaptive_lesson, record_skill_fail
 from security.permission_manager import check_action
 
 
+X_POST_CHAR_LIMIT = 280
+
+
+def validate_x_post_text(post_text: str) -> dict:
+    text = str(post_text or "")
+    characters = len(text)
+    remaining = X_POST_CHAR_LIMIT - characters
+    status = "ok" if characters <= X_POST_CHAR_LIMIT else "too_long"
+    return {
+        "ok": status == "ok",
+        "status": status,
+        "characters": characters,
+        "limit": X_POST_CHAR_LIMIT,
+        "remaining": remaining,
+    }
+
+
+def fit_x_post_text(post_text: str, *, limit: int = X_POST_CHAR_LIMIT) -> dict:
+    original = " ".join(str(post_text or "").split())
+    if len(original) <= limit:
+        return {
+            "text": original,
+            "status": "unchanged",
+            "original_characters": len(original),
+            "characters": len(original),
+            "validation": validate_x_post_text(original),
+        }
+    suffix = "..."
+    target = max(1, limit - len(suffix))
+    candidate = original[:target].rstrip()
+    if " " in candidate:
+        candidate = candidate.rsplit(" ", 1)[0].rstrip()
+    if not candidate:
+        candidate = original[:target].rstrip()
+    fitted = f"{candidate}{suffix}"
+    if len(fitted) > limit:
+        fitted = fitted[:limit]
+    return {
+        "text": fitted,
+        "status": "auto_shortened",
+        "original_characters": len(original),
+        "characters": len(fitted),
+        "validation": validate_x_post_text(fitted),
+    }
+
+
 def _ocr_contains(text: str, needle: str) -> bool:
     return needle.lower() in text.lower()
 
@@ -175,6 +221,25 @@ def publish_current_x_composer(post_text: str, *, approved: bool = False) -> dic
     if not decision.allowed:
         raise PermissionError(decision.reason)
     ensure_project_dirs()
+    text_validation = validate_x_post_text(post_text)
+    if not text_validation["ok"]:
+        result = {
+            "status": "text_too_long",
+            "text_validation": text_validation,
+            "verification": {
+                "ok": False,
+                "rule": "x_post_text_must_fit_before_click",
+                "reason": f"Post has {text_validation['characters']} characters; X limit is {text_validation['limit']}.",
+            },
+        }
+        record_skill_failure(
+            "x_publish_text_learning",
+            "validate_x_post_length",
+            "Post text was above X character limit before clicking Post.",
+            str(text_validation),
+        )
+        log_ui_action("x_publish_current_composer", result)
+        return result
     before_evidence = _composer_evidence(post_text)
     if not before_evidence["looks_like_composer"]:
         record_skill_failure(
@@ -183,7 +248,12 @@ def publish_current_x_composer(post_text: str, *, approved: bool = False) -> dic
             "Composer evidence was not strong enough before publishing.",
             str({k: before_evidence[k] for k in ("has_reply_control", "has_post_text")}),
         )
-        return {"status": "composer_not_verified", "before": before_evidence}
+        return {
+            "status": "composer_not_verified",
+            "before": before_evidence,
+            "text_validation": text_validation,
+            "verification": {"ok": False, "rule": "composer_not_verified_before_publish"},
+        }
     target = _find_light_button_on_composer(
         before_evidence["screenshot"],
         before_evidence["entries"],
@@ -196,25 +266,40 @@ def publish_current_x_composer(post_text: str, *, approved: bool = False) -> dic
             target.get("reason", "unknown"),
             "Could not locate the bright X composer Post button by visual scan.",
         )
-        return {"status": "post_button_not_found", "before": before_evidence, "target": target}
+        return {
+            "status": "post_button_not_found",
+            "before": before_evidence,
+            "target": target,
+            "text_validation": text_validation,
+            "verification": {"ok": False, "rule": "post_button_not_found"},
+        }
     action = click(target["global_center"]["x"], target["global_center"]["y"])
     time.sleep(6)
     after = take_screenshot("after_x_publish_current_composer", scope="all")
     after_text = ocr_image(after)
     still_composer = _ocr_contains(after_text, "Everyone can reply")
-    post_visible = all(part.lower() in after_text.lower() for part in ("Eve", "Hermes", "OpenClaw"))
+    anchor_terms = before_evidence.get("anchor_terms") or []
+    matched_after_terms = [term for term in anchor_terms if term.lower() in after_text.lower()]
+    post_visible = len(matched_after_terms) >= max(2, min(3, len(anchor_terms)))
     sent_toast = _ocr_contains(after_text, "Your post was sent") or (
         _ocr_contains(after_text, "post") and _ocr_contains(after_text, "sent")
     )
-    status = "published" if sent_toast or (post_visible and not still_composer) else "needs_review"
+    status = "published" if not still_composer and (sent_toast or post_visible) else "needs_review"
     result = {
         "status": status,
         "target": target,
         "click": action,
         "after_screenshot": str(after),
         "post_visible": post_visible,
+        "matched_after_terms": matched_after_terms,
         "still_composer": still_composer,
         "sent_toast": sent_toast,
+        "text_validation": text_validation,
+        "verification": {
+            "ok": status == "published",
+            "rule": "x_post_sent_and_composer_closed",
+            "reason": "composer still open or published post not verified" if status != "published" else "composer closed and post/send evidence found",
+        },
     }
     if status == "published":
         record_adaptive_lesson(

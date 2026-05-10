@@ -66,12 +66,14 @@ from core.internal_command_planner import format_internal_plan, plan_internal_ac
 from autonomy.cron_manager import add_cron_job, list_cron_jobs, run_due_jobs
 from tools.process_manager import start_process, poll_process, stop_process
 from core.plugin_registry import plugin_summary
+from core.action_runtime import verify_tool_result
 from memory.vector_provider import LocalVectorMemoryProvider
 from learning.skill_curator import record_skill_usage, curate_skills
 from security.secrets_vault import mask_secret
 from self_improvement.verified_self_update import verified_core_update
 from memory.daily_transcripts import append_transcript, ensure_daily_transcript_files, transcript_date_key, transcript_path
 from app.eve_web import check_access_code, render_index
+from tools.x_human import fit_x_post_text, validate_x_post_text
 
 
 class EveCoreTests(unittest.TestCase):
@@ -590,6 +592,50 @@ class EveCoreTests(unittest.TestCase):
         mocked.assert_called_once()
         self.assertEqual(mocked.call_args.args[0], "trusted/x_publish_text_learning")
         self.assertIn("Not%20just", mocked.call_args.kwargs["args"]["url"])
+
+    def test_publish_x_post_now_autofits_over_limit_text_before_skill(self):
+        from app.eve_codex import execute_eve_tool_call
+
+        set_safety_mode("unrestricted_mode", "unit publish")
+        long_text = "Eve " + ("reliable " * 40)
+        self.assertFalse(validate_x_post_text(long_text)["ok"])
+        with patch(
+            "core.eve_tool_registry.run_skill",
+            return_value={"status": "completed", "verification": {"ok": True}, "results": []},
+        ) as mocked:
+            result = execute_eve_tool_call({"tool": "publish_x_post_now", "args": {"text": long_text}})
+        used_text = mocked.call_args.kwargs["args"]["text"]
+        self.assertLessEqual(len(used_text), 280)
+        self.assertTrue(validate_x_post_text(used_text)["ok"])
+        self.assertEqual(result["result"]["correction"]["status"], "auto_shortened")
+        self.assertTrue(result["verification"]["ok"])
+
+    def test_fit_x_post_text_keeps_text_within_x_limit(self):
+        fitted = fit_x_post_text("Eve " + ("learning " * 60))
+        self.assertLessEqual(len(fitted["text"]), 280)
+        self.assertEqual(fitted["validation"]["status"], "ok")
+
+    def test_tool_verification_fails_on_nested_skill_failure(self):
+        result = {
+            "ok": True,
+            "tool": "publish_x_post_now",
+            "result": {
+                "skill": "x_publish_text_learning",
+                "status": "completed",
+                "results": [
+                    {
+                        "action": "x_publish_current_composer",
+                        "result": {
+                            "status": "needs_review",
+                            "verification": {"ok": False, "rule": "composer_still_open"},
+                        },
+                    }
+                ],
+            },
+        }
+        verification = verify_tool_result("publish_x_post_now", result)
+        self.assertFalse(verification["ok"])
+        self.assertIn("needs_review", verification["reason"])
 
     def test_pending_x_post_draft_extraction(self):
         text = (

@@ -8,6 +8,7 @@ import threading
 import time
 import urllib.parse
 import webbrowser
+from collections import deque
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
@@ -17,7 +18,7 @@ if EVE_ROOT not in sys.path:
     sys.path.insert(0, EVE_ROOT)
 
 from app.eve_codex import active_auth_profile, ask, list_auth_accounts, select_auth_account
-from memory.daily_transcripts import append_transcript
+from memory.daily_transcripts import append_transcript, transcript_path
 
 
 ACCESS_CODE = "172099"
@@ -27,6 +28,23 @@ DEFAULT_PORT = 8787
 
 def check_access_code(value: str) -> bool:
     return str(value or "").strip() == ACCESS_CODE
+
+
+def recent_activity(limit: int = 8) -> list[dict[str, Any]]:
+    items: deque[dict[str, Any]] = deque(maxlen=max(1, min(int(limit or 8), 50)))
+    for kind in ("actions", "tools", "errors"):
+        path = transcript_path(kind)
+        if not path.exists():
+            continue
+        with path.open("r", encoding="utf-8", errors="replace") as handle:
+            for line in handle:
+                try:
+                    row = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                row["kind"] = kind
+                items.append(row)
+    return sorted(items, key=lambda row: row.get("timestamp", ""))[-max(1, min(int(limit or 8), 50)):]
 
 
 def render_index() -> str:
@@ -48,9 +66,11 @@ def render_index() -> str:
       --danger: #ff6b7a;
     }
     * { box-sizing: border-box; }
-    body {
+    html, body {
       margin: 0;
-      min-height: 100vh;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
       font-family: Segoe UI, Arial, sans-serif;
       background: var(--bg);
       color: var(--text);
@@ -97,7 +117,7 @@ def render_index() -> str:
     }
     button:disabled { opacity: .55; cursor: wait; }
     .err { color: var(--danger); min-height: 20px; margin-top: 10px; }
-    .app { display: none; min-height: 100vh; grid-template-rows: auto 1fr auto; }
+    .app { display: none; height: 100vh; grid-template-rows: auto 1fr auto; overflow: hidden; background: var(--bg); }
     header {
       height: 58px;
       display: flex;
@@ -110,6 +130,7 @@ def render_index() -> str:
     .brand { font-weight: 700; }
     .account { display: flex; gap: 8px; align-items: center; }
     main {
+      min-height: 0;
       overflow: auto;
       padding: 18px;
       display: flex;
@@ -134,6 +155,18 @@ def render_index() -> str:
       gap: 10px;
       padding: 14px;
       background: #11151b;
+      min-height: 80px;
+    }
+    .activity {
+      min-height: 22px;
+      max-height: 68px;
+      overflow: auto;
+      border-top: 1px solid var(--line);
+      padding: 6px 14px;
+      color: var(--muted);
+      font-size: 12px;
+      background: #0f1319;
+      white-space: pre-wrap;
     }
     textarea {
       min-height: 48px;
@@ -176,6 +209,7 @@ def render_index() -> str:
       </div>
     </header>
     <main id="messages"></main>
+    <div class="activity" id="activity">Ações da Eve aparecem aqui.</div>
     <form class="composer" id="form">
       <textarea id="message" placeholder="Escreve para a Eve..."></textarea>
       <button id="send" type="submit">Enviar</button>
@@ -202,6 +236,7 @@ def render_index() -> str:
     const message = document.getElementById('message');
     const send = document.getElementById('send');
     const statusEl = document.getElementById('status');
+    const activity = document.getElementById('activity');
     const activeAccount = document.getElementById('activeAccount');
     const accountDialog = document.getElementById('accountDialog');
     const accounts = document.getElementById('accounts');
@@ -220,6 +255,27 @@ def render_index() -> str:
       messages.appendChild(div);
       messages.scrollTop = messages.scrollHeight;
     }
+    function renderActivity(rows) {
+      if (!rows || !rows.length) return;
+      activity.textContent = rows.map(row => {
+        const p = row.payload || {};
+        if (row.event === 'tool_start') return 'chama ' + p.tool + ' tentativa ' + p.attempt;
+        if (row.event === 'tool_verification') return 'verifica ' + p.tool + ': ' + ((p.verification || {}).status || '');
+        if (row.event === 'tool_result') return 'resultado ' + p.tool;
+        if (row.event === 'tool_verification_failed') return 'falha ' + p.tool;
+        if (row.event === 'web_error') return 'erro web: ' + (p.error || '');
+        return row.event;
+      }).join('\n');
+    }
+    async function pollActivity() {
+      if (app.style.display !== 'grid') return;
+      try {
+        const res = await fetch('/api/activity?limit=8');
+        const data = await res.json();
+        if (data.ok) renderActivity(data.items);
+      } catch (_) {}
+    }
+    setInterval(pollActivity, 1500);
     async function api(path, payload) {
       const res = await fetch(path, {
         method: 'POST',
@@ -328,6 +384,11 @@ class EveWebHandler(BaseHTTPRequestHandler):
         if parsed.path == "/api/accounts":
             accounts = list_auth_accounts()
             self._send_json({"ok": True, "active": active_auth_profile(), "accounts": accounts})
+            return
+        if parsed.path == "/api/activity":
+            query = urllib.parse.parse_qs(parsed.query)
+            limit = int((query.get("limit") or ["8"])[0])
+            self._send_json({"ok": True, "items": recent_activity(limit)})
             return
         self.send_error(HTTPStatus.NOT_FOUND)
 

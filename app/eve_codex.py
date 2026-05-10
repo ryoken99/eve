@@ -1284,6 +1284,8 @@ def format_eve_tool_result(result: dict) -> str:
         return f"Erro real na ferramenta {result.get('tool')}: {result.get('error')}"
     payload = result.get("result")
     tool = result.get("tool")
+    runtime_verification = result.get("verification")
+    verified = not (isinstance(runtime_verification, dict) and not runtime_verification.get("ok", True))
     if tool == "create_desktop_file":
         return f"Ficheiro criado: {payload['path']}"
     if tool == "create_desktop_folder":
@@ -1295,7 +1297,25 @@ def format_eve_tool_result(result: dict) -> str:
     if tool == "schedule_x_post":
         return format_x_schedule_result(payload)
     if tool == "publish_x_post_now":
-        return f"Publicacao no X executada pela skill trusted/x_publish_text_learning.\nResultado:\n{json.dumps(payload, indent=2, ensure_ascii=False)[:5000]}"
+        correction = payload.get("correction") if isinstance(payload, dict) else None
+        correction_line = ""
+        if isinstance(correction, dict) and correction.get("status") == "auto_shortened":
+            correction_line = (
+                f"\nTexto encurtado automaticamente: "
+                f"{correction.get('original_characters')} -> {correction.get('characters')} caracteres."
+            )
+        if not verified:
+            reason = runtime_verification.get("reason") if isinstance(runtime_verification, dict) else "verificacao falhou"
+            return (
+                "Publicacao no X NAO confirmada. "
+                "A Eve nao deve tratar isto como feito.\n"
+                f"Motivo: {reason}{correction_line}\n"
+                f"Resultado:\n{json.dumps(payload, indent=2, ensure_ascii=False)[:5000]}"
+            )
+        return (
+            "Publicacao no X executada e verificada pela skill trusted/x_publish_text_learning."
+            f"{correction_line}\nResultado:\n{json.dumps(payload, indent=2, ensure_ascii=False)[:5000]}"
+        )
     if tool == "run_terminal":
         return (
             f"Comando executado: {payload['command']}\n"

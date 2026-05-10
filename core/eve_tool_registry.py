@@ -45,6 +45,7 @@ from tools.process_manager import list_processes, poll_process, start_process, s
 from tools.terminal import run_command
 from tools.web_research import run_web_research_report
 from tools.windows_scheduler import create_daily_task, list_eve_tasks
+from tools.x_human import fit_x_post_text
 from tools.x_scheduler import schedule_repeated_x_posts, schedule_x_post
 
 
@@ -132,15 +133,25 @@ def _publish_x_post_now(args: dict) -> dict:
     text = str(args.get("text") or "").strip()
     if not text:
         return {"ok": False, "tool": "publish_x_post_now", "error": "Texto vazio para publicar no X."}
-    encoded = urllib.parse.quote(text)
+    fitted = fit_x_post_text(text)
+    publish_text = fitted["text"]
+    encoded = urllib.parse.quote(publish_text)
+    skill_result = run_skill(
+        "trusted/x_publish_text_learning",
+        args={"url": f"https://x.com/intent/post?text={encoded}", "text": publish_text},
+        approved=True,
+    )
+    if isinstance(skill_result, dict):
+        skill_result["correction"] = {
+            "status": fitted["status"],
+            "original_characters": fitted["original_characters"],
+            "characters": fitted["characters"],
+            "limit": fitted["validation"]["limit"],
+        }
     return {
         "ok": True,
         "tool": "publish_x_post_now",
-        "result": run_skill(
-            "trusted/x_publish_text_learning",
-            args={"url": f"https://x.com/intent/post?text={encoded}", "text": text},
-            approved=True,
-        ),
+        "result": skill_result,
     }
 
 
