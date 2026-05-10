@@ -36,6 +36,9 @@ READONLY_TOOLS = {
     "secrets_mask",
     "diagnostics_export",
     "triggers_discover",
+    "context_status",
+    "session_resume",
+    "internal_plan",
 }
 SEARCH_TOOLS = {"search_web", "web_research_report", "browser_fetch_url"}
 EXEC_TOOLS = {"run_terminal", "start_process", "stop_process", "poll_process", "spawn_subagent"}
@@ -65,6 +68,8 @@ MUTATING_TOOLS = {
     "install_startup_daemon",
     "install_startup_console",
     "triggers_create_missions",
+    "session_checkpoint",
+    "session_rotate",
 }
 UI_TOOLS = {
     "open_browser",

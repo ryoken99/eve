@@ -32,8 +32,10 @@ from memory.errors.error_memory import recent_errors
 from core.awareness_engine import describe_awareness
 from core.capability_self_test import format_capability_self_test
 from core.eve_tool_registry import execute_eve_tool, tool_catalog_prompt
+from core.internal_command_planner import format_internal_plan
 from core.pending_intent import clear_pending_intent, maybe_save_x_post_draft, pending_intent_context
 from core.session_store import add_session_message
+from core.session_handoff import context_status, create_session_checkpoint, current_session_id, format_active_handoff
 from core.task_ledger import finish_tool_task, start_tool_task
 from core.self_report import format_self_report
 from computer.vision import describe_screen, find_text_on_screen, first_text_center, monitor_report, screenshot_monitor
@@ -113,7 +115,6 @@ CODEX_OAUTH_CLIENT_ID = "app_EMoamEEZ73f0CkXaXp7hrann"
 CODEX_OAUTH_TOKEN_URL = "https://auth.openai.com/oauth/token"
 CODEX_BASE_URL = "https://chatgpt.com/backend-api/codex"
 DEFAULT_MODEL = "gpt-5.4"
-SESSION_ID = "main"
 KNOWN_MODELS = ["gpt-5.5", "gpt-5.4", "gpt-5.4-mini", "gpt-5.3-codex", "gpt-5.2"]
 LOOP_MODES = {
     "1": {"message_limit": 10, "description": "Modo 1: loop curto, 10 mensagens"},
@@ -184,7 +185,7 @@ def publish_interface_message(source: str, content: str, *, target: str = "Eve",
 
 def _record_session_message(role: str, content: str, metadata: dict | None = None) -> None:
     try:
-        add_session_message(SESSION_ID, role, content, metadata or {})
+        add_session_message(current_session_id(), role, content, metadata or {})
     except Exception as exc:
         append_loop_event("session_store_error", {"error": f"{type(exc).__name__}: {exc}", "role": role})
 
@@ -212,6 +213,18 @@ def _format_vector_context(query: str, limit: int = 5) -> str:
         if content:
             parts.append(f"- {source} score={score}: {content[:800]}")
     return "\n".join(parts)
+
+
+def _context_handoff_prompt() -> str:
+    try:
+        status = context_status()
+        if status["should_checkpoint"]:
+            create_session_checkpoint(reason=f"auto checkpoint: context status {status['level']}")
+        handoff = format_active_handoff()
+        return f"SESSION STATUS:\n{json.dumps(status, ensure_ascii=False)}\n\nACTIVE HANDOFF:\n{handoff}"
+    except Exception as exc:
+        append_loop_event("handoff_context_error", {"error": f"{type(exc).__name__}: {exc}"})
+        return ""
 
 
 def append_loop_event(event: str, payload: dict) -> Path:
@@ -989,6 +1002,8 @@ def ask(prompt: str, *, speaker: str = "sandro", publish_to_interface: bool = Tr
     pending_context = pending_intent_context()
     entity_context = relevant_entity_memory(prompt, limit=8)
     vector_context = _format_vector_context(prompt)
+    handoff_context = _context_handoff_prompt()
+    internal_plan_context = format_internal_plan(prompt)
     role = speaker_role(speaker)
     display_name = speaker_display_name(speaker)
     visible_prompt = prompt
@@ -1004,9 +1019,13 @@ def ask(prompt: str, *, speaker: str = "sandro", publish_to_interface: bool = Tr
         "Use the local memory context as persistent background, including documented operational capabilities, but do not claim actions you did not perform. "
         "Do not deny a documented local capability unless an actual attempt or status check fails. "
         "For local actions, you have a tool catalog. Decide yourself whether to call a tool and emit the exact EVE_TOOL JSON when needed. "
+        "Slash commands are only human shortcuts; you should use tools/internal actions directly instead of telling Sandro to type commands. "
+        "For long tasks, use missions, checkpoints, autonomous cycles, background processes, and session handoffs to preserve continuity. "
         "When answering personal facts, use RELEVANT ENTITY MEMORY. Distinguish stable real-profile facts from fictional, roleplay, or simulated-story sources. "
         "If the memory only suggests a fact from roleplay/simulation, say it is uncertain instead of presenting it as confirmed.\n\n"
         f"{tool_catalog_prompt() if allow_tools else 'Ferramentas locais ja executadas ou indisponiveis nesta etapa; responde em texto normal.'}\n\n"
+        f"INTERNAL COMMAND PLANNER:\n{internal_plan_context}\n\n"
+        f"SESSION HANDOFF / CONTEXT ROTATION:\n{handoff_context}\n\n"
         f"INTENCAO PENDENTE:\n{pending_context}\n\n"
         f"HISTORICO RECENTE DO CHAT (usa para referencias imediatas):\n{recent_context}\n\n"
         f"VECTOR MEMORY PREFETCH (memorias semanticamente parecidas, se existirem):\n{vector_context}\n\n"

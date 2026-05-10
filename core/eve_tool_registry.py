@@ -15,7 +15,9 @@ from computer.ocr import ocr_status
 from computer.vision import describe_screen, find_text_on_screen, first_text_center, monitor_report, screenshot_monitor
 from core.awareness_engine import collect_awareness, describe_awareness
 from core.diagnostics import build_diagnostics_bundle
+from core.internal_command_planner import all_internal_actions, plan_internal_actions
 from core.plugin_registry import plugin_summary
+from core.session_handoff import context_status, create_session_checkpoint, format_active_handoff, rotate_session
 from core.paths import EVE_ROOT
 from core.capability_self_test import format_capability_self_test
 from core.session_store import add_session_message, export_session, search_sessions
@@ -520,6 +522,45 @@ def _triggers_create_missions(args: dict) -> dict:
     return {"ok": True, "tool": "triggers_create_missions", "result": create_missions_from_triggers(max_new=int(args.get("max_new") or 2))}
 
 
+def _context_status(args: dict) -> dict:
+    return {"ok": True, "tool": "context_status", "result": context_status(str(args.get("session_id") or "") or None)}
+
+
+def _session_checkpoint(args: dict) -> dict:
+    return {
+        "ok": True,
+        "tool": "session_checkpoint",
+        "result": create_session_checkpoint(
+            str(args.get("session_id") or "") or None,
+            reason=str(args.get("reason") or "Eve checkpoint"),
+            recent_limit=int(args.get("recent_limit") or 40),
+        ),
+    }
+
+
+def _session_resume(args: dict) -> dict:
+    return {"ok": True, "tool": "session_resume", "result": {"handoff": format_active_handoff(int(args.get("max_chars") or 7000))}}
+
+
+def _session_rotate(args: dict) -> dict:
+    return {
+        "ok": True,
+        "tool": "session_rotate",
+        "result": rotate_session(reason=str(args.get("reason") or "Eve context rotation"), new_session_id=args.get("new_session_id")),
+    }
+
+
+def _internal_plan(args: dict) -> dict:
+    prompt = str(args.get("prompt") or "")
+    return {
+        "ok": True,
+        "tool": "internal_plan",
+        "result": {
+            "matches": plan_internal_actions(prompt, limit=int(args.get("limit") or 5)) if prompt else all_internal_actions(),
+        },
+    }
+
+
 TOOLS: dict[str, EveTool] = {
     "capability_self_test": EveTool("capability_self_test", "Verifica capacidades locais atuais da Eve.", {}, _capability_self_test),
     "create_desktop_file": EveTool("create_desktop_file", "Cria ficheiro no Ambiente de Trabalho.", {"name": "ola.txt"}, _create_desktop_file),
@@ -604,6 +645,11 @@ TOOLS: dict[str, EveTool] = {
     "install_startup_console": EveTool("install_startup_console", "Instala tarefa Windows para abrir consola Eve.", {"time": "09:01"}, _install_startup_console),
     "triggers_discover": EveTool("triggers_discover", "Descobre impulsos/triggers autonomos.", {}, _triggers_discover),
     "triggers_create_missions": EveTool("triggers_create_missions", "Cria missoes propostas a partir de triggers.", {"max_new": 2}, _triggers_create_missions),
+    "context_status": EveTool("context_status", "Mostra estado de contexto da sessao ativa e se deve rodar.", {"session_id": ""}, _context_status),
+    "session_checkpoint": EveTool("session_checkpoint", "Guarda handoff/resumo da sessao atual para continuar noutra sessao.", {"reason": "checkpoint antes de rotacao", "recent_limit": 40}, _session_checkpoint),
+    "session_resume": EveTool("session_resume", "Le o handoff ativo para retomar o fio da conversa.", {"max_chars": 7000}, _session_resume),
+    "session_rotate": EveTool("session_rotate", "Cria checkpoint e muda para nova sessao ativa.", {"reason": "contexto grande", "new_session_id": ""}, _session_rotate),
+    "internal_plan": EveTool("internal_plan", "Planeia que ferramentas internas usar para um pedido natural.", {"prompt": "trabalha em loop nesta tarefa", "limit": 5}, _internal_plan),
 }
 
 
@@ -623,6 +669,9 @@ def tool_catalog_prompt() -> str:
             "- Tu decides se uma ferramenta e necessaria. O codigo so executa a ferramenta que tu pedires.",
             "- Para pedidos diretos do Sandro, usa ferramentas em vez de dizer que nao tens acesso quando a ferramenta existe.",
             "- Se o Sandro deu ordem direta para acao publica, terminal, admin ou ficheiros, inclui approved=true nos args; se nao deu, pede confirmacao.",
+            "- Nao mandes o Sandro escrever slash commands quando tu podes usar a ferramenta equivalente. Slash commands sao atalhos humanos; para ti sao capacidades internas.",
+            "- Para tarefas longas, cria/checkpointa missao, usa autonomia_cycle ou run_terminal background conforme necessario, e regista progresso.",
+            "- Se o contexto estiver grande, usa session_checkpoint ou session_rotate antes de perder o fio.",
             "- Usa a intencao pendente e o historico recente para resolver referencias como \"o texto 2\", \"o que disseste\", \"faz o post\", \"publica agora\".",
             "- Se falta informacao real, faz uma pergunta em vez de inventar argumentos.",
             "- Depois da ferramenta executar, recebes o resultado e deves responder ao Sandro com o que aconteceu.",

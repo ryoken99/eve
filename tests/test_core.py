@@ -59,7 +59,9 @@ from autonomy.autonomy_reporter import run_autonomy_report_cycle
 from tools.x_scheduler import build_x_post_task_command, schedule_x_post
 from tools.desktop_tasks import parse_desktop_file_request, parse_desktop_folder_request, parse_desktop_folder_schedule_request, schedule_desktop_folder_creation
 from security.tool_policy import classify_tool, decide_tool_execution
-from core.session_store import add_session_message, search_sessions
+from core.session_store import add_session_message, count_session_messages, recent_session_messages, search_sessions
+from core.session_handoff import context_status, create_session_checkpoint, current_session_id, rotate_session, set_current_session
+from core.internal_command_planner import format_internal_plan, plan_internal_actions
 from autonomy.cron_manager import add_cron_job, list_cron_jobs, run_due_jobs
 from tools.process_manager import start_process, poll_process, stop_process
 from core.plugin_registry import plugin_summary
@@ -71,6 +73,7 @@ from security.secrets_vault import mask_secret
 class EveCoreTests(unittest.TestCase):
     def tearDown(self):
         set_safety_mode("safe_mode", "test cleanup")
+        set_current_session("main", reason="test cleanup")
 
     def test_safety_modes_gate_commands(self):
         set_safety_mode("safe_mode", "test")
@@ -364,6 +367,11 @@ class EveCoreTests(unittest.TestCase):
             "diagnostics_export",
             "install_startup_daemon",
             "triggers_discover",
+            "session_checkpoint",
+            "session_resume",
+            "session_rotate",
+            "context_status",
+            "internal_plan",
         }
         self.assertTrue(required.issubset(set(TOOLS)))
         self.assertGreaterEqual(len(TOOLS), 80)
@@ -382,6 +390,28 @@ class EveCoreTests(unittest.TestCase):
         add_session_message("unit-session", "user", "Eve session searchable unique needle", {"unit": True})
         rows = search_sessions("unique needle", limit=5)
         self.assertTrue(any(row["session_id"] == "unit-session" for row in rows))
+        self.assertGreaterEqual(count_session_messages("unit-session"), 1)
+        recent = recent_session_messages("unit-session", limit=1)
+        self.assertEqual(recent[-1]["role"], "user")
+
+    def test_session_handoff_checkpoint_and_rotation(self):
+        set_current_session("unit-handoff", reason="unit test")
+        add_session_message("unit-handoff", "user", "Preciso continuar sem perder o fio a meada.", {"unit": True})
+        checkpoint = create_session_checkpoint(reason="unit checkpoint")
+        self.assertEqual(checkpoint["session_id"], "unit-handoff")
+        self.assertTrue(checkpoint["recent_messages"])
+        self.assertEqual(context_status("unit-handoff")["session_id"], "unit-handoff")
+        rotated = rotate_session(reason="unit rotate", new_session_id="unit-handoff-next")
+        self.assertEqual(rotated["previous_session_id"], "unit-handoff")
+        self.assertEqual(current_session_id(), "unit-handoff-next")
+
+    def test_internal_command_planner_maps_natural_requests(self):
+        actions = plan_internal_actions("trabalha em loop continuo nesta tarefa longa sem eu intervir")
+        tools = {item["tool"] for item in actions}
+        self.assertIn("autonomy_cycle", tools)
+        self.assertIn("run_terminal", tools)
+        formatted = format_internal_plan("trocar de sessao sem perder o fio")
+        self.assertIn("session_checkpoint", formatted)
 
     def test_cron_manager_dry_run(self):
         job = add_cron_job("unit cron", "2020-01-01T00:00:00Z", "Write-Output ok")

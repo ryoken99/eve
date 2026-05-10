@@ -72,6 +72,37 @@ def search_sessions(query: str, *, limit: int = 20) -> list[dict[str, Any]]:
     ]
 
 
+def count_session_messages(session_id: str) -> int:
+    with _connect() as conn:
+        row = conn.execute("SELECT COUNT(*) FROM messages WHERE session_id = ?", (session_id,)).fetchone()
+    return int(row[0] if row else 0)
+
+
+def recent_session_messages(session_id: str, *, limit: int = 40) -> list[dict[str, Any]]:
+    with _connect() as conn:
+        rows = conn.execute(
+            """
+            SELECT id, session_id, role, content, metadata, created_at
+            FROM messages
+            WHERE session_id = ?
+            ORDER BY id DESC
+            LIMIT ?
+            """,
+            (session_id, int(limit)),
+        ).fetchall()
+    return [
+        {
+            "id": row[0],
+            "session_id": row[1],
+            "role": row[2],
+            "content": row[3],
+            "metadata": json.loads(row[4] or "{}"),
+            "created_at": row[5],
+        }
+        for row in reversed(rows)
+    ]
+
+
 def export_session(session_id: str, target: str | Path | None = None) -> dict[str, Any]:
     with _connect() as conn:
         rows = conn.execute(
@@ -97,4 +128,3 @@ def export_session(session_id: str, target: str | Path | None = None) -> dict[st
                 + "\n"
             )
     return {"session_id": session_id, "messages": len(rows), "path": str(target_path)}
-

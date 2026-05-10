@@ -52,6 +52,8 @@ state/cron_jobs.json
 state/processes.json
 state/sessions.sqlite3
 state/session_exports/*.jsonl
+state/current_session.json
+state/session_handoffs/**
 skills/.usage.json
 skills/.archive/
 external/
