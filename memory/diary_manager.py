@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any
 
 from core.paths import LOGS_DIR, MEMORY_DIR, ensure_project_dirs
+from memory.daily_transcripts import append_transcript
 from security.safety_modes import current_safety_mode
 
 
@@ -36,6 +37,7 @@ def append_chat(role: str, content: str, *, session_id: str = "main", mode: str 
     }
     with chat_log_path().open("a", encoding="utf-8") as fh:
         fh.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    append_transcript("chat", "chat_message", entry)
 
     md = diary_path()
     if not md.exists():

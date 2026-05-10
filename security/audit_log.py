@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from core.paths import LOGS_DIR, ensure_project_dirs
+from memory.daily_transcripts import append_transcript
 
 
 def now_iso() -> str:
@@ -25,4 +26,8 @@ def log_event(event_type: str, payload: dict[str, Any]) -> dict[str, Any]:
     }
     with audit_log_path().open("a", encoding="utf-8") as fh:
         fh.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    if "error" in event_type or "failed" in event_type:
+        append_transcript("errors", event_type, payload)
+    else:
+        append_transcript("actions", event_type, payload)
     return entry

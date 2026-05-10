@@ -13,6 +13,7 @@ from autonomy.trigger_engine import create_missions_from_triggers, discover_trig
 from core.mission_control import list_missions
 from core.paths import LOGS_DIR, STATE_DIR, ensure_project_dirs
 from memory.vector_provider import rebuild_vector_memory
+from memory.daily_transcripts import ensure_daily_transcript_files
 from research.technology_watcher import run_technology_watch
 
 
@@ -22,6 +23,7 @@ HEARTBEAT = STATE_DIR / "daemon_heartbeat.json"
 
 def daemon_tick() -> dict:
     ensure_project_dirs()
+    transcripts = ensure_daily_transcript_files()
     cron = run_due_jobs(dry_run=False)
     triggers = discover_triggers()
     proposed_backlog = list_missions(status="proposed", limit=10)
@@ -40,6 +42,7 @@ def daemon_tick() -> dict:
     vector = rebuild_vector_memory()
     result = {
         "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "transcripts": transcripts,
         "cron": cron,
         "triggers": {"discovered": trigger_kinds, "created_missions": trigger_missions.get("created", [])},
         "proposals": proposals,

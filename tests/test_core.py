@@ -70,6 +70,7 @@ from memory.vector_provider import LocalVectorMemoryProvider
 from learning.skill_curator import record_skill_usage, curate_skills
 from security.secrets_vault import mask_secret
 from self_improvement.verified_self_update import verified_core_update
+from memory.daily_transcripts import append_transcript, ensure_daily_transcript_files, transcript_date_key, transcript_path
 
 
 class EveCoreTests(unittest.TestCase):
@@ -410,6 +411,7 @@ class EveCoreTests(unittest.TestCase):
             "context_status",
             "internal_plan",
             "verified_self_update",
+            "ensure_daily_transcripts",
         }
         self.assertTrue(required.issubset(set(TOOLS)))
         self.assertGreaterEqual(len(TOOLS), 80)
@@ -508,8 +510,26 @@ class EveCoreTests(unittest.TestCase):
         )
         self.assertTrue(result["ok"])
         self.assertFalse(result["result"]["applied"])
+        self.assertFalse(result["verification"]["ok"])
         self.assertEqual(target.read_text(encoding="utf-8"), "VALUE = 1\n")
         target.unlink(missing_ok=True)
+
+    def test_daily_transcripts_use_dd_mm_yy_date_key(self):
+        day = datetime(2026, 5, 10, 0, 1)
+        paths = ensure_daily_transcript_files(day)
+        self.assertIn("10-05-26", paths["chat"])
+        self.assertEqual(transcript_date_key(day), "10/05/26")
+        entry = append_transcript("actions", "unit_event", {"ok": True}, day=day)
+        self.assertEqual(entry["date_key"], "10/05/26")
+        self.assertTrue(transcript_path("actions", day).exists())
+
+    def test_tool_runtime_adds_verification_and_transcript(self):
+        from app.eve_codex import execute_eve_tool_call
+
+        result = execute_eve_tool_call({"tool": "tool_policy", "args": {"tool": "workspace_read_file"}})
+        self.assertTrue(result["ok"])
+        self.assertTrue(result["verification"]["ok"])
+        self.assertIn("runtime", result)
 
     def test_cron_manager_dry_run(self):
         job = add_cron_job("unit cron", "2020-01-01T00:00:00Z", "Write-Output ok")

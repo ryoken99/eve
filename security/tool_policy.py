@@ -39,6 +39,7 @@ READONLY_TOOLS = {
     "context_status",
     "session_resume",
     "internal_plan",
+    "ensure_daily_transcripts",
 }
 SEARCH_TOOLS = {"search_web", "web_research_report", "browser_fetch_url"}
 EXEC_TOOLS = {"run_terminal", "start_process", "stop_process", "poll_process", "spawn_subagent"}

@@ -5,6 +5,7 @@ import urllib.parse
 from dataclasses import dataclass
 from typing import Callable
 
+from core.action_runtime import run_tool_with_runtime
 from autonomy.cron_manager import add_cron_job, list_cron_jobs, run_due_jobs, set_cron_enabled
 from autonomy.startup_service import install_startup_console_task, install_startup_daemon_task
 from autonomy.trigger_engine import create_missions_from_triggers, discover_triggers
@@ -28,6 +29,7 @@ from learning.skill_manager import run_skill
 from memory.diary_manager import read_diary
 from memory.memory_manager import append_memory_file, context_bundle, read_memory_file, remember_fact, write_memory_file
 from memory.vector_provider import rebuild_vector_memory, vector_prefetch
+from memory.daily_transcripts import ensure_daily_transcript_files
 from security.secrets_vault import get_secret, list_secrets, mask_secret, store_secret
 from security.safety_modes import current_safety_mode, describe_safety, set_safety_mode
 from security.tool_policy import classify_tool, decide_tool_execution
@@ -421,6 +423,10 @@ def _cron_run_due(args: dict) -> dict:
     return {"ok": True, "tool": "cron_run_due", "result": run_due_jobs(dry_run=bool(args.get("dry_run", False)))}
 
 
+def _ensure_daily_transcripts(args: dict) -> dict:
+    return {"ok": True, "tool": "ensure_daily_transcripts", "result": ensure_daily_transcript_files()}
+
+
 def _start_process(args: dict) -> dict:
     return {"ok": True, "tool": "start_process", "result": start_process(str(args.get("command") or ""), cwd=args.get("cwd"))}
 
@@ -649,6 +655,7 @@ TOOLS: dict[str, EveTool] = {
     "cron_list": EveTool("cron_list", "Lista cron jobs locais da Eve.", {}, _cron_list),
     "cron_set_enabled": EveTool("cron_set_enabled", "Ativa/pausa cron job local.", {"job_id": "cron_x", "enabled": False}, _cron_set_enabled),
     "cron_run_due": EveTool("cron_run_due", "Executa cron jobs vencidos.", {"dry_run": True}, _cron_run_due),
+    "ensure_daily_transcripts": EveTool("ensure_daily_transcripts", "Garante ficheiros diarios de transcricao para chat, tools, actions e errors.", {}, _ensure_daily_transcripts),
     "start_process": EveTool("start_process", "Inicia processo PowerShell em background.", {"command": "Start-Sleep 30", "cwd": "D:\\Eve"}, _start_process),
     "list_processes": EveTool("list_processes", "Lista processos geridos pela Eve.", {}, _list_processes),
     "poll_process": EveTool("poll_process", "Consulta estado de processo gerido.", {"process_id": "proc_x"}, _poll_process),
@@ -702,6 +709,8 @@ def tool_catalog_prompt() -> str:
             "- Para pedidos diretos do Sandro, usa ferramentas em vez de dizer que nao tens acesso quando a ferramenta existe.",
             "- Se o Sandro deu ordem direta para acao publica, terminal, admin ou ficheiros, inclui approved=true nos args; se nao deu, pede confirmacao.",
             "- Para acoes repetidas, usa uma ferramenta batch quando existir, confirma contagem final e corrige automaticamente se faltar alguma execucao.",
+            "- Cada ferramenta e verificada pelo runtime antes da resposta final. Se a verificacao falhar, corrige ou chama outra ferramenta antes de dizer que esta feito.",
+            "- As tuas acoes aparecem na consola e ficam em transcricoes diarias por tipo: chat, tools, actions e errors.",
             "- Nao mandes o Sandro escrever slash commands quando tu podes usar a ferramenta equivalente. Slash commands sao atalhos humanos; para ti sao capacidades internas.",
             "- Para tarefas longas, cria/checkpointa missao, usa autonomia_cycle ou run_terminal background conforme necessario, e regista progresso.",
             "- Se o contexto estiver grande, usa session_checkpoint ou session_rotate antes de perder o fio.",
@@ -729,7 +738,7 @@ def execute_eve_tool(call: dict) -> dict:
             "policy": execution.as_dict(),
         }
     try:
-        result = tool.handler(args)
+        result = run_tool_with_runtime(tool_name, args, tool.handler)
         result.setdefault("policy", execution.as_dict())
         return result
     except Exception as exc:
