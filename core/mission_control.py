@@ -89,7 +89,7 @@ def load_mission(mission_id: str) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def list_missions(status: str | None = None) -> list[dict]:
+def list_missions(status: str | None = None, *, limit: int | None = None) -> list[dict]:
     rows = []
     for path in sorted(missions_dir().glob("*.json"), key=lambda item: item.stat().st_mtime, reverse=True):
         mission = json.loads(path.read_text(encoding="utf-8"))
@@ -104,6 +104,8 @@ def list_missions(status: str | None = None) -> list[dict]:
                 "next_step": mission.get("next_step"),
             }
         )
+        if limit is not None and len(rows) >= int(limit):
+            break
     return rows
 
 

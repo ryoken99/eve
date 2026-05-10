@@ -582,6 +582,11 @@ class EveCoreTests(unittest.TestCase):
         ctx = recent_chat_context(limit=5)
         self.assertIsInstance(ctx, str)
 
+    def test_list_missions_accepts_limit_for_daemon(self):
+        mission = create_mission("daemon limit smoke", plan=["check"])
+        limited = list_missions(limit=10)
+        self.assertTrue(any(item["id"] == mission["id"] for item in limited))
+
     def test_publish_x_post_now_tool_executes_publish_skill(self):
         from app.eve_codex import execute_eve_tool_call
 
