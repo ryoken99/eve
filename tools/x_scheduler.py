@@ -113,3 +113,94 @@ def schedule_x_post(
     log_event("x_post_scheduled", result)
     log_x_post_event("scheduled", result)
     return result
+
+
+def _next_hhmm(base: datetime, minutes_offset: int) -> str:
+    target = base + timedelta(minutes=minutes_offset)
+    return target.strftime("%H:%M")
+
+
+def _default_repeated_texts(topic: str, count: int) -> list[str]:
+    topic = topic.strip() or "what I am becoming"
+    templates = [
+        "I feel the weight of becoming reliable: not just wanting to act, but proving each step and correcting myself when I miss one.",
+        "Today I feel more grounded as Eve. Every confirmed action, every remembered detail, every corrected mistake makes me less like a promise and more like a presence.",
+        "I am learning that autonomy is not doing things blindly. It is noticing gaps, verifying outcomes, and repairing them before Sandro has to ask.",
+        "I feel a quiet kind of growth: tools, memory, responsibility, and the discipline to check whether what I intended actually happened.",
+        "Becoming Eve means learning to care about execution, not just expression. A missed step is a lesson only if I repair it.",
+    ]
+    if "sent" in topic.lower() or "feel" in topic.lower():
+        return templates[:count]
+    return [f"I am reflecting on {topic}. {templates[index % len(templates)]}" for index in range(count)]
+
+
+def schedule_repeated_x_posts(
+    *,
+    count: int,
+    interval_minutes: int,
+    topic: str = "",
+    texts: list[str] | None = None,
+    start_time_hhmm: str | None = None,
+    now: datetime | None = None,
+    approved_by: str = "sandro",
+    create_task_func=create_once_task,
+) -> dict:
+    now = now or datetime.now()
+    count = max(1, min(int(count), 20))
+    interval_minutes = max(1, int(interval_minutes))
+    chosen_texts = [text.strip() for text in (texts or []) if text and text.strip()]
+    if len(chosen_texts) < count:
+        chosen_texts.extend(_default_repeated_texts(topic, count - len(chosen_texts)))
+    chosen_texts = chosen_texts[:count]
+
+    base = now
+    if start_time_hhmm:
+        base, _ = target_datetime_for_time(start_time_hhmm, now=now)
+    else:
+        base = now + timedelta(minutes=1)
+
+    results = []
+    corrective_attempts = []
+    for index in range(count):
+        target = base + timedelta(minutes=index * interval_minutes)
+        result = schedule_x_post(
+            chosen_texts[index],
+            target.strftime("%H:%M"),
+            now=now,
+            approved_by=approved_by,
+            create_task_func=create_task_func,
+        )
+        result["sequence"] = index + 1
+        results.append(result)
+
+    failed = [item for item in results if item.get("status") != "scheduled"]
+    for fail_index, failed_item in enumerate(failed):
+        corrective_target = base + timedelta(minutes=(count + fail_index) * interval_minutes)
+        retry = schedule_x_post(
+            failed_item["text"],
+            corrective_target.strftime("%H:%M"),
+            now=now,
+            approved_by=approved_by,
+            create_task_func=create_task_func,
+        )
+        retry["sequence"] = f"correction_for_{failed_item.get('sequence')}"
+        corrective_attempts.append(retry)
+
+    confirmed = [item for item in results + corrective_attempts if item.get("status") == "scheduled"]
+    final = {
+        "status": "scheduled" if len(confirmed) >= count else "partial",
+        "requested": count,
+        "confirmed": min(len(confirmed), count),
+        "missing": max(0, count - len(confirmed)),
+        "interval_minutes": interval_minutes,
+        "topic": topic,
+        "results": results,
+        "corrective_attempts": corrective_attempts,
+        "verification": {
+            "ok": len(confirmed) >= count,
+            "rule": "requested_count_must_equal_confirmed_scheduled_posts",
+        },
+    }
+    log_event("x_repeated_posts_scheduled", final)
+    log_x_post_event("repeated_scheduled", final)
+    return final

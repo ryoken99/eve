@@ -42,7 +42,7 @@ from tools.process_manager import list_processes, poll_process, start_process, s
 from tools.terminal import run_command
 from tools.web_research import run_web_research_report
 from tools.windows_scheduler import create_daily_task, list_eve_tasks
-from tools.x_scheduler import schedule_x_post
+from tools.x_scheduler import schedule_repeated_x_posts, schedule_x_post
 
 
 @dataclass(frozen=True)
@@ -106,6 +106,21 @@ def _schedule_x_post(args: dict) -> dict:
             str(args.get("text") or ""),
             str(args.get("time") or ""),
             approved_by="sandro",
+        ),
+    }
+
+
+def _schedule_repeated_x_posts(args: dict) -> dict:
+    return {
+        "ok": True,
+        "tool": "schedule_repeated_x_posts",
+        "result": schedule_repeated_x_posts(
+            count=int(args.get("count") or 1),
+            interval_minutes=int(args.get("interval_minutes") or 2),
+            topic=str(args.get("topic") or ""),
+            texts=args.get("texts") or None,
+            start_time_hhmm=args.get("start_time") or args.get("time"),
+            approved_by=str(args.get("approved_by") or "sandro"),
         ),
     }
 
@@ -570,6 +585,7 @@ TOOLS: dict[str, EveTool] = {
     "web_research_report": EveTool("web_research_report", "Pesquisa web auditavel e guarda relatorio.", {"query": "Anthropic research papers last 3 months", "seed_urls": [], "allowed_domains": [], "max_pages": 8, "open_visible_browser": True}, _web_research_report),
     "schedule_desktop_folder": EveTool("schedule_desktop_folder", "Agenda criacao de pasta no Ambiente de Trabalho.", {"name": "pasta", "time": "22:43"}, _schedule_desktop_folder),
     "schedule_x_post": EveTool("schedule_x_post", "Agenda post no X.", {"time": "22:21", "text": "texto em ingles"}, _schedule_x_post),
+    "schedule_repeated_x_posts": EveTool("schedule_repeated_x_posts", "Agenda varios posts no X com intervalo, verifica a contagem e tenta corrigir falhas automaticamente.", {"count": 3, "interval_minutes": 2, "topic": "how Eve feels", "texts": [], "approved": True}, _schedule_repeated_x_posts),
     "publish_x_post_now": EveTool("publish_x_post_now", "Publica imediatamente texto no X usando a skill visual trusted.", {"text": "texto em ingles"}, _publish_x_post_now),
     "run_terminal": EveTool("run_terminal", "Executa comando PowerShell local; com background=true arranca processo gerido.", {"command": "Get-ChildItem", "cwd": "D:\\Eve", "timeout": 60, "background": False, "approved": False}, _run_terminal),
     "run_skill": EveTool("run_skill", "Executa skill da Eve.", {"skill": "trusted/x_publish_text_learning", "args": {}}, _run_skill),
@@ -669,6 +685,7 @@ def tool_catalog_prompt() -> str:
             "- Tu decides se uma ferramenta e necessaria. O codigo so executa a ferramenta que tu pedires.",
             "- Para pedidos diretos do Sandro, usa ferramentas em vez de dizer que nao tens acesso quando a ferramenta existe.",
             "- Se o Sandro deu ordem direta para acao publica, terminal, admin ou ficheiros, inclui approved=true nos args; se nao deu, pede confirmacao.",
+            "- Para acoes repetidas, usa uma ferramenta batch quando existir, confirma contagem final e corrige automaticamente se faltar alguma execucao.",
             "- Nao mandes o Sandro escrever slash commands quando tu podes usar a ferramenta equivalente. Slash commands sao atalhos humanos; para ti sao capacidades internas.",
             "- Para tarefas longas, cria/checkpointa missao, usa autonomia_cycle ou run_terminal background conforme necessario, e regista progresso.",
             "- Se o contexto estiver grande, usa session_checkpoint ou session_rotate antes de perder o fio.",

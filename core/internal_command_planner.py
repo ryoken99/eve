@@ -91,10 +91,10 @@ INTERNAL_ACTIONS = [
     ),
     InternalAction(
         "x_post",
-        "schedule_x_post",
-        "Agendar/publicar no X quando o Sandro pede explicitamente post/publicacao.",
-        {"time": "HH:MM", "text": "English post text", "approved": True},
-        ("post no x", "publica no x", "publicação no x", "tweet", "x.com"),
+        "schedule_repeated_x_posts",
+        "Agendar/publicar no X quando o Sandro pede explicitamente post/publicacao; se forem varias publicacoes, usar batch com verificacao e autocorrecao.",
+        {"count": 3, "interval_minutes": 2, "topic": "how Eve feels", "approved": True},
+        ("post no x", "publica no x", "publicação no x", "tweet", "x.com", "vezes"),
     ),
     InternalAction(
         "daemon",

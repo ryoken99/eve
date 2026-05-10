@@ -42,7 +42,7 @@ READONLY_TOOLS = {
 }
 SEARCH_TOOLS = {"search_web", "web_research_report", "browser_fetch_url"}
 EXEC_TOOLS = {"run_terminal", "start_process", "stop_process", "poll_process", "spawn_subagent"}
-PUBLIC_TOOLS = {"schedule_x_post", "publish_x_post_now", "create_gmail_draft", "gmail_search"}
+PUBLIC_TOOLS = {"schedule_x_post", "schedule_repeated_x_posts", "publish_x_post_now", "create_gmail_draft", "gmail_search"}
 MUTATING_TOOLS = {
     "create_desktop_file",
     "create_desktop_folder",

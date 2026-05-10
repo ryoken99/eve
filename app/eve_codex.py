@@ -61,7 +61,7 @@ from tools.admin_executor import run_admin_command
 from security.safety_modes import SAFETY_MODES, describe_safety, set_safety_mode
 from memory.semantic_vector.vector_store import rebuild_memory_index, search as vector_search
 from tools.windows_scheduler import create_daily_task, list_eve_tasks
-from tools.x_scheduler import schedule_x_post
+from tools.x_scheduler import schedule_repeated_x_posts, schedule_x_post
 from tools.desktop_tasks import (
     create_desktop_folder,
     create_desktop_file,
@@ -1108,7 +1108,7 @@ def _run_tool_loop(
         append_chat("tool", json.dumps(tool_result, ensure_ascii=False), tags=["tool_result", tool_call["tool"]])
         _record_session_message("tool", json.dumps(tool_result, ensure_ascii=False), {"tool": tool_call["tool"]})
         _sync_vector_message("tool", json.dumps(tool_result, ensure_ascii=False))
-        if tool_call["tool"] in {"publish_x_post_now", "schedule_x_post"} and tool_result.get("ok"):
+        if tool_call["tool"] in {"publish_x_post_now", "schedule_x_post", "schedule_repeated_x_posts"} and tool_result.get("ok"):
             clear_pending_intent("x_post_completed")
         result_text = format_eve_tool_result(tool_result)
         followup_prompt = (
@@ -1176,7 +1176,7 @@ def parse_natural_x_schedule_request(prompt: str) -> dict | None:
     if lowered.startswith("/"):
         return None
     wants_schedule = any(word in lowered for word in ("agenda", "agendar", "schedule", "programa", "programar"))
-    mentions_x = " x " in f" {lowered} " or "x.com" in lowered or "twitter" in lowered
+    mentions_x = re.search(r"(^|[\s,.;:])x($|[\s,.;:])", lowered) is not None or "x.com" in lowered or "twitter" in lowered
     mentions_post = any(word in lowered for word in ("post", "publica", "publicação", "publicacao", "tweet"))
     if not wants_schedule or not mentions_x or not mentions_post:
         return None
@@ -1189,6 +1189,24 @@ def parse_natural_x_schedule_request(prompt: str) -> dict | None:
     return {"time": time_hhmm, "text": draft_x_post_from_prompt(prompt)}
 
 
+def parse_natural_repeated_x_request(prompt: str) -> dict | None:
+    lowered = prompt.lower().strip()
+    if lowered.startswith("/"):
+        return None
+    mentions_x = re.search(r"(^|[\s,.;:])x($|[\s,.;:])", lowered) is not None or "x.com" in lowered or "twitter" in lowered
+    mentions_post = any(word in lowered for word in ("post", "publica", "publicar", "tweet"))
+    if not mentions_x or not mentions_post:
+        return None
+    count_match = re.search(r"\b(\d+)\s*(?:vez|vezes|x)\b", lowered)
+    interval_match = re.search(r"\b(?:cada|de)\s*(\d+)\s*(?:min|mins|minuto|minutos)\b", lowered)
+    if not count_match or not interval_match:
+        return None
+    count = int(count_match.group(1))
+    interval_minutes = int(interval_match.group(1))
+    topic = "how Eve feels" if any(term in lowered for term in ("sintas", "sentes", "feel")) else draft_x_post_from_prompt(prompt)
+    return {"count": count, "interval_minutes": interval_minutes, "topic": topic}
+
+
 def format_x_schedule_result(result: dict) -> str:
     text = (
         f"Post no X agendado: {result['scheduled_for']}.\n"
@@ -1199,6 +1217,24 @@ def format_x_schedule_result(result: dict) -> str:
     if result.get("note"):
         text += f"\nNota: {result['note']}"
     return text
+
+
+def format_repeated_x_schedule_result(result: dict) -> str:
+    lines = [
+        f"Posts no X pedidos: {result['requested']}",
+        f"Confirmados: {result['confirmed']}",
+        f"Em falta: {result['missing']}",
+        f"Intervalo: {result['interval_minutes']} minutos",
+    ]
+    for item in result.get("results", []):
+        lines.append(f"- #{item.get('sequence')}: {item.get('status')} | {item.get('scheduled_for')} | {item.get('task_name')}")
+    for item in result.get("corrective_attempts", []):
+        lines.append(f"- correcao {item.get('sequence')}: {item.get('status')} | {item.get('scheduled_for')} | {item.get('task_name')}")
+    if result.get("verification", {}).get("ok"):
+        lines.append("Verificacao: OK, a contagem pedida ficou confirmada.")
+    else:
+        lines.append("Verificacao: FALHOU, ainda ha posts em falta e isto ficou registado para correcao.")
+    return "\n".join(lines)
 
 
 def recent_chat_context(limit: int = 12) -> str:
@@ -1281,6 +1317,24 @@ def handle_natural_tool_request(prompt: str, *, speaker: str = "sandro") -> bool
     role = speaker_role(speaker)
     if role != "user":
         return False
+    repeated_x = parse_natural_repeated_x_request(prompt)
+    if repeated_x:
+        append_chat(role, prompt, tags=["tool_request", "x_repeated_schedule"])
+        try:
+            result = schedule_repeated_x_posts(
+                count=repeated_x["count"],
+                interval_minutes=repeated_x["interval_minutes"],
+                topic=repeated_x["topic"],
+                approved_by="sandro",
+            )
+            text = format_repeated_x_schedule_result(result)
+            print(text)
+            append_chat("assistant", text, tags=["tool", "x_repeated_schedule", result["status"]])
+        except Exception as exc:
+            text = f"Erro real ao agendar posts repetidos no X: {type(exc).__name__}: {exc}"
+            print(text)
+            append_chat("error", text, tags=["tool_error", "x_repeated_schedule"])
+        return True
     x_schedule = parse_natural_x_schedule_request(prompt)
     if x_schedule:
         append_chat(role, prompt, tags=["tool_request", "x_schedule", role] if role != "user" else ["tool_request", "x_schedule"])

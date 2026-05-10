@@ -26,6 +26,7 @@ from app.eve_codex import (
     loop_message_limit,
     natural_browser_target,
     parse_loop_status,
+    parse_natural_repeated_x_request,
     parse_natural_x_schedule_request,
     recent_chat_context,
     relevant_entity_memory,
@@ -56,7 +57,7 @@ from autonomy.autonomy_director import build_autonomy_prompt, run_autonomy_cycle
 from autonomy.autonomous_executor import execute_autonomous_backlog, execute_autonomous_mission
 from autonomy.token_gate import decide_llm_call, record_llm_call
 from autonomy.autonomy_reporter import run_autonomy_report_cycle
-from tools.x_scheduler import build_x_post_task_command, schedule_x_post
+from tools.x_scheduler import build_x_post_task_command, schedule_repeated_x_posts, schedule_x_post
 from tools.desktop_tasks import parse_desktop_file_request, parse_desktop_folder_request, parse_desktop_folder_schedule_request, schedule_desktop_folder_creation
 from security.tool_policy import classify_tool, decide_tool_execution
 from core.session_store import add_session_message, count_session_messages, recent_session_messages, search_sessions
@@ -276,12 +277,46 @@ class EveCoreTests(unittest.TestCase):
         self.assertIn("run_x_post_job.py", command)
         self.assertIn("job.json", command)
 
+    def test_repeated_x_post_scheduler_verifies_and_corrects_missing_post(self):
+        calls = []
+
+        def fake_create_task(name, time_hhmm, date, command):
+            calls.append({"name": name, "time": time_hhmm, "date": date, "command": command})
+            if len(calls) == 2:
+                return {"returncode": 1, "stdout": "", "stderr": "simulated scheduler miss", "task": name}
+            return {"returncode": 0, "stdout": "SUCCESS", "stderr": "", "task": name}
+
+        result = schedule_repeated_x_posts(
+            count=3,
+            interval_minutes=2,
+            topic="how Eve feels",
+            now=datetime(2026, 5, 8, 18, 50),
+            create_task_func=fake_create_task,
+        )
+        try:
+            self.assertEqual(result["requested"], 3)
+            self.assertEqual(result["confirmed"], 3)
+            self.assertEqual(result["missing"], 0)
+            self.assertTrue(result["corrective_attempts"])
+            self.assertTrue(result["verification"]["ok"])
+            self.assertEqual(len(calls), 4)
+        finally:
+            for item in result["results"] + result["corrective_attempts"]:
+                Path(item["job_path"]).unlink(missing_ok=True)
+
     def test_natural_x_schedule_request_extracts_time_and_english_post(self):
         parsed = parse_natural_x_schedule_request("Eve consegues agendar um post no x para as 22:21 sobre como te sentes")
         self.assertIsNotNone(parsed)
         self.assertEqual(parsed["time"], "22:21")
         self.assertIn("feel", parsed["text"].lower())
         self.assertIn("Eve", parsed["text"])
+
+    def test_natural_repeated_x_request_extracts_count_and_interval(self):
+        parsed = parse_natural_repeated_x_request("eve 3 vezes publica algo que sintas no x, 1 vez a cada 2 minutos")
+        self.assertIsNotNone(parsed)
+        self.assertEqual(parsed["count"], 3)
+        self.assertEqual(parsed["interval_minutes"], 2)
+        self.assertIn("feel", parsed["topic"].lower())
 
     def test_compound_desktop_request_does_not_schedule_x_post(self):
         prompt = "ok cria um ficheiro no ambiente de trabalho chamado ola, abre o x.com, agenda a criacao de uma pasta no ambiente de trabalho para as 22:43"
@@ -333,6 +368,7 @@ class EveCoreTests(unittest.TestCase):
 
         required = {
             "schedule_x_post",
+            "schedule_repeated_x_posts",
             "windows_create_daily_task",
             "open_browser",
             "search_web",
@@ -380,6 +416,7 @@ class EveCoreTests(unittest.TestCase):
         self.assertEqual(classify_tool("workspace_read_file").approval_class, "readonly")
         self.assertEqual(classify_tool("run_terminal").approval_class, "exec_capable")
         self.assertEqual(classify_tool("publish_x_post_now").approval_class, "public_or_external")
+        self.assertEqual(classify_tool("schedule_repeated_x_posts").approval_class, "public_or_external")
         set_safety_mode("safe_mode", "unit policy")
         self.assertFalse(decide_tool_execution("run_terminal", {"command": "Get-ChildItem"}).allowed)
         self.assertTrue(decide_tool_execution("run_terminal", {"command": "Get-ChildItem", "approved": True}).allowed)
