@@ -185,6 +185,20 @@ def _query_terms(query: str) -> list[str]:
     return [term.lower() for term in re.findall(r"[\w-]{4,}", query) if term.lower() not in stop]
 
 
+def default_seed_urls_for_query(query: str) -> list[str]:
+    lowered = query.lower()
+    if any(term in lowered for term in ("ouro", "gold", "xauusd", "xau/usd")):
+        return [
+            "https://www.investing.com/commodities/gold",
+            "https://www.kitco.com/charts/gold",
+            "https://www.marketwatch.com/investing/future/gold",
+            "https://www.reuters.com/markets/commodities/",
+        ]
+    if "anthropic" in lowered and ("paper" in lowered or "research" in lowered):
+        return ["https://www.anthropic.com/research"]
+    return []
+
+
 def _best_claim(text: str, query: str) -> str:
     terms = _query_terms(query)
     candidates = _sentences(text)
@@ -307,7 +321,7 @@ def run_web_research_report(
         if open_visible_browser:
             browser_evidence = search_web(query)
 
-        seeds = list(seed_urls or [])
+        seeds = list(seed_urls or default_seed_urls_for_query(query))
         if not seeds and _is_url(query):
             seeds.append(query)
         pages: list[dict] = []

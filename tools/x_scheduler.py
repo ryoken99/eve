@@ -10,6 +10,7 @@ from pathlib import Path
 from core.paths import EVE_ROOT, LOGS_DIR, STATE_DIR, ensure_project_dirs
 from security.audit_log import log_event
 from tools.windows_scheduler import create_once_task
+from tools.x_human import fit_x_post_text
 
 
 X_POST_JOBS_DIR = STATE_DIR / "x_posts"
@@ -40,7 +41,21 @@ def target_datetime_for_time(time_hhmm: str, *, now: datetime | None = None) -> 
 
 def build_x_post_task_command(job_path: str | Path) -> str:
     runner = EVE_ROOT / "scripts" / "run_x_post_job.py"
-    return f'"{sys.executable}" "{runner}" --job "{Path(job_path)}"'
+    log_dir = LOGS_DIR / "scheduled_tasks"
+    log_dir.mkdir(parents=True, exist_ok=True)
+    log_path = log_dir / f"{Path(job_path).stem}.log"
+    return (
+        "powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "
+        f"\"Set-Location -LiteralPath '{EVE_ROOT}'; "
+        f"& '{sys.executable}' '{runner}' --job '{Path(job_path)}' *> '{log_path}'\""
+    )
+
+
+def _create_interactive_task(create_task_func, name: str, time_hhmm: str, date_ddmmyyyy: str, command: str) -> dict:
+    try:
+        return create_task_func(name, time_hhmm, date_ddmmyyyy, command, interactive=True)
+    except TypeError:
+        return create_task_func(name, time_hhmm, date_ddmmyyyy, command)
 
 
 def write_x_post_job(text: str, scheduled_for: datetime, *, approved_by: str = "sandro") -> Path:
@@ -94,11 +109,20 @@ def schedule_x_post(
     text = text.strip()
     if not text:
         return {"status": "needs_confirmation", "reason": "Post text is empty."}
+    original_text = text
+    fitted = fit_x_post_text(text)
+    text = fitted["text"]
     target, note = target_datetime_for_time(time_hhmm, now=now)
     job_path = write_x_post_job(text, target, approved_by=approved_by)
     command = build_x_post_task_command(job_path)
     task_fragment = f"X_Post_{target.strftime('%Y%m%d_%H%M')}_{_safe_task_fragment(text)}"
-    task_result = create_task_func(task_fragment, target.strftime("%H:%M"), target.strftime("%d/%m/%Y"), command)
+    task_result = _create_interactive_task(
+        create_task_func,
+        task_fragment,
+        target.strftime("%H:%M"),
+        target.strftime("%d/%m/%Y"),
+        command,
+    )
     status = "scheduled" if int(task_result.get("returncode", 1)) == 0 else "failed"
     update_x_post_job(job_path, status=status, task_result=task_result, task_name=f"Eve_{task_fragment}", note=note)
     result = {
@@ -109,6 +133,13 @@ def schedule_x_post(
         "text": text,
         "note": note,
         "task_result": task_result,
+        "correction": {
+            "status": fitted["status"],
+            "original_characters": fitted["original_characters"],
+            "characters": fitted["characters"],
+            "limit": fitted["validation"]["limit"],
+            "original_text": original_text if fitted["status"] != "unchanged" else None,
+        },
     }
     log_event("x_post_scheduled", result)
     log_x_post_event("scheduled", result)

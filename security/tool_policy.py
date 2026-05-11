@@ -50,6 +50,7 @@ MUTATING_TOOLS = {
     "workspace_write_file",
     "workspace_append_file",
     "schedule_desktop_folder",
+    "schedule_web_research",
     "run_skill",
     "memory_write",
     "memory_append",

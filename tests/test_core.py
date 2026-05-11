@@ -44,7 +44,7 @@ from security.permission_manager import check_action, check_command
 from security.safety_modes import set_safety_mode
 from research.technology_watcher import classify_research_item
 from learning.skill_manager import run_skill
-from tools.web_research import build_research_report_from_pages, candidate_article_links, extract_links, recent_enough_for_query, run_web_research_report
+from tools.web_research import build_research_report_from_pages, candidate_article_links, default_seed_urls_for_query, extract_links, recent_enough_for_query, run_web_research_report
 from core.mission_control import (
     add_checkpoint,
     append_mission_log,
@@ -60,6 +60,7 @@ from autonomy.capability_roadmap import append_capability_review_history, capabi
 from autonomy.token_gate import decide_llm_call, record_llm_call
 from autonomy.autonomy_reporter import run_autonomy_report_cycle
 from tools.x_scheduler import build_x_post_task_command, schedule_repeated_x_posts, schedule_x_post
+from tools.research_scheduler import build_web_research_task_command, schedule_web_research_report
 from tools.desktop_tasks import parse_desktop_file_request, parse_desktop_folder_request, parse_desktop_folder_schedule_request, schedule_desktop_folder_creation
 from security.tool_policy import classify_tool, decide_tool_execution
 from core.session_store import add_session_message, count_session_messages, recent_session_messages, search_sessions
@@ -74,7 +75,7 @@ from learning.skill_curator import record_skill_usage, curate_skills
 from security.secrets_vault import mask_secret
 from self_improvement.verified_self_update import verified_core_update
 from memory.daily_transcripts import append_transcript, ensure_daily_transcript_files, transcript_date_key, transcript_path
-from app.eve_web import check_access_code, render_index
+from app.eve_web import check_access_code, recent_chat_messages, render_index
 from tools.x_human import fit_x_post_text, validate_x_post_text
 
 
@@ -247,8 +248,8 @@ class EveCoreTests(unittest.TestCase):
     def test_x_post_scheduler_writes_job_without_running_schtasks(self):
         captured = {}
 
-        def fake_create_task(name, time_hhmm, date, command):
-            captured.update({"name": name, "time": time_hhmm, "date": date, "command": command})
+        def fake_create_task(name, time_hhmm, date, command, **kwargs):
+            captured.update({"name": name, "time": time_hhmm, "date": date, "command": command, "kwargs": kwargs})
             return {"returncode": 0, "stdout": "SUCCESS", "stderr": "", "task": name}
 
         result = schedule_x_post(
@@ -263,6 +264,7 @@ class EveCoreTests(unittest.TestCase):
             self.assertTrue(result["job_path"].endswith(".json"))
             self.assertIn("run_x_post_job.py", captured["command"])
             self.assertIn("--job", captured["command"])
+            self.assertTrue(captured["kwargs"]["interactive"])
         finally:
             Path(result["job_path"]).unlink(missing_ok=True)
 
@@ -283,6 +285,47 @@ class EveCoreTests(unittest.TestCase):
         command = build_x_post_task_command("D:\\Eve\\state\\x_posts\\job.json")
         self.assertIn("run_x_post_job.py", command)
         self.assertIn("job.json", command)
+        self.assertIn("Set-Location", command)
+        self.assertIn("scheduled_tasks", command)
+
+    def test_x_post_scheduler_fits_text_before_scheduling(self):
+        result = schedule_x_post(
+            "This scheduled post is intentionally too long. " * 20,
+            "22:21",
+            now=datetime(2026, 5, 8, 21, 0),
+            create_task_func=lambda *args, **kwargs: {"returncode": 0, "stdout": "SUCCESS", "stderr": "", "task": args[0]},
+        )
+        try:
+            self.assertLessEqual(len(result["text"]), 280)
+            self.assertIn(result["correction"]["status"], {"trimmed", "auto_shortened"})
+        finally:
+            Path(result["job_path"]).unlink(missing_ok=True)
+
+    def test_web_research_scheduler_uses_visible_profile_runner(self):
+        captured = {}
+
+        def fake_create_task(name, time_hhmm, date, command, **kwargs):
+            captured.update({"name": name, "time": time_hhmm, "date": date, "command": command, "kwargs": kwargs})
+            return {"returncode": 0, "stdout": "SUCCESS", "stderr": "", "task": name}
+
+        result = schedule_web_research_report(
+            "ultimos movimentos do valor do ouro",
+            "01:05",
+            now=datetime(2026, 5, 10, 23, 50),
+            create_task_func=fake_create_task,
+        )
+        try:
+            self.assertEqual(result["status"], "scheduled")
+            self.assertIn("run_web_research_job.py", captured["command"])
+            self.assertTrue(captured["kwargs"]["interactive"])
+        finally:
+            Path(result["job_path"]).unlink(missing_ok=True)
+
+    def test_web_research_task_command_points_to_job_runner(self):
+        command = build_web_research_task_command("D:\\Eve\\state\\research_jobs\\job.json")
+        self.assertIn("run_web_research_job.py", command)
+        self.assertIn("job.json", command)
+        self.assertIn("scheduled_tasks", command)
 
     def test_repeated_x_post_scheduler_verifies_and_corrects_missing_post(self):
         calls = []
@@ -376,6 +419,7 @@ class EveCoreTests(unittest.TestCase):
         required = {
             "schedule_x_post",
             "schedule_repeated_x_posts",
+            "schedule_web_research",
             "windows_create_daily_task",
             "open_browser",
             "search_web",
@@ -821,12 +865,25 @@ class EveCoreTests(unittest.TestCase):
         self.assertFalse(recent_enough_for_query("last 3 months papers", "Dec 18, 2025", now="2026-05-08"))
         self.assertTrue(recent_enough_for_query("papers", "Dec 18, 2025", now="2026-05-08"))
 
+    def test_web_research_gold_query_has_multiple_default_sources(self):
+        seeds = default_seed_urls_for_query("ultimos movimentos do valor do ouro")
+        self.assertGreaterEqual(len(seeds), 3)
+        self.assertTrue(any("kitco" in seed for seed in seeds))
+
     def test_web_research_closes_visible_browser_when_finished(self):
         with patch("tools.web_research.search_web", return_value={"url": "https://www.google.com/search?q=unit"}):
             with patch("tools.web_research.close_browser_page", return_value={"status": "closed_requested"}) as close_page:
                 result = run_web_research_report("unit research close browser", open_visible_browser=True, max_pages=1)
         close_page.assert_called_once()
         self.assertEqual(result["browser_closed"]["status"], "closed_requested")
+
+    def test_web_interface_loads_recent_chat_from_daily_transcript(self):
+        append_transcript("chat", "web_user_message", {"content": "unit user continuity"})
+        append_transcript("chat", "web_eve_reply", {"content": "unit eve continuity"})
+        rows = recent_chat_messages(limit=2)
+        self.assertEqual(rows[-2]["text"], "unit user continuity")
+        self.assertEqual(rows[-1]["text"], "unit eve continuity")
+        self.assertIn("/api/recent-chat", render_index())
 
     def test_mission_control_creates_and_resumes_auditable_mission(self):
         mission = create_mission(

@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from datetime import datetime
 from pathlib import Path
 
 
@@ -11,20 +12,41 @@ if str(EVE_ROOT) not in sys.path:
     sys.path.insert(0, str(EVE_ROOT))
 
 from learning.skill_manager import run_skill
+from tools.browser_human import close_browser_page
 from tools.x_scheduler import log_x_post_event, update_x_post_job
+
+
+def _skill_verified(result: dict) -> bool:
+    if not isinstance(result, dict):
+        return False
+    if result.get("status") not in {"completed", "ok"}:
+        return False
+    verification = result.get("verification")
+    if isinstance(verification, dict) and verification.get("ok") is False:
+        return False
+    return True
 
 
 def run_job(job_path: str | Path) -> dict:
     path = Path(job_path)
     job = json.loads(path.read_text(encoding="utf-8"))
-    update_x_post_job(path, status="running")
-    result = run_skill(
-        job.get("skill") or "trusted/x_publish_text_learning",
-        args={"url": job["url"], "text": job["text"]},
-        approved=True,
-    )
-    update_x_post_job(path, status="completed", result=result)
-    log_x_post_event("completed", {"job_path": str(path), "result": result})
+    update_x_post_job(path, status="running", started_at=datetime.now().isoformat(timespec="seconds"))
+    try:
+        result = run_skill(
+            job.get("skill") or "trusted/x_publish_text_learning",
+            args={"url": job["url"], "text": job["text"]},
+            approved=True,
+        )
+        verified = _skill_verified(result)
+        status = "completed" if verified else "failed"
+        update_x_post_job(path, status=status, result=result, verification={"ok": verified})
+        log_x_post_event(status, {"job_path": str(path), "result": result, "verification": {"ok": verified}})
+    finally:
+        close_result = close_browser_page("x_post_job_finished")
+        if close_result is not None:
+            update_x_post_job(path, browser_closed=close_result)
+    if not _skill_verified(result):
+        raise RuntimeError("X post skill did not return verified completion.")
     return result
 
 

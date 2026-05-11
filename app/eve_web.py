@@ -47,6 +47,28 @@ def recent_activity(limit: int = 8) -> list[dict[str, Any]]:
     return sorted(items, key=lambda row: row.get("timestamp", ""))[-max(1, min(int(limit or 8), 50)):]
 
 
+def recent_chat_messages(limit: int = 40) -> list[dict[str, str]]:
+    items: deque[dict[str, str]] = deque(maxlen=max(1, min(int(limit or 40), 200)))
+    path = transcript_path("chat")
+    if not path.exists():
+        return []
+    with path.open("r", encoding="utf-8", errors="replace") as handle:
+        for line in handle:
+            try:
+                row = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            payload = row.get("payload") or {}
+            content = str(payload.get("content") or "").strip()
+            if not content:
+                continue
+            if row.get("event") in {"web_user_message", "console_user_message"}:
+                items.append({"who": "user", "text": content})
+            elif row.get("event") in {"web_eve_reply", "console_eve_reply"}:
+                items.append({"who": "eve", "text": content})
+    return list(items)
+
+
 def render_index() -> str:
     return r"""<!doctype html>
 <html lang="pt">
@@ -246,6 +268,7 @@ def render_index() -> str:
       login.style.display = 'none';
       app.style.display = 'grid';
       loadAccounts();
+      loadRecentChat();
       message.focus();
     }
     function addMsg(who, text) {
@@ -297,6 +320,14 @@ def render_index() -> str:
         opt.textContent = (acc.active ? '* ' : '') + acc.profile;
         accounts.appendChild(opt);
       });
+    }
+    async function loadRecentChat() {
+      try {
+        const res = await fetch('/api/recent-chat?limit=40');
+        const data = await res.json();
+        if (!data.ok || !data.items || !data.items.length || messages.children.length) return;
+        data.items.forEach(item => addMsg(item.who, item.text));
+      } catch (_) {}
     }
     document.getElementById('enter').onclick = async () => {
       loginErr.textContent = '';
@@ -389,6 +420,11 @@ class EveWebHandler(BaseHTTPRequestHandler):
             query = urllib.parse.parse_qs(parsed.query)
             limit = int((query.get("limit") or ["8"])[0])
             self._send_json({"ok": True, "items": recent_activity(limit)})
+            return
+        if parsed.path == "/api/recent-chat":
+            query = urllib.parse.parse_qs(parsed.query)
+            limit = int((query.get("limit") or ["40"])[0])
+            self._send_json({"ok": True, "items": recent_chat_messages(limit)})
             return
         self.send_error(HTTPStatus.NOT_FOUND)
 

@@ -8,7 +8,15 @@ from core.paths import EVE_ROOT
 from security.audit_log import log_event
 
 
-def create_once_task(name: str, time_hhmm: str, date_ddmmyyyy: str, command: str) -> dict:
+def create_once_task(
+    name: str,
+    time_hhmm: str,
+    date_ddmmyyyy: str,
+    command: str,
+    *,
+    interactive: bool = False,
+    highest: bool = False,
+) -> dict:
     task_name = f"Eve_{name}"
     args = [
         "schtasks",
@@ -25,6 +33,10 @@ def create_once_task(name: str, time_hhmm: str, date_ddmmyyyy: str, command: str
         date_ddmmyyyy,
         "/F",
     ]
+    if interactive:
+        args.append("/IT")
+    if highest:
+        args.extend(["/RL", "HIGHEST"])
     completed = subprocess.run(args, capture_output=True, text=True, timeout=60)
     result = {"task": task_name, "returncode": completed.returncode, "stdout": completed.stdout, "stderr": completed.stderr}
     log_event("windows_task_create_once", result)
