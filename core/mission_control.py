@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import re
 import uuid
+from json import JSONDecodeError
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -92,7 +93,10 @@ def load_mission(mission_id: str) -> dict:
 def list_missions(status: str | None = None, *, limit: int | None = None) -> list[dict]:
     rows = []
     for path in sorted(missions_dir().glob("*.json"), key=lambda item: item.stat().st_mtime, reverse=True):
-        mission = json.loads(path.read_text(encoding="utf-8"))
+        try:
+            mission = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, JSONDecodeError):
+            continue
         if status and mission.get("status") != status:
             continue
         rows.append(

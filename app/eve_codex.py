@@ -1408,6 +1408,32 @@ def format_eve_tool_result(result: dict) -> str:
             f"STDOUT:\n{payload.get('stdout', '')}\n"
             f"STDERR:\n{payload.get('stderr', '')}"
         ).strip()
+    if tool == "git_pull_updates":
+        status = payload.get("status")
+        if status == "updated":
+            return (
+                "Atualizacoes do GitHub puxadas para a Eve.\n"
+                f"Repo: {payload.get('repo')}\n"
+                f"Remote/branch: {payload.get('remote')}/{payload.get('branch')}\n"
+                f"Antes: {payload.get('head_before')}\n"
+                f"Depois: {payload.get('head_after')}\n"
+                "Modo: fast-forward only com autostash; sem reset nem apagamento."
+            )
+        if status == "up_to_date":
+            return (
+                "Repo da Eve ja estava atualizado com o GitHub.\n"
+                f"Repo: {payload.get('repo')}\n"
+                f"Remote/branch: {payload.get('remote')}/{payload.get('branch')}\n"
+                f"Ahead: {payload.get('ahead')} | Behind: {payload.get('behind')}"
+            )
+        if status == "dry_run":
+            return "Plano de atualizacao GitHub:\n" + "\n".join(f"- {item}" for item in payload.get("planned_commands", []))
+        return (
+            "Atualizacao GitHub falhou e foi bloqueada para revisao.\n"
+            f"Motivo: {payload.get('reason')}\n"
+            f"Repo: {payload.get('repo')}\n"
+            f"Resultado:\n{json.dumps(payload, indent=2, ensure_ascii=False)[:5000]}"
+        )
     return json.dumps(payload, indent=2, ensure_ascii=False)[:6000]
 
 

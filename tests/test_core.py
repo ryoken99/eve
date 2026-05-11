@@ -96,6 +96,7 @@ from self_improvement.verified_self_update import verified_core_update
 from memory.daily_transcripts import append_transcript, ensure_daily_transcript_files, transcript_date_key, transcript_path
 from app.eve_web import check_access_code, recent_chat_messages, render_index
 from tools.x_human import fit_x_post_text, validate_x_post_text
+from tools.git_sync import git_pull_updates
 
 
 class EveCoreTests(unittest.TestCase):
@@ -510,6 +511,7 @@ class EveCoreTests(unittest.TestCase):
             "schedule_repeated_x_posts",
             "schedule_web_research",
             "interest_registers_read",
+            "git_pull_updates",
             "windows_create_daily_task",
             "open_browser",
             "search_web",
@@ -558,6 +560,7 @@ class EveCoreTests(unittest.TestCase):
     def test_tool_policy_classifies_core_risks(self):
         self.assertEqual(classify_tool("workspace_read_file").approval_class, "readonly")
         self.assertEqual(classify_tool("interest_registers_read").approval_class, "readonly")
+        self.assertEqual(classify_tool("git_pull_updates").approval_class, "mutating")
         self.assertEqual(classify_tool("run_terminal").approval_class, "exec_capable")
         self.assertEqual(classify_tool("publish_x_post_now").approval_class, "public_or_external")
         self.assertEqual(classify_tool("schedule_repeated_x_posts").approval_class, "public_or_external")
@@ -568,6 +571,13 @@ class EveCoreTests(unittest.TestCase):
         self.assertTrue(decide_tool_execution("run_terminal", {"command": "Get-ChildItem", "approved": True}).allowed)
         set_safety_mode("unrestricted_mode", "unit policy")
         self.assertTrue(decide_tool_execution("admin_command", {"command": "Get-Process"}).allowed)
+
+    def test_git_pull_updates_dry_run_reports_command_plan(self):
+        result = git_pull_updates(dry_run=True)
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["status"], "dry_run")
+        self.assertTrue(any(command.startswith("git fetch") for command in result["planned_commands"]))
+        self.assertIn("--ff-only", result["planned_commands"][-1])
 
     def test_session_store_searches_messages(self):
         add_session_message("unit-session", "user", "Eve session searchable unique needle", {"unit": True})

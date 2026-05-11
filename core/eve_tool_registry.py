@@ -41,6 +41,7 @@ from tools.browser_human import browser_visual_task, close_browser_page, navigat
 from tools.desktop_tasks import create_desktop_file, create_desktop_folder, schedule_desktop_folder_creation
 from tools.email_human import create_gmail_draft, gmail_search_visual
 from tools.filesystem import append_file, list_dir, read_file, write_file
+from tools.git_sync import git_pull_updates
 from tools.notification import notify
 from tools.process_manager import list_processes, poll_process, start_process, stop_process
 from tools.terminal import run_command
@@ -150,6 +151,15 @@ def _interest_registers_read(args: dict) -> dict:
         "result": registers,
         "text": format_daily_interest_registers(registers),
     }
+
+
+def _git_pull_updates(args: dict) -> dict:
+    result = git_pull_updates(
+        remote=str(args.get("remote") or "origin"),
+        branch=str(args.get("branch") or "main"),
+        dry_run=bool(args.get("dry_run", False)),
+    )
+    return {"ok": result.get("ok", False), "tool": "git_pull_updates", "result": result}
 
 
 def _schedule_desktop_folder(args: dict) -> dict:
@@ -686,6 +696,7 @@ TOOLS: dict[str, EveTool] = {
     "schedule_web_research": EveTool("schedule_web_research", "Agenda pesquisa web auditavel no Chrome/perfil Eve, com varias fontes e fecho automatico do separador.", {"query": "ultimos movimentos do valor do ouro", "time": "01:05", "max_pages": 8}, _schedule_web_research),
     "interest_evolution_schedule": EveTool("interest_evolution_schedule", "Garante rotina recorrente para pesquisar gostos/interesses, registar por data e permitir divergencia gradual da personalidade da Eve.", {"schedule": "24h"}, _interest_evolution_schedule),
     "interest_registers_read": EveTool("interest_registers_read", "Le os ficheiros diarios de evolucao de interesses/pesquisa: world, technology e personality, indexados por DD-MM-AA. Usa esta ferramenta, nao run_terminal, quando Sandro pedir para mostrar o que ficou registado/escrito depois da pesquisa de interesses.", {"date": "11-05-26", "max_chars_per_file": 12000}, _interest_registers_read),
+    "git_pull_updates": EveTool("git_pull_updates", "Puxa atualizacoes do GitHub para o repo local da Eve quando Sandro pedir. Usa fetch + pull --ff-only --autostash, sem reset nem apagar memoria local.", {"remote": "origin", "branch": "main", "approved": True}, _git_pull_updates),
     "schedule_desktop_folder": EveTool("schedule_desktop_folder", "Agenda criacao de pasta no Ambiente de Trabalho.", {"name": "pasta", "time": "22:43"}, _schedule_desktop_folder),
     "schedule_x_post": EveTool("schedule_x_post", "Agenda post no X.", {"time": "22:21", "text": "texto em ingles"}, _schedule_x_post),
     "schedule_repeated_x_posts": EveTool("schedule_repeated_x_posts", "Agenda varios posts no X com intervalo, verifica a contagem e tenta corrigir falhas automaticamente.", {"count": 3, "interval_minutes": 2, "topic": "how Eve feels", "texts": [], "approved": True}, _schedule_repeated_x_posts),
@@ -797,6 +808,7 @@ def tool_catalog_prompt() -> str:
             "- Para tarefas longas, cria/checkpointa missao, usa autonomia_cycle ou run_terminal background conforme necessario, e regista progresso.",
             "- Se o contexto estiver grande, usa session_checkpoint ou session_rotate antes de perder o fio.",
             "- Para auto-melhoria ou edicao do teu core, usa verified_self_update: testar candidato primeiro, corrigir se falhar, aplicar so depois de passar.",
+            "- Quando Sandro pedir para atualizar/puxar/sincronizar o repo pelo GitHub, usa git_pull_updates em vez de run_terminal.",
             "- Usa a intencao pendente e o historico recente para resolver referencias como \"o texto 2\", \"o que disseste\", \"faz o post\", \"publica agora\".",
             "- Se falta informacao real, faz uma pergunta em vez de inventar argumentos.",
             "- Depois da ferramenta executar, recebes o resultado e deves responder ao Sandro com o que aconteceu.",

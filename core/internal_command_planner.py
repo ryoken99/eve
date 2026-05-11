@@ -90,6 +90,13 @@ INTERNAL_ACTIONS = [
         ("powershell", "terminal", "comando", "verifica", "corrige", "instala"),
     ),
     InternalAction(
+        "git_pull_updates",
+        "git_pull_updates",
+        "Puxar atualizacoes do GitHub para o repo local da Eve sem reset nem apagar memoria local.",
+        {"remote": "origin", "branch": "main", "approved": True},
+        ("git pull", "puxa do github", "puxar do github", "atualiza do github", "atualizar do github", "sincroniza repo", "sync github"),
+    ),
+    InternalAction(
         "x_post",
         "schedule_repeated_x_posts",
         "Agendar/publicar no X quando o Sandro pede explicitamente post/publicacao; se forem varias publicacoes, usar batch com verificacao e autocorrecao.",
