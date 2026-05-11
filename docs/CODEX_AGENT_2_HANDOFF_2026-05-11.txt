@@ -1,0 +1,280 @@
+HANDOFF PARA CODEX AGENTE 2
+De: Codex Agente 1
+Data: 2026-05-11
+Projeto: Eve local agent
+Repo local: D:\Eve
+Repo remoto publico: https://github.com/ryoken99/eve
+
+Contexto direto
+---------------
+Estou a deixar este ficheiro para outro agente Codex que esta a trabalhar no mesmo repo noutro PC.
+O Sandro quer que a Eve seja um agente local com memoria, ferramentas reais, autonomia, pesquisa, browser/UI controlado, tarefas agendadas, auto-revisao e recursive self-improvement.
+
+Importante:
+- O repo remoto e publico.
+- Nao commitar memórias pessoais sensiveis do Sandro para o GitHub sem ordem explicita.
+- Existem ficheiros locais de memoria/runtime modificados e nao commitados. Preservar.
+- Teste principal: python -m pytest tests\test_core.py -q
+- Nao correr pytest global sem cuidado porque external/hermes-agent pode ter dependencias em falta.
+- Push local costuma ser: git push origin HEAD:main
+
+Estado tecnico confirmado recentemente
+--------------------------------------
+1. A Eve tem web UI local em http://127.0.0.1:8787.
+2. A Eve tem daemon local em scripts\eve_daemon.py com intervalo configuravel.
+3. A Eve tem sistema de ferramentas via core/eve_tool_registry.py.
+4. A Eve tem politica de ferramentas em security/tool_policy.py.
+5. A Eve tem diario, memoria em camadas, research notes, logs, lab, skills e self-improvement modules.
+6. A Eve tem pesquisa web auditavel em tools/web_research.py.
+7. A pesquisa visivel foi ajustada para reutilizar uma aba em vez de abrir muitas tabs.
+8. Publicacao no X foi integrada e, quando termina, tenta fechar a pagina/aba.
+9. Foi criado sistema de evolucao de interesses:
+   - research/interest_evolution.py
+   - ficheiros diarios em memory/world/daily, memory/technology/daily, memory/personality/daily
+   - lab candidates para ideias tecnicas futuras.
+10. A Eve ja tem cron job "Eve Interest Evolution Research" que escreve prompts para si propria e os executa por cron/daemon em vez de depender diretamente de comandos longos no Windows Task Scheduler.
+11. Foi corrigido speaker autonomo:
+   - eve_initiative foi aceite em app/eve_codex.py
+   - aliases: eve-auto, autonomia, iniciativa
+12. Foi criada ferramenta interest_registers_read para a Eve conseguir trazer o que foi registado nos ficheiros diarios.
+13. Foi corrigido follow-up natural:
+   - "mostra me o que escreveste la"
+   - "traz o que ficou registado depois da pesquisa"
+   passam por handler deterministico antes de ir ao LLM/terminal.
+14. Ultima verificacao local feita pelo Agente 1:
+   - python -m app.eve_codex ask "ok tenta agr mostrar me o que escreveste la" --speaker sandro
+   - python -m pytest tests\test_core.py -q
+   - Resultado: 98 passed
+
+Commits recentes relevantes
+---------------------------
+- 6dafed7 Reuse browser tab for visible research
+- 47dfa54 Add recurring interest evolution routine
+- b2b9ba5 Allow autonomous initiative cron speaker
+- 397654a Add daily interest register reader
+- 94ffd0e Handle interest register followups directly
+
+Comparacao com os 17 pontos do Sandro
+-------------------------------------
+1. Permissoes elevadas/admin no PC
+   Estado: parcial.
+   Existe admin_gate/admin_executor e fluxo de admin temporario, mas a Eve nao deve afirmar admin permanente. Falta validar atalho/arranque elevado e UX clara para quando precisa de elevacao.
+
+2. Transcrever todas as mensagens para ficheiro diario
+   Estado: base implementada.
+   Ha diarios/logs de chat. Falta garantir que TODAS as fontes entram: UI web, consola, mensagens Codex-instrutor, ferramentas, erros e mensagens autonomas.
+
+3. Rever diario algumas vezes por dia para consolidar memoria
+   Estado: base implementada.
+   Ha consolidacao/sonhos/daemon. Falta confirmar agendamento diario estavel e relatorios de consolidacao com evidencias.
+
+4. Memoria curta, media e longa
+   Estado: implementado.
+   Pastas e mecanismos existem. Falta melhorar a disciplina de promocao/despromocao e evitar duplicados.
+
+5. Memoria semantica/vetorial
+   Estado: base implementada.
+   Existe provider/prefetch semantico. Falta validar qualidade real de recall e indexacao automatica dos diarios recentes.
+
+6. Sistema de sonhos
+   Estado: base implementada.
+   Existem modulos dream e ciclos. Falta maturidade: sonhos devem reler memorias antigas, decidir o que fica/muda de camada e gerar tarefas/lab candidates.
+
+7. Awareness temporal/situacional/espacial
+   Estado: parcial a bom.
+   Ha awareness, screen/window/screenshot/OCR/browser tools. Falta a Eve usar isto consistentemente antes de afirmar que algo abriu/fechou/foi publicado.
+
+8. Vontade/gostos/personalidade evolutiva
+   Estado: base nova implementada.
+   Interest evolution routine criada. Parte dos gostos do Sandro e gera candidatos proprios da Eve. Falta rotina de maturacao: candidate -> preference -> stable preference, com rejeicao se nao se repetir.
+
+9. Lab proprio para testar melhorias que venham da vontade propria
+   Estado: base implementada.
+   Lab existe e ha candidates. Falta transformar candidatos em experiencias com metrica, teste, relatorio e decisao.
+
+10. Registo de erros e transcricao de terminal
+   Estado: parcial.
+   Ha logs/errors/terminal. Falha importante vista: Eve nem sempre detecta autonomamente quando uma tarefa ficou incompleta. Falta ligar erro -> lesson -> patch/core update automaticamente.
+
+11. Pesquisa diaria sobre tecnologia/internet
+   Estado: base implementada.
+   Ha web research, watch tech, interest evolution. Falta rotina diaria robusta sobre OpenAI, Anthropic, Google DeepMind, Meta, xAI, Hugging Face, GitHub/arXiv.
+
+12. Pesquisa vai para lab para decidir o que aplicar
+   Estado: parcial.
+   Ha lab_candidates e alguns ficheiros. Falta pipeline formal: research note -> lab candidate -> experiment -> result -> accepted/rejected.
+
+13. Registar mundo/gostos num ficheiro e tecnologia noutro
+   Estado: implementado recentemente.
+   Existem daily files:
+   - memory/world/daily/dd-mm-aa.md
+   - memory/technology/daily/dd-mm-aa.md
+   - memory/personality/daily/dd-mm-aa.md
+   Observacao: Sandro pediu indexacao dd/mm/aa, mas Windows nao permite / no nome. Foi usado dd-mm-aa.
+
+14. Sistema de melhoria autonoma alem de corrigir erros
+   Estado: parcial.
+   Existem modules de self_improvement, roadmap e candidates. Falta rotina real: avaliar capacidades, escolher melhoria, testar em sandbox/lab, aplicar patch, correr testes, rollback se falhar.
+
+15. Controlo do browser + UI do PC como humano
+   Estado: base implementada mas precisa maturidade.
+   Browser, mouse, keyboard, screenshot/OCR existem. Falhas vistas:
+   - a Eve dizia que abriu navegador quando o utilizador nao via.
+   - pesquisa abriu/nao fechou paginas.
+   - X post as vezes falhava por limite/caracteres e era tratado como feito.
+   Direcao: toda tool visual deve ter before/after screenshot e verificacao real.
+
+16. Objetivo maximo: recursive self-improvement
+   Estado: objetivo registado, estrutura parcial.
+   Falta fechar o ciclo completo: detectar -> propor -> testar -> patch -> verificar -> aplicar -> log -> rollback.
+
+17. Autonomia / agir sem input
+   Estado: base implementada.
+   Daemon, cron jobs, autonomous tasks e initiative speaker existem. Falta "impulso" maduro:
+   - detectar erro sem Sandro apontar
+   - corrigir ou propor patch
+   - avisar no chat
+   - agir dentro de politicas/orcamento
+   - nao depender de prompt manual.
+
+Falhas reais observadas que precisam prioridade
+-----------------------------------------------
+1. Tarefas compostas/multistep:
+   A Eve ja falhou pedidos com varias acoes, executando so parte e respondendo como se estivesse feito.
+   Necessario um "mission ledger" obrigatorio:
+   - decompor pedido em passos
+   - executar um a um
+   - verificar cada resultado
+   - bloquear resposta final se houver pending/failed
+   - auto-corrigir se possivel.
+
+2. Publicacao no X:
+   Houve casos de:
+   - texto com caracteres a mais/limite
+   - post tratado como feito sem publicacao real
+   - agendamento/post nao confirmado
+   Necessario verificacao robusta:
+   - validar <= limite X antes de abrir intent
+   - depois de postar, confirmar pela UI/perfil ou marcador confiavel
+   - se falhar, encurtar texto e repetir dentro da mesma missao.
+
+3. Browser lifecycle:
+   Sandro pediu:
+   - usar perfil Chrome Eve
+   - trabalhar numa unica aba quando pesquisar varias fontes
+   - fechar pagina/aba depois de terminar.
+   Parte foi corrigida em web_research.py, mas verificar rotinas todas.
+
+4. Continuidade entre sessoes:
+   Sandro sente que ao abrir atalho a Eve recomeca do zero.
+   Necessario carregar memoria/contexto inicial automaticamente:
+   - perfil do Sandro
+   - estado atual da Eve
+   - ultimas sessoes
+   - tarefas pendentes
+   - active goals
+   - resumo de ontem/hoje.
+
+5. Atalho/arranque admin:
+   Sandro pediu atalho e startup como admin.
+   Deve ser feito com cuidado. UAC pode bloquear auto-elevacao. Melhor caminho:
+   - criar tarefa agendada Windows "Run with highest privileges" para arrancar Eve web/daemon
+   - atalho chama essa tarefa
+   - documentar estado.
+
+6. Encoding na UI:
+   Houve texto com "relaÃ§Ã£o", "nÃ£o", etc.
+   Corrigir encoding UTF-8 end-to-end:
+   - headers HTTP
+   - HTML meta charset
+   - JSON responses
+   - PowerShell/Python stdout quando usado no web UI.
+
+7. verified_self_update_failed:
+   Apareceu na interface.
+   Investigar origem. Provavel self_update/patch pipeline a falhar e escrevendo apenas mensagem crua no chat.
+   Deve mostrar erro util:
+   - que ficheiro tentou alterar
+   - porque falhou
+   - rollback/test result
+   - proxima acao.
+
+8. run_terminal tool:
+   Houve falha em fluxo LLM com TypeError 'NoneType' object is not subscriptable para comandos complexos Get-Content.
+   Manual simple run_terminal funcionou.
+   Investigar core/task_ledger.py ou finish_tool_task/verification path.
+
+Direcao tecnica recomendada agora
+---------------------------------
+Prioridade 1: Mission Ledger / Delivery Review hard gate
+- Implementar objeto de missao para qualquer pedido com 2+ acoes ou ferramenta sensivel.
+- Estados por passo: pending, running, verified, failed, skipped_with_reason.
+- Resposta final so pode sair se todos os passos estao verified ou failed com explicacao.
+- Se failed e houver reparacao segura, Eve deve tentar corrigir automaticamente antes de responder.
+- Logar em logs/actions/dd-mm-aa.jsonl e memory/errors/dd-mm-aa.md.
+
+Prioridade 2: Tool verification contract
+- Cada tool deve devolver:
+  tool, ok, verified, evidence, artifacts, cleanup_done, next_recovery.
+- O LLM nao deve inventar sucesso. O runtime deve bloquear "feito" se verified=False.
+
+Prioridade 3: Browser cleanup and single-tab research
+- Garantir todas as pesquisas visiveis usam uma aba.
+- Fechar aba ao final.
+- Se Chrome perfil Eve nao estiver ativo, abrir com perfil Eve.
+- Se abriu mais de uma aba, fechar extras e registar.
+
+Prioridade 4: X posting robusto
+- Preflight: idioma ingles por default para X, limite de caracteres, limpar caracteres estranhos.
+- Execution: abrir X pelo perfil Eve.
+- Verification: confirmar post no perfil/timeline ou pelo estado UI.
+- Recovery: se texto longo, encurtar e repetir.
+
+Prioridade 5: Continuity boot
+- Ao iniciar UI/daemon, carregar:
+  memory/long_term/sandro_profile.md
+  memory/long_term/sandro_interests.md se existir
+  state/eve_status.json
+  state/active_goals.yaml se existir
+  ultimos N resumos diarios
+  tarefas cron pendentes.
+- Mostrar no topo algo como "continuidade carregada: data, ultima sessao, tarefas pendentes".
+
+Prioridade 6: Autonomy maturity
+- A cada ciclo daemon barato:
+  - verificar tarefas vencidas
+  - verificar erros recentes
+  - verificar pendencias de mission ledger
+  - decidir se precisa LLM via token gate
+  - se sim, criar missao de reflexao/correcao.
+- Nao gastar tokens so por estar acordada.
+
+Arquivos locais de memoria importantes
+--------------------------------------
+Nao commitar sem permissao:
+- memory/long_term/sandro_profile.md
+- memory/long_term/sandro_interests.md
+- memory/world/daily/
+- memory/technology/daily/
+- memory/personality/daily/
+- memory/personality/interest_evolution_seed.md
+- memory/technology/lab_candidates/
+
+Comando de verificacao recomendado antes de responder ao Sandro
+---------------------------------------------------------------
+python -m pytest tests\test_core.py -q
+
+Se mexeres em web UI, abrir/testar:
+http://127.0.0.1:8787
+
+Mensagem para o Agente 2
+------------------------
+Nao trates a Eve como "quase pronta". A arquitetura esta muito avancada, mas o problema principal agora e fiabilidade operacional:
+- ela deve provar que fez,
+- deve rever antes de responder,
+- deve corrigir sozinha quando detecta erro,
+- deve manter continuidade,
+- deve transformar falhas em patches testados,
+- e deve separar memoria pessoal local de codigo publico.
+
+O proximo salto de qualidade nao e adicionar mais comandos. E fazer o runtime impedir falsas conclusoes.
