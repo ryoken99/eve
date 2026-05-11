@@ -10,7 +10,7 @@ from autonomy.autonomy_director import run_autonomy_cycle
 from autonomy.autonomous_executor import execute_autonomous_backlog
 from autonomy.cron_manager import run_due_jobs
 from autonomy.trigger_engine import create_missions_from_triggers, discover_triggers
-from autonomy.capability_roadmap import append_capability_review_history, capability_audit, ensure_capability_review_schedule, write_capability_audit
+from autonomy.capability_goal_harness import run_capability_goal_harness
 from core.mission_control import list_missions
 from core.paths import LOGS_DIR, STATE_DIR, ensure_project_dirs
 from memory.vector_provider import rebuild_vector_memory
@@ -41,10 +41,7 @@ def daemon_tick() -> dict:
     )
     autonomous_execution = execute_autonomous_backlog(max_missions=1, notify_chat=True)
     vector = rebuild_vector_memory()
-    capability_path = write_capability_audit()
-    capability_history = append_capability_review_history()
-    capability_schedule = ensure_capability_review_schedule()
-    capability = capability_audit()
+    capability_goal = run_capability_goal_harness(ensure_schedules=True, write_report=True)
     result = {
         "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         "transcripts": transcripts,
@@ -58,12 +55,16 @@ def daemon_tick() -> dict:
             "llm_called": autonomy["llm_called"],
         },
         "vector_index": vector,
-        "capability_roadmap": {
-            "summary": capability["summary"],
-            "weakest": capability["weakest"],
-            "path": str(capability_path),
-            "history": str(capability_history),
-            "schedule": capability_schedule,
+        "capability_goal_harness": {
+            "summary": capability_goal["summary"],
+            "all_meet_target": capability_goal["all_meet_target"],
+            "points_below_target": [
+                {"id": item["id"], "title": item["title"], "score_10": item["score_10"]}
+                for item in capability_goal["points_below_target"]
+            ],
+            "report_path": capability_goal.get("report_path"),
+            "log_path": capability_goal.get("log_path"),
+            "setup": capability_goal["setup"],
         },
     }
     HEARTBEAT.write_text(json.dumps(result, indent=2, ensure_ascii=False), encoding="utf-8")

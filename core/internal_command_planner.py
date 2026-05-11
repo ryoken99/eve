@@ -69,6 +69,13 @@ INTERNAL_ACTIONS = [
         ("pesquisa", "research", "papers", "artigos", "internet", "vai online"),
     ),
     InternalAction(
+        "capability_goal_harness",
+        "capability_goal_harness",
+        "Pedido pede trabalhar os 17 pontos ate ao minimo 8.3; executar arnes Codex-facing para evidencias, agendas e lacunas reais.",
+        {"target_score": 8.3, "ensure_schedules": True, "write_report": True, "approved": True},
+        ("8.3", "17 pontos", "/goal", "arnes", "arnês", "mais proximo possivel de 10", "mínimo 8.3", "minimo 8.3"),
+    ),
+    InternalAction(
         "daily_research_pipeline",
         "daily_research_pipeline",
         "Listar ou agendar o pipeline diario de pesquisa da Eve baseado nos 17 pontos: gostos, mundo, tecnologia, papers, erros, memoria, lab e self-improvement.",

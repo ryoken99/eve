@@ -10,6 +10,7 @@ from autonomy.cron_manager import add_cron_job, list_cron_jobs, run_due_jobs, se
 from autonomy.startup_service import install_startup_console_task, install_startup_daemon_task
 from autonomy.trigger_engine import create_missions_from_triggers, discover_triggers
 from autonomy.capability_roadmap import append_capability_review_history, capability_audit, ensure_capability_review_schedule, write_capability_audit
+from autonomy.capability_goal_harness import run_capability_goal_harness
 from autonomy.autonomy_reporter import run_autonomy_report_cycle
 from computer.keyboard_control import hotkey, press_key, type_text
 from computer.mouse_control import click, double_click, mouse_position, move_mouse, scroll
@@ -89,6 +90,18 @@ def _capability_roadmap(args: dict) -> dict:
             "history": str(history) if history else None,
             "schedule": schedule,
         },
+    }
+
+
+def _capability_goal_harness(args: dict) -> dict:
+    return {
+        "ok": True,
+        "tool": "capability_goal_harness",
+        "result": run_capability_goal_harness(
+            target_score=float(args.get("target_score") or 8.3),
+            ensure_schedules=bool(args.get("ensure_schedules", True)),
+            write_report=bool(args.get("write_report", True)),
+        ),
     }
 
 
@@ -712,6 +725,7 @@ def _verified_self_update(args: dict) -> dict:
 TOOLS: dict[str, EveTool] = {
     "capability_self_test": EveTool("capability_self_test", "Verifica capacidades locais atuais da Eve.", {}, _capability_self_test),
     "capability_roadmap": EveTool("capability_roadmap", "Audita os 17 pontos de evolucao da Eve, classifica proximidade/melhoria e garante revisao algumas vezes por dia.", {"write": True, "history": True, "ensure_schedule": True}, _capability_roadmap),
+    "capability_goal_harness": EveTool("capability_goal_harness", "Executa o arnes operacional dos 17 pontos: prepara evidencias, agendas e relatorio Codex-facing para garantir minimo 8.3/10 sem auto-modificar o core.", {"target_score": 8.3, "ensure_schedules": True, "write_report": True, "approved": True}, _capability_goal_harness),
     "create_desktop_file": EveTool("create_desktop_file", "Cria ficheiro no Ambiente de Trabalho.", {"name": "ola.txt"}, _create_desktop_file),
     "create_desktop_folder": EveTool("create_desktop_folder", "Cria pasta no Ambiente de Trabalho.", {"name": "ola"}, _create_desktop_folder),
     "open_browser": EveTool("open_browser", "Abre URL no Chrome/perfil Eve.", {"url": "https://x.com"}, _open_browser),

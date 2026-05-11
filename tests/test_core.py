@@ -75,6 +75,7 @@ from core.mission_control import (
 from autonomy.autonomy_director import build_autonomy_prompt, run_autonomy_cycle
 from autonomy.autonomous_executor import execute_autonomous_backlog, execute_autonomous_mission
 from autonomy.capability_roadmap import append_capability_review_history, capability_audit, capability_impulses, ensure_capability_review_schedule, rotating_capability_impulses, write_capability_audit
+from autonomy.capability_goal_harness import run_capability_goal_harness
 from autonomy.token_gate import decide_llm_call, record_llm_call
 from autonomy.autonomy_reporter import run_autonomy_report_cycle
 from tools.x_scheduler import build_x_post_task_command, schedule_repeated_x_posts, schedule_x_post
@@ -528,6 +529,7 @@ class EveCoreTests(unittest.TestCase):
             "schedule_web_research",
             "interest_registers_read",
             "daily_research_pipeline",
+            "capability_goal_harness",
             "git_pull_updates",
             "windows_create_daily_task",
             "open_browser",
@@ -578,6 +580,7 @@ class EveCoreTests(unittest.TestCase):
         self.assertEqual(classify_tool("workspace_read_file").approval_class, "readonly")
         self.assertEqual(classify_tool("interest_registers_read").approval_class, "readonly")
         self.assertEqual(classify_tool("daily_research_pipeline").approval_class, "mutating")
+        self.assertEqual(classify_tool("capability_goal_harness").approval_class, "mutating")
         self.assertEqual(classify_tool("git_pull_updates").approval_class, "mutating")
         self.assertEqual(classify_tool("run_terminal").approval_class, "exec_capable")
         self.assertEqual(classify_tool("publish_x_post_now").approval_class, "public_or_external")
@@ -624,6 +627,8 @@ class EveCoreTests(unittest.TestCase):
         formatted = format_internal_plan("trocar de sessao sem perder o fio")
         self.assertIn("session_checkpoint", formatted)
         self.assertIn("verified_self_update", format_internal_plan("auto melhorar e corrigir o meu core com testes"))
+        goal_actions = plan_internal_actions("/goal trabalha os 17 pontos ate minimo 8.3", limit=5)
+        self.assertTrue(any(item["tool"] == "capability_goal_harness" for item in goal_actions))
 
     def test_verified_self_update_does_not_apply_failing_candidate(self):
         target = WORKSPACE_DIR / "unit_self_update_block.py"
@@ -1107,6 +1112,21 @@ class EveCoreTests(unittest.TestCase):
         self.assertIn(scheduled["status"], {"created", "exists"})
         self.assertEqual(scheduled["job"]["name"], "Eve Capability Roadmap Review")
         self.assertIn("capability_review.py", scheduled["job"]["command"])
+
+    def test_capability_goal_harness_operationalizes_17_points(self):
+        result = run_capability_goal_harness(ensure_schedules=True, write_report=True)
+        self.assertTrue(result["all_meet_target"])
+        self.assertEqual(len(result["points"]), 17)
+        self.assertFalse(result["points_below_target"])
+        self.assertTrue(Path(result["report_path"]).exists())
+        self.assertTrue(Path(result["log_path"]).exists())
+        self.assertIn("transcripts", result["setup"])
+        self.assertEqual(result["setup"]["capability_schedule"]["job"]["name"], "Eve Capability Roadmap Review")
+        self.assertEqual(result["setup"]["interest_schedule"]["job"]["name"], "Eve Interest Evolution Research")
+        self.assertEqual(result["setup"]["daily_research_schedule"]["job"]["name"], "Eve Daily Research Pipeline")
+        first = result["points"][0]
+        self.assertIn("controls", first)
+        self.assertGreaterEqual(first["score_10"], 8.3)
 
     def test_capability_roadmap_rotates_focus_points(self):
         first = rotating_capability_impulses(limit=1)[0]["capability_point"]["id"]
