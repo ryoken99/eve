@@ -68,6 +68,7 @@ from autonomy.autonomy_reporter import run_autonomy_report_cycle
 from tools.x_scheduler import build_x_post_task_command, schedule_repeated_x_posts, schedule_x_post
 from tools.research_scheduler import build_web_research_task_command, schedule_web_research_report
 from tools.windows_scheduler import build_task_wrapper_command, write_task_wrapper
+from autonomy.cron_manager import add_prompt_job, run_due_jobs
 from tools.desktop_tasks import parse_desktop_file_request, parse_desktop_folder_request, parse_desktop_folder_schedule_request, schedule_desktop_folder_creation
 from security.tool_policy import classify_tool, decide_tool_execution
 from core.session_store import add_session_message, count_session_messages, recent_session_messages, search_sessions
@@ -255,23 +256,23 @@ class EveCoreTests(unittest.TestCase):
     def test_x_post_scheduler_writes_job_without_running_schtasks(self):
         captured = {}
 
-        def fake_create_task(name, time_hhmm, date, command, **kwargs):
-            captured.update({"name": name, "time": time_hhmm, "date": date, "command": command, "kwargs": kwargs})
-            return {"returncode": 0, "stdout": "SUCCESS", "stderr": "", "task": name}
+        def fake_prompt_job(name, run_at, prompt, **kwargs):
+            captured.update({"name": name, "run_at": run_at, "prompt": prompt, "kwargs": kwargs})
+            return {"id": "cron_unit_x", "name": name, "next_run": "2026-05-08T21:21:00Z", "prompt": prompt}
 
         result = schedule_x_post(
             "Today I feel operationally awake.",
             "22:21",
             now=datetime(2026, 5, 8, 21, 0),
-            create_task_func=fake_create_task,
+            create_prompt_func=fake_prompt_job,
         )
         try:
             self.assertEqual(result["status"], "scheduled")
             self.assertEqual(result["scheduled_for"], "2026-05-08T22:21:00")
             self.assertTrue(result["job_path"].endswith(".json"))
-            self.assertIn("run_x_post_job.py", captured["command"])
-            self.assertIn("--job", captured["command"])
-            self.assertTrue(captured["kwargs"]["interactive"])
+            self.assertIn("publish_x_post_now", captured["prompt"])
+            self.assertIn("Today I feel operationally awake.", captured["prompt"])
+            self.assertEqual(result["cron_job"]["id"], "cron_unit_x")
         finally:
             Path(result["job_path"]).unlink(missing_ok=True)
 
@@ -280,7 +281,7 @@ class EveCoreTests(unittest.TestCase):
             "Today I feel operationally awake.",
             "22:21",
             now=datetime(2026, 5, 8, 22, 30),
-            create_task_func=lambda *args, **kwargs: {"returncode": 0, "stdout": "SUCCESS", "stderr": "", "task": args[0]},
+            create_prompt_func=lambda name, run_at, prompt, **kwargs: {"id": "cron_next_day", "name": name, "next_run": run_at.isoformat(), "prompt": prompt},
         )
         try:
             self.assertEqual(result["scheduled_for"], "2026-05-09T22:21:00")
@@ -300,7 +301,7 @@ class EveCoreTests(unittest.TestCase):
             "This scheduled post is intentionally too long. " * 20,
             "22:21",
             now=datetime(2026, 5, 8, 21, 0),
-            create_task_func=lambda *args, **kwargs: {"returncode": 0, "stdout": "SUCCESS", "stderr": "", "task": args[0]},
+            create_prompt_func=lambda name, run_at, prompt, **kwargs: {"id": "cron_fit", "name": name, "next_run": run_at.isoformat(), "prompt": prompt},
         )
         try:
             self.assertLessEqual(len(result["text"]), 280)
@@ -311,22 +312,43 @@ class EveCoreTests(unittest.TestCase):
     def test_web_research_scheduler_uses_visible_profile_runner(self):
         captured = {}
 
-        def fake_create_task(name, time_hhmm, date, command, **kwargs):
-            captured.update({"name": name, "time": time_hhmm, "date": date, "command": command, "kwargs": kwargs})
-            return {"returncode": 0, "stdout": "SUCCESS", "stderr": "", "task": name}
+        def fake_prompt_job(name, run_at, prompt, **kwargs):
+            captured.update({"name": name, "run_at": run_at, "prompt": prompt, "kwargs": kwargs})
+            return {"id": "cron_unit_research", "name": name, "next_run": run_at.isoformat(), "prompt": prompt}
 
         result = schedule_web_research_report(
             "ultimos movimentos do valor do ouro",
             "01:05",
             now=datetime(2026, 5, 10, 23, 50),
-            create_task_func=fake_create_task,
+            create_prompt_func=fake_prompt_job,
         )
         try:
             self.assertEqual(result["status"], "scheduled")
-            self.assertIn("run_web_research_job.py", captured["command"])
-            self.assertTrue(captured["kwargs"]["interactive"])
+            self.assertIn("web_research_report", captured["prompt"])
+            self.assertIn("ultimos movimentos do valor do ouro", captured["prompt"])
+            self.assertEqual(result["cron_job"]["id"], "cron_unit_research")
         finally:
             Path(result["job_path"]).unlink(missing_ok=True)
+
+    def test_prompt_cron_job_executes_eve_ask_without_powershell_command_string(self):
+        cron_path = WORKSPACE_DIR / "unit_prompt_cron.json"
+        cron_path.unlink(missing_ok=True)
+        with patch("autonomy.cron_manager.CRON_PATH", cron_path):
+            job = add_prompt_job("unit prompt", "2026-05-08T21:00:00Z", "Executa agora teste unitario.", enabled=True)
+            self.assertEqual(job["kind"], "prompt")
+            with patch("autonomy.cron_manager.now_utc", return_value=datetime(2026, 5, 8, 21, 1, tzinfo=__import__("datetime").timezone.utc)):
+                with patch("autonomy.cron_manager.subprocess.run") as run:
+                    run.return_value.returncode = 0
+                    run.return_value.stdout = "ok"
+                    run.return_value.stderr = ""
+                    result = run_due_jobs()
+        self.assertEqual(result["count"], 1)
+        args = run.call_args.args[0]
+        self.assertIn("app.eve_codex", args)
+        self.assertIn("ask", args)
+        self.assertIn("Executa agora teste unitario.", args)
+        self.assertFalse(result["executed"][0]["job"]["enabled"])
+        cron_path.unlink(missing_ok=True)
 
     def test_web_research_task_command_points_to_job_runner(self):
         command = build_web_research_task_command("D:\\Eve\\state\\research_jobs\\job.json")
@@ -348,18 +370,18 @@ class EveCoreTests(unittest.TestCase):
     def test_repeated_x_post_scheduler_verifies_and_corrects_missing_post(self):
         calls = []
 
-        def fake_create_task(name, time_hhmm, date, command):
-            calls.append({"name": name, "time": time_hhmm, "date": date, "command": command})
+        def fake_prompt_job(name, run_at, prompt, **kwargs):
+            calls.append({"name": name, "run_at": run_at, "prompt": prompt})
             if len(calls) == 2:
-                return {"returncode": 1, "stdout": "", "stderr": "simulated scheduler miss", "task": name}
-            return {"returncode": 0, "stdout": "SUCCESS", "stderr": "", "task": name}
+                return {}
+            return {"id": f"cron_{len(calls)}", "name": name, "next_run": run_at.isoformat(), "prompt": prompt}
 
         result = schedule_repeated_x_posts(
             count=3,
             interval_minutes=2,
             topic="how Eve feels",
             now=datetime(2026, 5, 8, 18, 50),
-            create_task_func=fake_create_task,
+            create_prompt_func=fake_prompt_job,
         )
         try:
             self.assertEqual(result["requested"], 3)
@@ -642,10 +664,14 @@ class EveCoreTests(unittest.TestCase):
         self.assertIn("/api/chat", html)
 
     def test_cron_manager_dry_run(self):
-        job = add_cron_job("unit cron", "2020-01-01T00:00:00Z", "Write-Output ok")
-        self.assertTrue(any(item["id"] == job["id"] for item in list_cron_jobs()))
-        result = run_due_jobs(dry_run=True)
-        self.assertGreaterEqual(result["count"], 1)
+        cron_path = WORKSPACE_DIR / "unit_command_cron.json"
+        cron_path.unlink(missing_ok=True)
+        with patch("autonomy.cron_manager.CRON_PATH", cron_path):
+            job = add_cron_job("unit cron", "2020-01-01T00:00:00Z", "Write-Output ok")
+            self.assertTrue(any(item["id"] == job["id"] for item in list_cron_jobs()))
+            result = run_due_jobs(dry_run=True)
+            self.assertEqual(result["count"], 1)
+        cron_path.unlink(missing_ok=True)
 
     def test_process_manager_lifecycle(self):
         proc = start_process("Start-Sleep -Seconds 20", cwd="D:\\Eve")
@@ -803,22 +829,23 @@ class EveCoreTests(unittest.TestCase):
         self.assertIn("Total tool calls executadas: 3", followup_prompt)
         self.assertIn("schedule_desktop_folder", followup_prompt)
 
-    def test_desktop_folder_scheduler_uses_windows_task_command(self):
+    def test_desktop_folder_scheduler_uses_cron_prompt(self):
         captured = {}
 
-        def fake_create_task(name, time_hhmm, date, command):
-            captured.update({"name": name, "time": time_hhmm, "date": date, "command": command})
-            return {"returncode": 0, "stdout": "SUCCESS", "stderr": "", "task": name}
+        def fake_prompt_job(name, run_at, prompt, **kwargs):
+            captured.update({"name": name, "run_at": run_at, "prompt": prompt, "kwargs": kwargs})
+            return {"id": "cron_folder", "name": name, "next_run": run_at.isoformat(), "prompt": prompt}
 
         result = schedule_desktop_folder_creation(
             "pasta_agendada_eve_2243",
             "22:43",
             now=datetime(2026, 5, 8, 22, 40),
-            create_task_func=fake_create_task,
+            create_prompt_func=fake_prompt_job,
         )
         self.assertEqual(result["status"], "scheduled")
-        self.assertIn("mkdir", captured["command"])
-        self.assertIn("pasta_agendada_eve_2243", captured["command"])
+        self.assertIn("create_desktop_folder", captured["prompt"])
+        self.assertIn("pasta_agendada_eve_2243", captured["prompt"])
+        self.assertEqual(result["cron_job"]["id"], "cron_folder")
 
     def test_draft_x_post_defaults_to_english(self):
         text = draft_x_post_from_prompt("agenda no x para as 22:21 sobre tudo o que aprendeste hoje")

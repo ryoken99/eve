@@ -8,6 +8,7 @@ from pathlib import Path
 
 from core.paths import EVE_ROOT, LOGS_DIR, STATE_DIR, ensure_project_dirs
 from security.audit_log import log_event
+from autonomy.cron_manager import add_prompt_job
 from tools.windows_scheduler import create_once_task
 from tools.x_scheduler import target_datetime_for_time
 
@@ -76,6 +77,16 @@ def _create_interactive_task(create_task_func, name: str, time_hhmm: str, date_d
         return create_task_func(name, time_hhmm, date_ddmmyyyy, command)
 
 
+def build_web_research_execution_prompt(query: str, *, max_pages: int = 8, job_path: str | Path | None = None) -> str:
+    job_note = f"\nJob local: {job_path}" if job_path else ""
+    return (
+        "Executa agora esta pesquisa agendada pelo cron interno da Eve.\n"
+        "Nao reagendes. Usa a ferramenta web_research_report, abre o Chrome/perfil Eve se for preciso, usa varias fontes, "
+        "fecha o separador do browser no fim e responde ao Sandro com um resumo curto.\n"
+        f"Query: {query}\nMax pages: {int(max_pages)}{job_note}"
+    )
+
+
 def schedule_web_research_report(
     query: str,
     time_hhmm: str,
@@ -83,31 +94,33 @@ def schedule_web_research_report(
     now: datetime | None = None,
     max_pages: int = 8,
     create_task_func=create_once_task,
+    create_prompt_func=add_prompt_job,
 ) -> dict:
     query = query.strip()
     if not query:
         return {"status": "needs_confirmation", "reason": "Research query is empty."}
     target, note = target_datetime_for_time(time_hhmm, now=now)
     job_path = write_web_research_job(query, target, max_pages=max_pages)
-    command = build_web_research_task_command(job_path)
+    prompt = build_web_research_execution_prompt(query, max_pages=max_pages, job_path=job_path)
     task_fragment = f"Web_Research_{target.strftime('%Y%m%d_%H%M')}_{_safe_task_fragment(query)}"
-    task_result = _create_interactive_task(
-        create_task_func,
+    cron_job = create_prompt_func(
         task_fragment,
-        target.strftime("%H:%M"),
-        target.strftime("%d/%m/%Y"),
-        command,
+        target,
+        prompt,
+        speaker="sandro",
     )
-    status = "scheduled" if int(task_result.get("returncode", 1)) == 0 else "failed"
-    update_web_research_job(job_path, status=status, task_result=task_result, task_name=f"Eve_{task_fragment}", note=note)
+    status = "scheduled" if cron_job.get("id") else "failed"
+    update_web_research_job(job_path, status=status, cron_job=cron_job, task_name=cron_job.get("id") or f"Eve_{task_fragment}", note=note)
     result = {
         "status": status,
-        "task_name": f"Eve_{task_fragment}",
+        "task_name": cron_job.get("id") or f"Eve_{task_fragment}",
         "scheduled_for": target.isoformat(),
         "job_path": str(job_path),
         "query": query,
         "note": note,
-        "task_result": task_result,
+        "cron_job": cron_job,
+        "execution_prompt": prompt,
+        "task_result": {"cron_job": cron_job},
     }
     log_event("web_research_scheduled", result)
     log_web_research_event("scheduled", result)

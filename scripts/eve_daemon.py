@@ -15,7 +15,7 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--once", action="store_true")
     parser.add_argument("--stop", action="store_true")
-    parser.add_argument("--interval", type=int, default=900)
+    parser.add_argument("--interval", type=int, default=30)
     args = parser.parse_args()
     if args.stop:
         print(request_daemon_stop())

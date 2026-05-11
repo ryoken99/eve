@@ -5,6 +5,7 @@ import re
 from datetime import datetime
 from pathlib import Path
 
+from autonomy.cron_manager import add_prompt_job
 from tools.windows_scheduler import create_once_task
 from tools.x_scheduler import target_datetime_for_time
 
@@ -80,19 +81,26 @@ def schedule_desktop_folder_creation(
     *,
     now: datetime | None = None,
     create_task_func=create_once_task,
+    create_prompt_func=add_prompt_job,
 ) -> dict:
     target, note = target_datetime_for_time(time_hhmm, now=now)
     folder = desktop_dir() / safe_desktop_name(name)
-    command = f'cmd.exe /c if not exist "{folder}" mkdir "{folder}"'
     task_fragment = f"Create_Desktop_Folder_{target.strftime('%Y%m%d_%H%M')}_{safe_desktop_name(name)[:32]}"
-    task_result = create_task_func(task_fragment, target.strftime("%H:%M"), target.strftime("%d/%m/%Y"), command)
-    status = "scheduled" if int(task_result.get("returncode", 1)) == 0 else "failed"
+    prompt = (
+        "Executa agora esta tarefa agendada pelo cron interno da Eve.\n"
+        "Nao reagendes. Usa a ferramenta create_desktop_folder e confirma a pasta criada.\n"
+        f"Nome da pasta: {safe_desktop_name(name)}\n"
+        f"Caminho esperado: {folder}"
+    )
+    cron_job = create_prompt_func(task_fragment, target, prompt, speaker="sandro")
+    status = "scheduled" if cron_job.get("id") else "failed"
     return {
         "status": status,
-        "task_name": f"Eve_{task_fragment}",
+        "task_name": cron_job.get("id") or f"Eve_{task_fragment}",
         "scheduled_for": target.isoformat(),
         "folder": str(folder),
-        "command": command,
+        "execution_prompt": prompt,
         "note": note,
-        "task_result": task_result,
+        "cron_job": cron_job,
+        "task_result": {"cron_job": cron_job},
     }

@@ -9,6 +9,7 @@ from pathlib import Path
 
 from core.paths import EVE_ROOT, LOGS_DIR, STATE_DIR, ensure_project_dirs
 from security.audit_log import log_event
+from autonomy.cron_manager import add_prompt_job
 from tools.windows_scheduler import create_once_task
 from tools.x_human import fit_x_post_text
 
@@ -58,6 +59,15 @@ def _create_interactive_task(create_task_func, name: str, time_hhmm: str, date_d
         return create_task_func(name, time_hhmm, date_ddmmyyyy, command)
 
 
+def build_x_post_execution_prompt(text: str, job_path: str | Path | None = None) -> str:
+    job_note = f"\nJob local: {job_path}" if job_path else ""
+    return (
+        "Executa agora esta tarefa agendada pelo cron interno da Eve.\n"
+        "Nao reagendes. Usa a ferramenta publish_x_post_now com approved=true, verifica o resultado e fecha o separador do browser no fim.\n"
+        f"Texto em ingles para publicar no X:\n{text}{job_note}"
+    )
+
+
 def write_x_post_job(text: str, scheduled_for: datetime, *, approved_by: str = "sandro") -> Path:
     ensure_project_dirs()
     X_POST_JOBS_DIR.mkdir(parents=True, exist_ok=True)
@@ -105,6 +115,7 @@ def schedule_x_post(
     now: datetime | None = None,
     approved_by: str = "sandro",
     create_task_func=create_once_task,
+    create_prompt_func=add_prompt_job,
 ) -> dict:
     text = text.strip()
     if not text:
@@ -114,25 +125,26 @@ def schedule_x_post(
     text = fitted["text"]
     target, note = target_datetime_for_time(time_hhmm, now=now)
     job_path = write_x_post_job(text, target, approved_by=approved_by)
-    command = build_x_post_task_command(job_path)
+    prompt = build_x_post_execution_prompt(text, job_path)
     task_fragment = f"X_Post_{target.strftime('%Y%m%d_%H%M')}_{_safe_task_fragment(text)}"
-    task_result = _create_interactive_task(
-        create_task_func,
+    cron_job = create_prompt_func(
         task_fragment,
-        target.strftime("%H:%M"),
-        target.strftime("%d/%m/%Y"),
-        command,
+        target,
+        prompt,
+        speaker="sandro",
     )
-    status = "scheduled" if int(task_result.get("returncode", 1)) == 0 else "failed"
-    update_x_post_job(job_path, status=status, task_result=task_result, task_name=f"Eve_{task_fragment}", note=note)
+    status = "scheduled" if cron_job.get("id") else "failed"
+    update_x_post_job(job_path, status=status, cron_job=cron_job, task_name=cron_job.get("id") or f"Eve_{task_fragment}", note=note)
     result = {
         "status": status,
-        "task_name": f"Eve_{task_fragment}",
+        "task_name": cron_job.get("id") or f"Eve_{task_fragment}",
         "scheduled_for": target.isoformat(),
         "job_path": str(job_path),
         "text": text,
         "note": note,
-        "task_result": task_result,
+        "cron_job": cron_job,
+        "execution_prompt": prompt,
+        "task_result": {"cron_job": cron_job},
         "correction": {
             "status": fitted["status"],
             "original_characters": fitted["original_characters"],
@@ -175,6 +187,7 @@ def schedule_repeated_x_posts(
     now: datetime | None = None,
     approved_by: str = "sandro",
     create_task_func=create_once_task,
+    create_prompt_func=add_prompt_job,
 ) -> dict:
     now = now or datetime.now()
     count = max(1, min(int(count), 20))
@@ -200,6 +213,7 @@ def schedule_repeated_x_posts(
             now=now,
             approved_by=approved_by,
             create_task_func=create_task_func,
+            create_prompt_func=create_prompt_func,
         )
         result["sequence"] = index + 1
         results.append(result)
@@ -213,6 +227,7 @@ def schedule_repeated_x_posts(
             now=now,
             approved_by=approved_by,
             create_task_func=create_task_func,
+            create_prompt_func=create_prompt_func,
         )
         retry["sequence"] = f"correction_for_{failed_item.get('sequence')}"
         corrective_attempts.append(retry)
