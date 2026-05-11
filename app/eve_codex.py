@@ -999,6 +999,11 @@ def _call_codex_text(token: str, model: str, instructions: str, visible_prompt: 
 
 
 def ask(prompt: str, *, speaker: str = "sandro", publish_to_interface: bool = True, allow_tools: bool = True) -> str:
+    role = speaker_role(speaker)
+    display_name = speaker_display_name(speaker)
+    if allow_tools and role == "user" and _is_interest_register_request(prompt):
+        return _answer_interest_register_request(prompt, role=role, display_name=display_name, publish_to_interface=publish_to_interface)
+
     auth = refresh_if_needed(load_auth())
     token = auth["tokens"]["access_token"]
     config = load_config()
@@ -1010,8 +1015,6 @@ def ask(prompt: str, *, speaker: str = "sandro", publish_to_interface: bool = Tr
     vector_context = _format_vector_context(prompt)
     handoff_context = _context_handoff_prompt()
     internal_plan_context = format_internal_plan(prompt)
-    role = speaker_role(speaker)
-    display_name = speaker_display_name(speaker)
     visible_prompt = prompt
     if role == "codex_instructor":
         visible_prompt = f"[Mensagem de Codex-instrutor para Eve, nao de Sandro]\n{prompt}"
@@ -1408,6 +1411,57 @@ def format_eve_tool_result(result: dict) -> str:
     return json.dumps(payload, indent=2, ensure_ascii=False)[:6000]
 
 
+def _is_interest_register_request(prompt: str) -> bool:
+    lowered = prompt.lower()
+    read_terms = ("traz", "mostra", "mostrar", "ver", "ve", "vê", "ler", "le", "lê")
+    register_terms = (
+        "registado",
+        "registos",
+        "ficheiros",
+        "ficheiro",
+        "pesquisa",
+        "interesses",
+        "gostos",
+        "evolucao",
+        "evolução",
+        "depois da pesquisa",
+        "última pesquisa",
+        "ultima pesquisa",
+        "o que escreveste",
+        "escreveste la",
+        "escreveste lá",
+        "escrito la",
+        "escrito lá",
+    )
+    return any(term in lowered for term in read_terms) and any(term in lowered for term in register_terms)
+
+
+def _answer_interest_register_request(prompt: str, *, role: str, display_name: str, publish_to_interface: bool) -> str:
+    append_chat(role, prompt, tags=["tool_request", "interest_registers_read"])
+    _record_session_message(role, prompt, {"speaker": "sandro", "display_name": display_name, "direct_local_tool": "interest_registers_read"})
+    _sync_vector_message(role, prompt)
+    if publish_to_interface:
+        publish_interface_message(display_name, prompt, target="Eve", tags=["incoming", role])
+    try:
+        registers = read_daily_interest_registers()
+        text = format_daily_interest_registers(registers)
+        safe_print(text)
+        append_chat("assistant", text, tags=["tool", "interest_registers_read", "direct"])
+        _record_session_message("assistant", text, {"reply_to": display_name, "direct_local_tool": "interest_registers_read"})
+        _sync_vector_message("assistant", text)
+        if publish_to_interface:
+            publish_interface_message("Eve", text, target=display_name, tags=["reply", "interest_registers_read"])
+        return text
+    except Exception as exc:
+        text = f"Erro real ao ler registos diarios de interesses: {type(exc).__name__}: {exc}"
+        safe_print(text)
+        append_chat("error", text, tags=["tool_error", "interest_registers_read"])
+        _record_session_message("error", text, {"reply_to": display_name, "direct_local_tool": "interest_registers_read"})
+        if publish_to_interface:
+            publish_interface_message("Eve", text, target=display_name, tags=["reply", "error"])
+        return text
+
+
 def handle_natural_tool_request(prompt: str, *, speaker: str = "sandro") -> bool:
     if is_capability_question(prompt):
         role = speaker_role(speaker)
@@ -1419,12 +1473,7 @@ def handle_natural_tool_request(prompt: str, *, speaker: str = "sandro") -> bool
     role = speaker_role(speaker)
     if role != "user":
         return False
-    lowered_prompt = prompt.lower()
-    wants_interest_registers = (
-        any(term in lowered_prompt for term in ("registado", "registos", "ficheiros", "pesquisa"))
-        and any(term in lowered_prompt for term in ("interesses", "gostos", "evolucao", "evolução", "depois da pesquisa", "última pesquisa", "ultima pesquisa"))
-    )
-    if wants_interest_registers:
+    if _is_interest_register_request(prompt):
         append_chat(role, prompt, tags=["tool_request", "interest_registers_read"])
         try:
             registers = read_daily_interest_registers()

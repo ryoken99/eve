@@ -95,7 +95,7 @@ def current_daily_interest_paths() -> dict[str, str]:
     }
 
 
-def read_daily_interest_registers(date_key: str | None = None, *, max_chars_per_file: int = 6000) -> dict[str, Any]:
+def read_daily_interest_registers(date_key: str | None = None, *, max_chars_per_file: int = 12000) -> dict[str, Any]:
     ensure_project_dirs()
     paths = {}
     contents = {}

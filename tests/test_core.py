@@ -40,6 +40,8 @@ from app.eve_codex import (
     normalize_speaker,
     speaker_display_name,
     speaker_role,
+    _is_interest_register_request,
+    ask,
 )
 from core.pending_intent import extract_x_post_draft, maybe_save_x_post_draft
 from memory.memory_manager import context_bundle
@@ -1189,31 +1191,41 @@ class EveCoreTests(unittest.TestCase):
 
     def test_daily_learning_notes_are_indexed_by_dd_mm_yy(self):
         moment = datetime(2026, 5, 11, 13, 31)
-        path = append_daily_learning("world", "unit daily learning", moment=moment)
-        self.assertTrue(str(path).endswith(os.path.join("memory", "world", "daily", "11-05-26.md")))
-        self.assertEqual(path, daily_learning_path("world", moment))
+        memory_root = TEST_LOG_ROOT / "memory_daily_learning"
+        with patch("research.research_notes.MEMORY_DIR", memory_root):
+            path = append_daily_learning("world", "unit daily learning", moment=moment)
+        self.assertTrue(str(path).endswith(os.path.join("memory_daily_learning", "world", "daily", "11-05-26.md")))
+        with patch("research.research_notes.MEMORY_DIR", memory_root):
+            self.assertEqual(path, daily_learning_path("world", moment))
         self.assertIn("unit daily learning", path.read_text(encoding="utf-8"))
 
     def test_interest_evolution_schedule_uses_recurring_prompt_job(self):
-        seed = write_interest_seed_memory()
-        self.assertTrue(Path(seed["path"]).exists())
-        prompt = build_interest_evolution_prompt()
-        self.assertIn("DD-MM-AA", prompt)
-        self.assertIn("Nao publiques no X", prompt)
-        scheduled = ensure_interest_evolution_schedule(schedule="24h")
+        memory_root = TEST_LOG_ROOT / "memory_interest_schedule"
+        with patch("research.research_notes.MEMORY_DIR", memory_root):
+            with patch("research.interest_evolution.MEMORY_DIR", memory_root):
+                seed = write_interest_seed_memory()
+                self.assertTrue(Path(seed["path"]).exists())
+                prompt = build_interest_evolution_prompt()
+                self.assertIn("DD-MM-AA", prompt)
+                self.assertIn("Nao publiques no X", prompt)
+                scheduled = ensure_interest_evolution_schedule(schedule="24h")
         self.assertIn(scheduled["status"], {"created", "exists"})
         self.assertEqual(scheduled["job"]["name"], "Eve Interest Evolution Research")
         self.assertEqual(scheduled["job"].get("kind"), "prompt")
         self.assertFalse(bool(scheduled["job"].get("one_shot")))
-        paths = current_daily_interest_paths()
+        with patch("research.interest_evolution.MEMORY_DIR", memory_root):
+            paths = current_daily_interest_paths()
         self.assertTrue(paths["world"].endswith(".md"))
 
     def test_interest_registers_read_returns_daily_files(self):
         moment = datetime(2026, 5, 11, 13, 31)
-        append_daily_learning("world", "unit world register", moment=moment)
-        append_daily_learning("technology", "unit tech register", moment=moment)
-        append_daily_learning("personality", "unit personality register", moment=moment)
-        registers = read_daily_interest_registers("11-05-26")
+        memory_root = TEST_LOG_ROOT / "memory_interest_read"
+        with patch("research.research_notes.MEMORY_DIR", memory_root):
+            append_daily_learning("world", "unit world register", moment=moment)
+            append_daily_learning("technology", "unit tech register", moment=moment)
+            append_daily_learning("personality", "unit personality register", moment=moment)
+        with patch("research.interest_evolution.MEMORY_DIR", memory_root):
+            registers = read_daily_interest_registers("11-05-26")
         text = format_daily_interest_registers(registers)
         self.assertIn("unit world register", text)
         self.assertIn("unit tech register", text)
@@ -1231,6 +1243,20 @@ class EveCoreTests(unittest.TestCase):
                     handled = handle_natural_tool_request("traz o que foi registado nos ficheiros depois da pesquisa")
         self.assertTrue(handled)
         self.assertIn("world note", output.getvalue())
+
+    def test_followup_show_what_you_wrote_matches_interest_registers(self):
+        self.assertTrue(_is_interest_register_request("ok tenta agr mostrar me o que escreveste la"))
+
+    def test_ask_handles_interest_registers_without_llm(self):
+        fake = {
+            "date": "11-05-26",
+            "paths": {"world": "w", "technology": "t", "personality": "p"},
+            "contents": {"world": "world note", "technology": "tech note", "personality": "personality note"},
+        }
+        with patch("app.eve_codex.read_daily_interest_registers", return_value=fake):
+            with patch("app.eve_codex.load_auth", side_effect=AssertionError("LLM/auth should not be needed")):
+                text = ask("ok tenta agr mostrar me o que escreveste la", publish_to_interface=False)
+        self.assertIn("world note", text)
 
 
 if __name__ == "__main__":
