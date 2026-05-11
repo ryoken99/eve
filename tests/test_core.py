@@ -18,6 +18,7 @@ from app.eve_codex import (
     _format_interface_message,
     _extract_eve_tool_call,
     _extract_eve_tool_calls,
+    _review_tool_delivery_before_final,
     _safe_profile_name,
     active_loop_mode,
     build_loop_prompt,
@@ -412,6 +413,41 @@ class EveCoreTests(unittest.TestCase):
         )
         self.assertEqual(call["tool"], "open_browser")
         self.assertEqual(call["args"]["url"], "https://www.google.com/search?q=caes")
+
+    def test_delivery_review_blocks_done_claim_when_tool_failed(self):
+        batch_results = [
+            {
+                "index": 1,
+                "tool_call": {"tool": "schedule_x_post", "args": {"time": "01:03", "text": "hello"}},
+                "tool_result": {"ok": True, "verification": {"ok": False, "status": "verification_failed", "reason": "post not confirmed"}},
+                "result_text": "Publicacao no X NAO confirmada.",
+                "verified": False,
+            }
+        ]
+        reviewed = _review_tool_delivery_before_final(
+            "posta no x",
+            "Feito, Sandro. Publiquei no X.",
+            batch_results,
+        )
+        self.assertIn("NAO posso marcar como feito", reviewed)
+        self.assertIn("post not confirmed", reviewed)
+
+    def test_delivery_review_allows_verified_delivery(self):
+        batch_results = [
+            {
+                "index": 1,
+                "tool_call": {"tool": "create_desktop_folder", "args": {"name": "ola"}},
+                "tool_result": {"ok": True, "verification": {"ok": True, "status": "verified"}},
+                "result_text": "Pasta criada: C:\\Users\\utilizador\\Desktop\\ola",
+                "verified": True,
+            }
+        ]
+        reviewed = _review_tool_delivery_before_final(
+            "cria pasta ola",
+            "Feito, Sandro. Pasta criada.",
+            batch_results,
+        )
+        self.assertEqual(reviewed, "Feito, Sandro. Pasta criada.")
 
     def test_eve_tool_registry_exposes_core_capabilities(self):
         from core.eve_tool_registry import TOOLS

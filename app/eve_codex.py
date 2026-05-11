@@ -1097,10 +1097,14 @@ def _run_tool_loop(
     max_tool_iterations: int = 3,
 ) -> str | None:
     text = first_text
+    delivery_results = []
     for _ in range(max_tool_iterations):
         tool_calls = _extract_eve_tool_calls(text)
         if not tool_calls:
-            return None if text == first_text else _finalize_assistant_text(text, display_name, publish_to_interface)
+            if text == first_text:
+                return None
+            reviewed = _review_tool_delivery_before_final(original_prompt, text, delivery_results)
+            return _finalize_assistant_text(reviewed, display_name, publish_to_interface, tags=["delivery_review"])
         append_chat("assistant", text, tags=["tool_call_batch", f"count:{len(tool_calls)}"])
         _record_session_message("assistant", text, {"tool_calls": [call["tool"] for call in tool_calls]})
         _sync_vector_message("assistant", text)
@@ -1123,6 +1127,7 @@ def _run_tool_loop(
                     "verified": bool((tool_result.get("verification") or {}).get("ok", tool_result.get("ok", False))),
                 }
             )
+        delivery_results.extend(batch_results)
         failed = [item for item in batch_results if not item["verified"]]
         result_text = "\n\n".join(
             f"[{item['index']}/{len(batch_results)}] {item['tool_call']['tool']}\n{item['result_text']}"
@@ -1143,7 +1148,48 @@ def _run_tool_loop(
         status_code, text, payload = _call_codex_text(token, model, instructions, followup_prompt)
         if status_code != 200:
             return _finalize_assistant_text(result_text, display_name, publish_to_interface, tags=["tool_batch"])
-    return _finalize_assistant_text(text, display_name, publish_to_interface)
+    reviewed = _review_tool_delivery_before_final(original_prompt, text, delivery_results)
+    return _finalize_assistant_text(reviewed, display_name, publish_to_interface, tags=["delivery_review"])
+
+
+def _review_tool_delivery_before_final(original_prompt: str, draft_text: str, batch_results: list[dict]) -> str:
+    if not batch_results:
+        return draft_text
+
+    failed = [item for item in batch_results if not item.get("verified")]
+    review_payload = {
+        "original_prompt": original_prompt,
+        "tool_count": len(batch_results),
+        "verified_count": len(batch_results) - len(failed),
+        "failed_count": len(failed),
+        "failed_tools": [
+            {
+                "tool": item.get("tool_call", {}).get("tool"),
+                "args": item.get("tool_call", {}).get("args") or {},
+                "verification": (item.get("tool_result") or {}).get("verification") or {},
+                "summary": item.get("result_text") or "",
+            }
+            for item in failed
+        ],
+    }
+    append_chat("assistant", json.dumps(review_payload, ensure_ascii=False), tags=["delivery_self_review"])
+
+    if not failed:
+        return draft_text
+
+    reasons = []
+    for item in failed:
+        verification = (item.get("tool_result") or {}).get("verification") or {}
+        reason = verification.get("reason") or verification.get("status") or "verificacao falhou"
+        reasons.append(f"- {item.get('tool_call', {}).get('tool')}: {reason}")
+    return (
+        "Revisei o meu proprio trabalho antes de entregar e encontrei erro.\n\n"
+        "NAO posso marcar como feito porque ha ferramentas sem verificacao real:\n"
+        + "\n".join(reasons)
+        + "\n\n"
+        "Resposta anterior bloqueada pelo delivery review:\n"
+        + draft_text
+    )
 
 
 def _finalize_assistant_text(text: str, display_name: str, publish_to_interface: bool, tags: list[str] | None = None) -> str:
