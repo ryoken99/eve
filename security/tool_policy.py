@@ -42,6 +42,7 @@ READONLY_TOOLS = {
     "ensure_daily_transcripts",
 }
 SEARCH_TOOLS = {"search_web", "web_research_report", "browser_fetch_url"}
+CLEANUP_TOOLS = {"browser_close"}
 EXEC_TOOLS = {"run_terminal", "start_process", "stop_process", "poll_process", "spawn_subagent"}
 PUBLIC_TOOLS = {"schedule_x_post", "schedule_repeated_x_posts", "publish_x_post_now", "create_gmail_draft", "gmail_search"}
 MUTATING_TOOLS = {
@@ -137,6 +138,8 @@ def classify_tool(tool: str, args: dict[str, Any] | None = None) -> ToolPolicyDe
         return ToolPolicyDecision(tool, "readonly", True, "Ferramenta apenas le estado/local context.")
     if tool in SEARCH_TOOLS:
         return ToolPolicyDecision(tool, "search", True, "Pesquisa/leitura de rede; sem mutacao local direta.")
+    if tool in CLEANUP_TOOLS:
+        return ToolPolicyDecision(tool, "cleanup", True, "Limpeza de tarefa UI/browser apos acao web.")
     if tool in UI_TOOLS:
         return ToolPolicyDecision(tool, "ui_control", False, "Controla UI/rato/teclado/browser e pode afetar trabalho do Sandro.")
     if tool in EXEC_TOOLS:

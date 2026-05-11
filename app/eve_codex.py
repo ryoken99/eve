@@ -140,6 +140,7 @@ MENU_COMMANDS = {
 CHAT_SPEAKERS = {
     "sandro": {"role": "user", "prompt": "tu"},
     "codex": {"role": "codex_instructor", "prompt": "codex"},
+    "eve_initiative": {"role": "eve_initiative", "prompt": "eve-auto"},
 }
 
 
@@ -944,6 +945,8 @@ def normalize_speaker(value: str) -> str:
     lowered = value.strip().lower()
     if lowered in {"codex", "instrutor", "instructor", "assistant"}:
         return "codex"
+    if lowered in {"eve", "eve_initiative", "eve-auto", "autonomia", "iniciativa"}:
+        return "eve_initiative"
     return "sandro"
 
 
@@ -951,6 +954,8 @@ def speaker_display_name(speaker: str) -> str:
     role = speaker_role(speaker)
     if role == "codex_instructor":
         return "Codex"
+    if role == "eve_initiative":
+        return "Eve iniciativa"
     return "Sandro"
 
 
@@ -2304,7 +2309,7 @@ def main() -> None:
     x_schedule_p.add_argument("text")
     ask_p = sub.add_parser("ask")
     ask_p.add_argument("prompt")
-    ask_p.add_argument("--speaker", default="sandro", choices=["sandro", "codex"])
+    ask_p.add_argument("--speaker", default="sandro", choices=["sandro", "codex", "eve_initiative"])
     model_p = sub.add_parser("model")
     model_p.add_argument("model")
     args = parser.parse_args()

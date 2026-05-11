@@ -210,6 +210,9 @@ class EveCoreTests(unittest.TestCase):
         self.assertEqual(speaker_role("codex"), "codex_instructor")
         self.assertEqual(speaker_display_name("codex"), "Codex")
         self.assertEqual(speaker_role("sandro"), "user")
+        self.assertEqual(normalize_speaker("eve-auto"), "eve_initiative")
+        self.assertEqual(speaker_role("eve_initiative"), "eve_initiative")
+        self.assertEqual(speaker_display_name("eve_initiative"), "Eve iniciativa")
 
     def test_interface_message_format_marks_source(self):
         text = _format_interface_message({"source": "Eve", "target": "Codex", "timestamp": "2026-05-08T00:00:00Z", "content": "ola"})
@@ -547,6 +550,8 @@ class EveCoreTests(unittest.TestCase):
         self.assertEqual(classify_tool("run_terminal").approval_class, "exec_capable")
         self.assertEqual(classify_tool("publish_x_post_now").approval_class, "public_or_external")
         self.assertEqual(classify_tool("schedule_repeated_x_posts").approval_class, "public_or_external")
+        self.assertEqual(classify_tool("browser_close").approval_class, "cleanup")
+        self.assertTrue(classify_tool("browser_close").auto_approve)
         set_safety_mode("safe_mode", "unit policy")
         self.assertFalse(decide_tool_execution("run_terminal", {"command": "Get-ChildItem"}).allowed)
         self.assertTrue(decide_tool_execution("run_terminal", {"command": "Get-ChildItem", "approved": True}).allowed)

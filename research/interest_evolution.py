@@ -62,7 +62,7 @@ def build_interest_evolution_prompt() -> str:
         "Regras obrigatorias:\n"
         "1. Escolhe 1 tema base do Sandro, 1 tema tecnico da Eve e 1 tema novo adjacente.\n"
         "2. Usa web_research_report com varias fontes quando precisares de internet.\n"
-        "3. Se abrires browser, usa Chrome/perfil Eve, reutiliza a mesma aba e fecha a pagina no fim.\n"
+        "3. Se abrires browser, usa Chrome/perfil Eve, reutiliza a mesma aba e fecha a pagina no fim; web_research_report ja fecha a pagina, por isso nao chames browser_close em duplicado salvo se abriste uma pagina extra.\n"
         "4. Regista aprendizagem do mundo/gostos em memory/world/daily/DD-MM-AA.md.\n"
         "5. Regista aprendizagem tecnica em memory/technology/daily/DD-MM-AA.md.\n"
         "6. Regista mudancas ou candidatos de gostos proprios em memory/personality/daily/DD-MM-AA.md.\n"
