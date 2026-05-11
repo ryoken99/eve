@@ -49,6 +49,8 @@ from memory.semantic_vector.vector_store import add_document, search
 from security.permission_manager import check_action, check_command
 from security.safety_modes import set_safety_mode
 from research.technology_watcher import classify_research_item
+from research.interest_evolution import build_interest_evolution_prompt, current_daily_interest_paths, ensure_interest_evolution_schedule, write_interest_seed_memory
+from research.research_notes import append_daily_learning, daily_learning_path
 from learning.skill_manager import run_skill
 from tools.web_research import build_research_report_from_pages, candidate_article_links, default_seed_urls_for_query, extract_links, recent_enough_for_query, run_web_research_report
 from core.mission_control import (
@@ -1170,6 +1172,27 @@ class EveCoreTests(unittest.TestCase):
         self.assertIn("Token Gate", result["summary"])
         self.assertIn("Tokens gastos", result["summary"])
         self.assertTrue(result["report_path"].endswith(".md"))
+
+    def test_daily_learning_notes_are_indexed_by_dd_mm_yy(self):
+        moment = datetime(2026, 5, 11, 13, 31)
+        path = append_daily_learning("world", "unit daily learning", moment=moment)
+        self.assertTrue(str(path).endswith(os.path.join("memory", "world", "daily", "11-05-26.md")))
+        self.assertEqual(path, daily_learning_path("world", moment))
+        self.assertIn("unit daily learning", path.read_text(encoding="utf-8"))
+
+    def test_interest_evolution_schedule_uses_recurring_prompt_job(self):
+        seed = write_interest_seed_memory()
+        self.assertTrue(Path(seed["path"]).exists())
+        prompt = build_interest_evolution_prompt()
+        self.assertIn("DD-MM-AA", prompt)
+        self.assertIn("Nao publiques no X", prompt)
+        scheduled = ensure_interest_evolution_schedule(schedule="24h")
+        self.assertIn(scheduled["status"], {"created", "exists"})
+        self.assertEqual(scheduled["job"]["name"], "Eve Interest Evolution Research")
+        self.assertEqual(scheduled["job"].get("kind"), "prompt")
+        self.assertFalse(bool(scheduled["job"].get("one_shot")))
+        paths = current_daily_interest_paths()
+        self.assertTrue(paths["world"].endswith(".md"))
 
 
 if __name__ == "__main__":

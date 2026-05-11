@@ -110,6 +110,35 @@ def add_prompt_job(
     return job
 
 
+def add_recurring_prompt_job(
+    name: str,
+    schedule: str,
+    prompt: str,
+    *,
+    speaker: str = "eve_initiative",
+    enabled: bool = True,
+) -> dict[str, Any]:
+    jobs = _load()
+    job = {
+        "id": f"cron_{uuid.uuid4().hex[:10]}",
+        "kind": "prompt",
+        "name": name,
+        "schedule": schedule,
+        "prompt": prompt,
+        "speaker": speaker,
+        "enabled": enabled,
+        "one_shot": False,
+        "created_at": now_utc().isoformat().replace("+00:00", "Z"),
+        "last_run": None,
+        "next_run": _next_run(schedule),
+        "run_count": 0,
+    }
+    jobs.append(job)
+    _save(jobs)
+    log_event("cron_recurring_prompt_job_added", {**job, "prompt": prompt[:1000]})
+    return job
+
+
 def list_cron_jobs() -> list[dict[str, Any]]:
     return _load()
 

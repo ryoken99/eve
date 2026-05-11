@@ -51,6 +51,7 @@ MUTATING_TOOLS = {
     "workspace_append_file",
     "schedule_desktop_folder",
     "schedule_web_research",
+    "interest_evolution_schedule",
     "run_skill",
     "memory_write",
     "memory_append",

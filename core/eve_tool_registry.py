@@ -49,6 +49,7 @@ from tools.windows_scheduler import create_daily_task, list_eve_tasks
 from tools.x_human import fit_x_post_text
 from tools.x_scheduler import schedule_repeated_x_posts, schedule_x_post
 from tools.research_scheduler import schedule_web_research_report
+from research.interest_evolution import ensure_interest_evolution_schedule, current_daily_interest_paths
 
 
 @dataclass(frozen=True)
@@ -122,6 +123,17 @@ def _schedule_web_research(args: dict) -> dict:
             str(args.get("time") or ""),
             max_pages=int(args.get("max_pages") or 8),
         ),
+    }
+
+
+def _interest_evolution_schedule(args: dict) -> dict:
+    return {
+        "ok": True,
+        "tool": "interest_evolution_schedule",
+        "result": {
+            "schedule": ensure_interest_evolution_schedule(schedule=str(args.get("schedule") or "24h")),
+            "daily_paths": current_daily_interest_paths(),
+        },
     }
 
 
@@ -657,6 +669,7 @@ TOOLS: dict[str, EveTool] = {
     "search_web": EveTool("search_web", "Abre pesquisa Google no Chrome/perfil Eve.", {"query": "caes golden retriever"}, _search_web),
     "web_research_report": EveTool("web_research_report", "Pesquisa web auditavel e guarda relatorio.", {"query": "Anthropic research papers last 3 months", "seed_urls": [], "allowed_domains": [], "max_pages": 8, "open_visible_browser": True}, _web_research_report),
     "schedule_web_research": EveTool("schedule_web_research", "Agenda pesquisa web auditavel no Chrome/perfil Eve, com varias fontes e fecho automatico do separador.", {"query": "ultimos movimentos do valor do ouro", "time": "01:05", "max_pages": 8}, _schedule_web_research),
+    "interest_evolution_schedule": EveTool("interest_evolution_schedule", "Garante rotina recorrente para pesquisar gostos/interesses, registar por data e permitir divergencia gradual da personalidade da Eve.", {"schedule": "24h"}, _interest_evolution_schedule),
     "schedule_desktop_folder": EveTool("schedule_desktop_folder", "Agenda criacao de pasta no Ambiente de Trabalho.", {"name": "pasta", "time": "22:43"}, _schedule_desktop_folder),
     "schedule_x_post": EveTool("schedule_x_post", "Agenda post no X.", {"time": "22:21", "text": "texto em ingles"}, _schedule_x_post),
     "schedule_repeated_x_posts": EveTool("schedule_repeated_x_posts", "Agenda varios posts no X com intervalo, verifica a contagem e tenta corrigir falhas automaticamente.", {"count": 3, "interval_minutes": 2, "topic": "how Eve feels", "texts": [], "approved": True}, _schedule_repeated_x_posts),
