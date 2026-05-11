@@ -170,11 +170,15 @@ def _publish_x_post_now(args: dict) -> dict:
     fitted = fit_x_post_text(text)
     publish_text = fitted["text"]
     encoded = urllib.parse.quote(publish_text)
-    skill_result = run_skill(
-        "trusted/x_publish_text_learning",
-        args={"url": f"https://x.com/intent/post?text={encoded}", "text": publish_text},
-        approved=True,
-    )
+    browser_closed = None
+    try:
+        skill_result = run_skill(
+            "trusted/x_publish_text_learning",
+            args={"url": f"https://x.com/intent/post?text={encoded}", "text": publish_text},
+            approved=True,
+        )
+    finally:
+        browser_closed = close_browser_page("x_publish_finished")
     if isinstance(skill_result, dict):
         skill_result["correction"] = {
             "status": fitted["status"],
@@ -182,6 +186,7 @@ def _publish_x_post_now(args: dict) -> dict:
             "characters": fitted["characters"],
             "limit": fitted["validation"]["limit"],
         }
+        skill_result["browser_closed"] = browser_closed
     return {
         "ok": True,
         "tool": "publish_x_post_now",

@@ -125,6 +125,7 @@ def navigate_address_bar(url: str) -> dict:
     hotkey("ctrl", "l")
     type_text(normalized)
     press_key("enter")
+    time.sleep(3)
     after = take_screenshot("after_navigate_address_bar", scope="all")
     payload = {"url": normalized, "before": str(before), "after": str(after)}
     log_ui_action("browser_navigate_address_bar", payload)

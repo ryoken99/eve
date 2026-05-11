@@ -10,7 +10,7 @@ from html.parser import HTMLParser
 from pathlib import Path
 
 from core.paths import LOGS_DIR, MEMORY_DIR, ensure_project_dirs
-from tools.browser_human import close_browser_page, open_url, search_web
+from tools.browser_human import close_browser_page, navigate_address_bar, search_web
 
 
 class _LinkParser(HTMLParser):
@@ -332,7 +332,7 @@ def run_web_research_report(
         for seed in seeds:
             try:
                 if open_visible_browser:
-                    open_url(seed)
+                    navigate_address_bar(seed)
                 page = fetch_url(seed)
                 seed_pages.append({key: value for key, value in page.items() if key != "html"})
                 candidates.extend(candidate_article_links(extract_links(page["html"], seed, allowed_domains=allowed_domains)))

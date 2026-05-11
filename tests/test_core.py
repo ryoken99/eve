@@ -717,11 +717,14 @@ class EveCoreTests(unittest.TestCase):
 
         set_safety_mode("unrestricted_mode", "unit publish")
         with patch("core.eve_tool_registry.run_skill", return_value={"status": "ok"}) as mocked:
-            result = execute_eve_tool_call({"tool": "publish_x_post_now", "args": {"text": "Not just a chat anymore."}})
+            with patch("core.eve_tool_registry.close_browser_page", return_value={"status": "closed_requested"}) as close_page:
+                result = execute_eve_tool_call({"tool": "publish_x_post_now", "args": {"text": "Not just a chat anymore."}})
         self.assertTrue(result["ok"])
         mocked.assert_called_once()
+        close_page.assert_called_once_with("x_publish_finished")
         self.assertEqual(mocked.call_args.args[0], "trusted/x_publish_text_learning")
         self.assertIn("Not%20just", mocked.call_args.kwargs["args"]["url"])
+        self.assertEqual(result["result"]["browser_closed"]["status"], "closed_requested")
 
     def test_publish_x_post_now_autofits_over_limit_text_before_skill(self):
         from app.eve_codex import execute_eve_tool_call
@@ -733,7 +736,8 @@ class EveCoreTests(unittest.TestCase):
             "core.eve_tool_registry.run_skill",
             return_value={"status": "completed", "verification": {"ok": True}, "results": []},
         ) as mocked:
-            result = execute_eve_tool_call({"tool": "publish_x_post_now", "args": {"text": long_text}})
+            with patch("core.eve_tool_registry.close_browser_page", return_value={"status": "closed_requested"}):
+                result = execute_eve_tool_call({"tool": "publish_x_post_now", "args": {"text": long_text}})
         used_text = mocked.call_args.kwargs["args"]["text"]
         self.assertLessEqual(len(used_text), 280)
         self.assertTrue(validate_x_post_text(used_text)["ok"])
@@ -956,6 +960,38 @@ class EveCoreTests(unittest.TestCase):
                 result = run_web_research_report("unit research close browser", open_visible_browser=True, max_pages=1)
         close_page.assert_called_once()
         self.assertEqual(result["browser_closed"]["status"], "closed_requested")
+
+    def test_visible_web_research_reuses_one_browser_page_for_sources(self):
+        seed_pages = [
+            {
+                "url": "https://example.test/one",
+                "title": "AI source one",
+                "date": "2026-05-11",
+                "text": "Artificial intelligence research and AI news from source one. " * 3,
+                "html": "<html><body>AI source one</body></html>",
+                "content_type": "text/html",
+            },
+            {
+                "url": "https://example.test/two",
+                "title": "AI source two",
+                "date": "2026-05-11",
+                "text": "Artificial intelligence research and AI news from source two. " * 3,
+                "html": "<html><body>AI source two</body></html>",
+                "content_type": "text/html",
+            },
+        ]
+        with patch("tools.web_research.search_web", return_value={"url": "https://www.google.com/search?q=ai"}):
+            with patch("tools.web_research.navigate_address_bar", return_value={"status": "navigated"}) as navigate:
+                with patch("tools.web_research.fetch_url", side_effect=seed_pages):
+                    with patch("tools.web_research.close_browser_page", return_value={"status": "closed_requested"}):
+                        result = run_web_research_report(
+                            "AI news today",
+                            seed_urls=["https://example.test/one", "https://example.test/two"],
+                            open_visible_browser=True,
+                            max_pages=2,
+                        )
+        self.assertEqual(navigate.call_count, 2)
+        self.assertEqual(result["status"], "ok")
 
     def test_web_interface_loads_recent_chat_from_daily_transcript(self):
         append_transcript("chat", "web_user_message", {"content": "unit user continuity"})
