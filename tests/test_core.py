@@ -67,6 +67,7 @@ from autonomy.token_gate import decide_llm_call, record_llm_call
 from autonomy.autonomy_reporter import run_autonomy_report_cycle
 from tools.x_scheduler import build_x_post_task_command, schedule_repeated_x_posts, schedule_x_post
 from tools.research_scheduler import build_web_research_task_command, schedule_web_research_report
+from tools.windows_scheduler import build_task_wrapper_command, write_task_wrapper
 from tools.desktop_tasks import parse_desktop_file_request, parse_desktop_folder_request, parse_desktop_folder_schedule_request, schedule_desktop_folder_creation
 from security.tool_policy import classify_tool, decide_tool_execution
 from core.session_store import add_session_message, count_session_messages, recent_session_messages, search_sessions
@@ -332,6 +333,17 @@ class EveCoreTests(unittest.TestCase):
         self.assertIn("run_web_research_job.py", command)
         self.assertIn("job.json", command)
         self.assertIn("scheduled_tasks", command)
+
+    def test_windows_task_wrapper_keeps_scheduler_command_short(self):
+        long_command = "powershell.exe -NoProfile -Command " + ("Write-Host Eve; " * 80)
+        wrapper = write_task_wrapper("unit_long_scheduler_command", long_command)
+        try:
+            wrapped = build_task_wrapper_command(wrapper)
+            self.assertLess(len(wrapped), 261)
+            self.assertIn("unit_long_scheduler_command", wrapped)
+            self.assertIn(long_command, wrapper.read_text(encoding="utf-8"))
+        finally:
+            wrapper.unlink(missing_ok=True)
 
     def test_repeated_x_post_scheduler_verifies_and_corrects_missing_post(self):
         calls = []
