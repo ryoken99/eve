@@ -30,6 +30,18 @@ def start_tool_task(tool: str, args: dict, *, source: str = "eve_llm") -> str:
 
 
 def finish_tool_task(task_id: str, result: dict) -> None:
-    status = "done" if result.get("ok") else "failed"
-    append_task_event("task_finished", {"task_id": task_id, "tool": result.get("tool"), "status": status, "result": result})
+    verification = result.get("verification") if isinstance(result.get("verification"), dict) else {}
+    verified = bool(verification.get("ok", result.get("ok", False)))
+    status = "done" if result.get("ok") and verified else "failed"
+    append_task_event(
+        "task_finished",
+        {
+            "task_id": task_id,
+            "tool": result.get("tool"),
+            "status": status,
+            "verified": verified,
+            "verification": verification,
+            "result": result,
+        },
+    )
 

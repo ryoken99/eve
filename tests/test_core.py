@@ -86,6 +86,7 @@ from security.tool_policy import classify_tool, decide_tool_execution
 from core.session_store import add_session_message, count_session_messages, recent_session_messages, search_sessions
 from core.session_handoff import context_status, create_session_checkpoint, current_session_id, rotate_session, set_current_session
 from core.internal_command_planner import format_internal_plan, plan_internal_actions
+from core.task_ledger import finish_tool_task, start_tool_task
 from autonomy.cron_manager import add_cron_job, list_cron_jobs, run_due_jobs
 from tools.process_manager import start_process, poll_process, stop_process
 from core.plugin_registry import plugin_summary
@@ -503,6 +504,20 @@ class EveCoreTests(unittest.TestCase):
             batch_results,
         )
         self.assertEqual(reviewed, "Feito, Sandro. Pasta criada.")
+
+    def test_task_ledger_marks_unverified_tool_as_failed(self):
+        task_id = start_tool_task("unit_tool", {"unit": True}, source="unit")
+        finish_tool_task(
+            task_id,
+            {
+                "ok": True,
+                "tool": "unit_tool",
+                "verification": {"ok": False, "status": "verification_failed", "reason": "unit not verified"},
+            },
+        )
+        ledger = (Path(__file__).resolve().parents[1] / "state" / "task_ledger.jsonl").read_text(encoding="utf-8")
+        self.assertIn('"status": "failed"', ledger)
+        self.assertIn('"verified": false', ledger)
 
     def test_eve_tool_registry_exposes_core_capabilities(self):
         from core.eve_tool_registry import TOOLS
@@ -1070,12 +1085,20 @@ class EveCoreTests(unittest.TestCase):
         self.assertEqual(audit["summary"]["total"], 17)
         self.assertEqual(len(audit["points"]), 17)
         self.assertIn("average_closeness", audit["summary"])
+        self.assertEqual(audit["summary"]["target_score"], 8.3)
+        self.assertIn("points_below_target", audit["summary"])
+        self.assertTrue(audit["summary"]["all_meet_target"])
+        self.assertEqual(audit["summary"]["points_below_target"], 0)
         self.assertIn("improvement_headroom", audit["points"][0])
+        self.assertIn("score_10", audit["points"][0])
+        self.assertIn("goal_criteria", audit["points"][0])
+        self.assertIn("goal_gaps", audit["points"][0])
         self.assertTrue(capability_impulses(limit=1))
         path = write_capability_audit()
         self.assertTrue(path.exists())
         self.assertIn("17. Autonomia", path.read_text(encoding="utf-8"))
         self.assertIn("Proximidade", path.read_text(encoding="utf-8"))
+        self.assertIn("Score 0-10", path.read_text(encoding="utf-8"))
 
     def test_capability_roadmap_writes_history_and_schedule(self):
         history = append_capability_review_history()

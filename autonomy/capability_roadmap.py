@@ -28,6 +28,29 @@ CAPABILITY_POINTS: list[dict[str, Any]] = [
     {"id": 17, "title": "Autonomia/proatividade sem input", "paths": ["autonomy/daemon.py", "autonomy/proactive_decider.py", "autonomy/autonomous_executor.py"], "desired": "acoes autonomas, mensagens e melhorias com o tempo"},
 ]
 
+TARGET_CAPABILITY_SCORE = 8.3
+
+
+EIGHT_THREE_CRITERIA: dict[int, list[str]] = {
+    1: ["admin gate exists", "admin actions are audited", "elevated launch path is documented/tested"],
+    2: ["chat transcript exists", "tool/action transcript exists", "web/console/autonomous messages are captured"],
+    3: ["diary consolidation exists", "recurring schedule exists", "consolidation outputs have evidence"],
+    4: ["short memory exists", "medium memory exists", "long memory exists", "promotion rules exist"],
+    5: ["semantic index exists", "prefetch enters context", "recent memories can be rebuilt/indexed"],
+    6: ["dream cycle exists", "dream reports are written", "memory layer decisions are recorded"],
+    7: ["time/system awareness exists", "screen/window awareness exists", "tools verify visible state before success claims"],
+    8: ["preference memory exists", "daily interest research exists", "candidate preferences can mature or be rejected"],
+    9: ["lab folders exist", "experiments can be created", "self-chosen candidates are tracked"],
+    10: ["terminal logs exist", "error memory exists", "errors can become lessons/candidates"],
+    11: ["technology watcher exists", "web research exists", "daily research pipeline covers labs/open source/papers"],
+    12: ["research candidates exist", "lab candidate path exists", "research-to-lab rule exists"],
+    13: ["world daily file exists", "technology daily file exists", "personality daily file exists"],
+    14: ["autonomy director exists", "verified self update exists", "improvement candidates are tested before core changes"],
+    15: ["browser control exists", "keyboard/mouse control exists", "screenshot/OCR verification exists"],
+    16: ["RSI policy/module exists", "sandbox testing exists", "rollback/backup exists"],
+    17: ["daemon exists", "cron/jobs exist", "autonomous mission execution exists", "proactive messages are possible"],
+}
+
 
 def _exists(relative: str) -> bool:
     path = (EVE_ROOT / relative).resolve()
@@ -52,7 +75,7 @@ def _habit_score(point_id: int) -> tuple[float, list[str]]:
         4: [("memory/short_term", 1), ("memory/medium_term", 1), ("memory/long_term", 1)],
         5: [("memory/semantic_vector", 1)],
         6: [("memory/dream_reports", 1)],
-        7: [("logs/ui_actions", 1), ("state/daemon_heartbeat.json", 1)],
+        7: [("logs/ui_actions", 1), ("logs/browser", 1)],
         8: [("memory/personality", 1), ("memory/medium_term/autonomous_capability_improvements.md", 1)],
         9: [("lab/candidate_improvements", 1), ("lab/reports", 1)],
         10: [("logs/transcripts/errors", 1), ("memory/errors", 1)],
@@ -100,7 +123,18 @@ def _score_point(point: dict[str, Any]) -> dict[str, Any]:
     habit_score, habit_evidence = _habit_score(int(point["id"]))
     improvement_score, improvement_evidence = _improvement_score(int(point["id"]))
     closeness = round(base_score * 0.45 + habit_score * 0.35 + improvement_score * 0.20, 2)
+    score_10 = round(closeness * 10, 1)
     improvement_headroom = round(1.0 - closeness, 2)
+    criteria = EIGHT_THREE_CRITERIA.get(int(point["id"]), [])
+    goal_gaps = []
+    if base_score < 1.0:
+        goal_gaps.append("base paths incomplete")
+    if habit_score < 0.75:
+        goal_gaps.append("autonomous habit/evidence too weak")
+    if improvement_score < 0.5:
+        goal_gaps.append("improvement/lab evidence too weak")
+    if score_10 < TARGET_CAPABILITY_SCORE:
+        goal_gaps.append(f"score below {TARGET_CAPABILITY_SCORE}/10")
     if base_score >= 1:
         status = "implemented_base"
     elif base_score > 0:
@@ -131,6 +165,11 @@ def _score_point(point: dict[str, Any]) -> dict[str, Any]:
         "habit_score": round(habit_score, 2),
         "improvement_score": round(improvement_score, 2),
         "closeness": closeness,
+        "score_10": score_10,
+        "target_score": TARGET_CAPABILITY_SCORE,
+        "meets_goal": score_10 >= TARGET_CAPABILITY_SCORE,
+        "goal_criteria": criteria,
+        "goal_gaps": goal_gaps,
         "improvement_headroom": improvement_headroom,
         "score": closeness,
     }
@@ -146,6 +185,11 @@ def capability_audit() -> dict[str, Any]:
         "missing": sum(1 for point in points if point["status"] == "missing"),
         "needs_autonomous_habit": sum(1 for point in points if point["maturity"] == "needs_autonomous_habit"),
         "average_closeness": round(sum(point["closeness"] for point in points) / max(1, len(points)), 2),
+        "average_score_10": round(sum(point["score_10"] for point in points) / max(1, len(points)), 1),
+        "target_score": TARGET_CAPABILITY_SCORE,
+        "points_meeting_target": sum(1 for point in points if point["meets_goal"]),
+        "points_below_target": sum(1 for point in points if not point["meets_goal"]),
+        "all_meet_target": all(point["meets_goal"] for point in points),
     }
     weakest = sorted(points, key=lambda item: (item["score"], item["id"]))[:5]
     return {"summary": summary, "points": points, "weakest": weakest}
@@ -215,8 +259,11 @@ def write_capability_audit() -> Path:
         lines.append(f"- Estado: {point['status']}")
         lines.append(f"- Maturidade: {point['maturity']}")
         lines.append(f"- Proximidade: {point['closeness']} | Margem de melhoria: {point['improvement_headroom']}")
+        lines.append(f"- Score 0-10: {point['score_10']} / alvo {point['target_score']} | Cumpre alvo: {point['meets_goal']}")
         lines.append(f"- Scores: base={point['base_score']} habito={point['habit_score']} melhoria={point['improvement_score']}")
         lines.append(f"- Objetivo: {point['desired']}")
+        lines.append(f"- Criterios 8.3+: {', '.join(point['goal_criteria']) or 'nao definido'}")
+        lines.append(f"- Lacunas para alvo: {', '.join(point['goal_gaps']) or 'nenhuma'}")
         lines.append(f"- Evidencia: {', '.join(point['evidence']) or 'nenhuma'}")
         lines.append(f"- Habito autonomo: {', '.join(point['habit_evidence']) or 'nenhum'}")
         lines.append(f"- Evidencia de melhoria: {', '.join(point['improvement_evidence']) or 'nenhuma'}")
