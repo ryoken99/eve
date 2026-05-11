@@ -1,11 +1,16 @@
 from __future__ import annotations
 
+import os
 import unittest
 import contextlib
 import io
 from datetime import datetime
 from pathlib import Path
 from unittest.mock import patch
+
+TEST_LOG_ROOT = Path(__file__).resolve().parents[1] / "workspace" / "unit_test_logs"
+os.environ.setdefault("EVE_TRANSCRIPTS_DIR", str(TEST_LOG_ROOT / "transcripts"))
+os.environ.setdefault("EVE_AUDIT_DIR", str(TEST_LOG_ROOT / "audit"))
 
 from computer.monitors import virtual_bounds
 from tools.browser_human import browser_launch_args

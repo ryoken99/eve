@@ -58,5 +58,6 @@ state/session_handoffs/**
 skills/.usage.json
 skills/.archive/
 external/
+workspace/unit_test_logs/
 memory/procedural/apps/*.json
 memory/procedural/demonstrations/*.events.json

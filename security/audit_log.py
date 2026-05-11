@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -15,7 +16,9 @@ def now_iso() -> str:
 
 def audit_log_path() -> Path:
     ensure_project_dirs()
-    return LOGS_DIR / "audit" / f"{datetime.now().strftime('%Y-%m-%d')}.jsonl"
+    root = Path(os.environ.get("EVE_AUDIT_DIR") or (LOGS_DIR / "audit"))
+    root.mkdir(parents=True, exist_ok=True)
+    return root / f"{datetime.now().strftime('%Y-%m-%d')}.jsonl"
 
 
 def log_event(event_type: str, payload: dict[str, Any]) -> dict[str, Any]:

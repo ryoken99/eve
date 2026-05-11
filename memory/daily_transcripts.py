@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -27,7 +28,8 @@ def transcript_path(kind: str, day: datetime | None = None) -> Path:
     if kind not in TRANSCRIPT_TYPES:
         raise ValueError(f"Tipo de transcricao invalido: {kind}")
     ensure_project_dirs()
-    path = LOGS_DIR / "transcripts" / kind / f"{transcript_file_key(day)}.jsonl"
+    root = Path(os.environ.get("EVE_TRANSCRIPTS_DIR") or (LOGS_DIR / "transcripts"))
+    path = root / kind / f"{transcript_file_key(day)}.jsonl"
     path.parent.mkdir(parents=True, exist_ok=True)
     return path
 
