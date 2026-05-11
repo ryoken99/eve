@@ -49,7 +49,14 @@ from memory.semantic_vector.vector_store import add_document, search
 from security.permission_manager import check_action, check_command
 from security.safety_modes import set_safety_mode
 from research.technology_watcher import classify_research_item
-from research.interest_evolution import build_interest_evolution_prompt, current_daily_interest_paths, ensure_interest_evolution_schedule, write_interest_seed_memory
+from research.interest_evolution import (
+    build_interest_evolution_prompt,
+    current_daily_interest_paths,
+    ensure_interest_evolution_schedule,
+    format_daily_interest_registers,
+    read_daily_interest_registers,
+    write_interest_seed_memory,
+)
 from research.research_notes import append_daily_learning, daily_learning_path
 from learning.skill_manager import run_skill
 from tools.web_research import build_research_report_from_pages, candidate_article_links, default_seed_urls_for_query, extract_links, recent_enough_for_query, run_web_research_report
@@ -500,6 +507,7 @@ class EveCoreTests(unittest.TestCase):
             "schedule_x_post",
             "schedule_repeated_x_posts",
             "schedule_web_research",
+            "interest_registers_read",
             "windows_create_daily_task",
             "open_browser",
             "search_web",
@@ -547,6 +555,7 @@ class EveCoreTests(unittest.TestCase):
 
     def test_tool_policy_classifies_core_risks(self):
         self.assertEqual(classify_tool("workspace_read_file").approval_class, "readonly")
+        self.assertEqual(classify_tool("interest_registers_read").approval_class, "readonly")
         self.assertEqual(classify_tool("run_terminal").approval_class, "exec_capable")
         self.assertEqual(classify_tool("publish_x_post_now").approval_class, "public_or_external")
         self.assertEqual(classify_tool("schedule_repeated_x_posts").approval_class, "public_or_external")
@@ -1198,6 +1207,30 @@ class EveCoreTests(unittest.TestCase):
         self.assertFalse(bool(scheduled["job"].get("one_shot")))
         paths = current_daily_interest_paths()
         self.assertTrue(paths["world"].endswith(".md"))
+
+    def test_interest_registers_read_returns_daily_files(self):
+        moment = datetime(2026, 5, 11, 13, 31)
+        append_daily_learning("world", "unit world register", moment=moment)
+        append_daily_learning("technology", "unit tech register", moment=moment)
+        append_daily_learning("personality", "unit personality register", moment=moment)
+        registers = read_daily_interest_registers("11-05-26")
+        text = format_daily_interest_registers(registers)
+        self.assertIn("unit world register", text)
+        self.assertIn("unit tech register", text)
+        self.assertIn("unit personality register", text)
+
+    def test_natural_interest_register_request_is_handled(self):
+        fake = {
+            "date": "11-05-26",
+            "paths": {"world": "w", "technology": "t", "personality": "p"},
+            "contents": {"world": "world note", "technology": "tech note", "personality": "personality note"},
+        }
+        with patch("app.eve_codex.read_daily_interest_registers", return_value=fake):
+            with patch("app.eve_codex.append_chat"):
+                with contextlib.redirect_stdout(io.StringIO()) as output:
+                    handled = handle_natural_tool_request("traz o que foi registado nos ficheiros depois da pesquisa")
+        self.assertTrue(handled)
+        self.assertIn("world note", output.getvalue())
 
 
 if __name__ == "__main__":

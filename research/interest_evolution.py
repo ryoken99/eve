@@ -93,3 +93,34 @@ def current_daily_interest_paths() -> dict[str, str]:
         "technology": str(daily_learning_path("technology")),
         "personality": str(daily_learning_path("personality")),
     }
+
+
+def read_daily_interest_registers(date_key: str | None = None, *, max_chars_per_file: int = 6000) -> dict[str, Any]:
+    ensure_project_dirs()
+    paths = {}
+    contents = {}
+    for kind in ("world", "technology", "personality"):
+        path = MEMORY_DIR / kind / "daily" / f"{date_key}.md" if date_key else daily_learning_path(kind)
+        paths[kind] = str(path)
+        if path.exists():
+            text = path.read_text(encoding="utf-8")
+            contents[kind] = text[-max_chars_per_file:]
+        else:
+            contents[kind] = ""
+    return {"date": date_key or daily_learning_path("world").stem, "paths": paths, "contents": contents}
+
+
+def format_daily_interest_registers(registers: dict[str, Any]) -> str:
+    lines = [f"Registos diarios de evolucao/interesses - {registers.get('date')}", ""]
+    labels = {
+        "world": "Mundo/gostos",
+        "technology": "Tecnologia",
+        "personality": "Personalidade/gostos da Eve",
+    }
+    for kind in ("world", "technology", "personality"):
+        lines.append(f"## {labels[kind]}")
+        lines.append(f"Ficheiro: {registers['paths'][kind]}")
+        content = (registers["contents"].get(kind) or "").strip()
+        lines.append(content if content else "Sem registo para esta data.")
+        lines.append("")
+    return "\n".join(lines).strip()

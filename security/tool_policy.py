@@ -26,6 +26,7 @@ READONLY_TOOLS = {
     "session_search",
     "session_export",
     "plugin_summary",
+    "interest_registers_read",
     "tool_policy",
     "cron_list",
     "list_processes",

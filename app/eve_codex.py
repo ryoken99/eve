@@ -75,6 +75,7 @@ from tools.notification import notify
 from tools.voice import speak
 from tools.mobile_bridge import bridge_status, queue_mobile_message
 from research.technology_watcher import run_technology_watch
+from research.interest_evolution import format_daily_interest_registers, read_daily_interest_registers
 from app.dashboard import render_dashboard
 from app.terminal_ui import render_menu
 from autonomy.daemon import daemon_tick, request_daemon_stop
@@ -1418,6 +1419,23 @@ def handle_natural_tool_request(prompt: str, *, speaker: str = "sandro") -> bool
     role = speaker_role(speaker)
     if role != "user":
         return False
+    lowered_prompt = prompt.lower()
+    wants_interest_registers = (
+        any(term in lowered_prompt for term in ("registado", "registos", "ficheiros", "pesquisa"))
+        and any(term in lowered_prompt for term in ("interesses", "gostos", "evolucao", "evolução", "depois da pesquisa", "última pesquisa", "ultima pesquisa"))
+    )
+    if wants_interest_registers:
+        append_chat(role, prompt, tags=["tool_request", "interest_registers_read"])
+        try:
+            registers = read_daily_interest_registers()
+            text = format_daily_interest_registers(registers)
+            print(text)
+            append_chat("assistant", text, tags=["tool", "interest_registers_read"])
+        except Exception as exc:
+            text = f"Erro real ao ler registos diarios de interesses: {type(exc).__name__}: {exc}"
+            print(text)
+            append_chat("error", text, tags=["tool_error", "interest_registers_read"])
+        return True
     repeated_x = parse_natural_repeated_x_request(prompt)
     if repeated_x:
         append_chat(role, prompt, tags=["tool_request", "x_repeated_schedule"])
