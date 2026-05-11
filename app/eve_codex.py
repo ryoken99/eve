@@ -923,6 +923,31 @@ def relevant_entity_memory(prompt: str, limit: int = 8) -> list[dict]:
             item["reason"] = reason
             results.append(item)
 
+    def add_local_memory_matches(terms: list[str]) -> None:
+        memory_root = EVE_ROOT / "memory" / "long_term"
+        for path in sorted(memory_root.glob("*.md")):
+            try:
+                lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+            except OSError:
+                continue
+            for index, line in enumerate(lines, start=1):
+                lowered_line = line.lower()
+                if not any(term.lower() in lowered_line for term in terms):
+                    continue
+                add_rows(
+                    [
+                        {
+                            "source": str(path),
+                            "path": str(path),
+                            "line": index,
+                            "excerpt": line.strip(),
+                        }
+                    ],
+                    "local_long_term_memory",
+                )
+                if len(results) >= limit:
+                    return
+
     lowered = prompt.lower()
     expanded_terms: list[str] = []
     for trigger, terms in PERSONAL_MEMORY_EXPANSIONS.items():
@@ -930,6 +955,8 @@ def relevant_entity_memory(prompt: str, limit: int = 8) -> list[dict]:
             expanded_terms.extend(terms)
     for term in expanded_terms:
         add_rows(search_entities(term, limit=3), f"literal:{term}")
+    if expanded_terms and len(results) < limit:
+        add_local_memory_matches(expanded_terms)
     add_rows(search_tfidf(prompt, limit=limit), "tfidf_prompt")
     return results[:limit]
 

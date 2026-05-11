@@ -214,12 +214,13 @@ def build_sandro_core_memory(files: Iterable[str] | None = None) -> dict:
     ensure_project_dirs()
     paths = _target_paths(files)
     missing = [str(path) for path in paths if not path.exists()]
-    if missing:
+    if missing and files is not None:
         raise FileNotFoundError(f"Ficheiros de memoria nao encontrados: {missing}")
 
     all_rows: list[SourceLine] = []
     for path in paths:
-        all_rows.extend(_read_source_lines(path))
+        if path.exists():
+            all_rows.extend(_read_source_lines(path))
 
     categorized: dict[str, list[SourceLine]] = {}
     for category, patterns in CATEGORY_PATTERNS.items():

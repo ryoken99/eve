@@ -3,5 +3,7 @@ pillow
 pytesseract
 pynput
 scikit-learn
+opencv-python
+tzdata
 # chromadb
 # playwright

@@ -54,6 +54,7 @@ MUTATING_TOOLS = {
     "schedule_desktop_folder",
     "schedule_web_research",
     "interest_evolution_schedule",
+    "daily_research_pipeline",
     "git_pull_updates",
     "run_skill",
     "memory_write",

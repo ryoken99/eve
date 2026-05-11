@@ -18,6 +18,15 @@ SECURITY_DIR = EVE_ROOT / "security"
 ENTITIES_MEMORY_DIR = Path(r"D:\entities\memoria para  as entidades")
 
 
+def _mkdir_project_dir(path: Path) -> None:
+    try:
+        path.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        if path == ENTITIES_MEMORY_DIR or ENTITIES_MEMORY_DIR in path.parents:
+            return
+        raise
+
+
 def ensure_project_dirs() -> None:
     for path in (
         CONFIG_DIR,
@@ -75,4 +84,4 @@ def ensure_project_dirs() -> None:
         ENTITIES_MEMORY_DIR / "relations",
         ENTITIES_MEMORY_DIR / "indexes",
     ):
-        path.mkdir(parents=True, exist_ok=True)
+        _mkdir_project_dir(path)

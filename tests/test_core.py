@@ -59,6 +59,7 @@ from research.interest_evolution import (
     read_daily_interest_registers,
     write_interest_seed_memory,
 )
+from research.daily_research_plan import build_daily_research_pipeline_prompt, daily_research_tracks, format_daily_research_tracks
 from research.research_notes import append_daily_learning, daily_learning_path
 from learning.skill_manager import run_skill
 from tools.web_research import build_research_report_from_pages, candidate_article_links, default_seed_urls_for_query, extract_links, recent_enough_for_query, run_web_research_report
@@ -511,6 +512,7 @@ class EveCoreTests(unittest.TestCase):
             "schedule_repeated_x_posts",
             "schedule_web_research",
             "interest_registers_read",
+            "daily_research_pipeline",
             "git_pull_updates",
             "windows_create_daily_task",
             "open_browser",
@@ -560,6 +562,7 @@ class EveCoreTests(unittest.TestCase):
     def test_tool_policy_classifies_core_risks(self):
         self.assertEqual(classify_tool("workspace_read_file").approval_class, "readonly")
         self.assertEqual(classify_tool("interest_registers_read").approval_class, "readonly")
+        self.assertEqual(classify_tool("daily_research_pipeline").approval_class, "mutating")
         self.assertEqual(classify_tool("git_pull_updates").approval_class, "mutating")
         self.assertEqual(classify_tool("run_terminal").approval_class, "exec_capable")
         self.assertEqual(classify_tool("publish_x_post_now").approval_class, "public_or_external")
@@ -1226,6 +1229,31 @@ class EveCoreTests(unittest.TestCase):
         with patch("research.interest_evolution.MEMORY_DIR", memory_root):
             paths = current_daily_interest_paths()
         self.assertTrue(paths["world"].endswith(".md"))
+
+    def test_daily_research_pipeline_tracks_sandros_17_points(self):
+        tracks = daily_research_tracks()
+        ids = {track["id"] for track in tracks}
+        self.assertIn("sandro_interests_to_eve_preferences", ids)
+        self.assertIn("world_awareness", ids)
+        self.assertIn("frontier_ai_technology", ids)
+        self.assertIn("papers_and_open_source", ids)
+        self.assertIn("error_learning", ids)
+        self.assertIn("memory_dream_consolidation", ids)
+        self.assertIn("autonomous_self_improvement", ids)
+        covered_points = {point for track in tracks for point in track["source_points"]}
+        self.assertTrue({8, 10, 11, 12, 13, 14, 16, 17}.issubset(covered_points))
+        prompt = build_daily_research_pipeline_prompt()
+        self.assertIn("OpenAI", prompt)
+        self.assertIn("Anthropic", prompt)
+        self.assertIn("Google DeepMind", prompt)
+        self.assertIn("xAI", prompt)
+        self.assertIn("lab/candidate_improvements", prompt)
+        self.assertIn("memory/world/daily/DD-MM-AA.md", prompt)
+        formatted = format_daily_research_tracks(tracks)
+        self.assertIn("Eve Daily Research Pipeline", formatted)
+        self.assertIn("Gostos do Sandro", formatted)
+        planned = plan_internal_actions("quais sao os tipos de pesquisa diaria dos 17 pontos?", limit=5)
+        self.assertTrue(any(item["tool"] == "daily_research_pipeline" for item in planned))
 
     def test_interest_registers_read_returns_daily_files(self):
         moment = datetime(2026, 5, 11, 13, 31)

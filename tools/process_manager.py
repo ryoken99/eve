@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from core.paths import LOGS_DIR, STATE_DIR, ensure_project_dirs
+from core.paths import EVE_ROOT, LOGS_DIR, STATE_DIR, ensure_project_dirs
 from security.audit_log import log_event
 
 
@@ -33,6 +33,17 @@ def _save(processes: dict[str, Any]) -> Path:
     return PROCESS_PATH
 
 
+def _resolve_cwd(cwd: str | None) -> str:
+    if not cwd:
+        return str(EVE_ROOT)
+    path = Path(cwd)
+    if path.exists() and path.is_dir():
+        return str(path)
+    if path.name.lower() == "eve":
+        return str(EVE_ROOT)
+    return cwd
+
+
 def start_process(command: str, *, cwd: str | None = None) -> dict[str, Any]:
     ensure_project_dirs()
     process_id = f"proc_{uuid.uuid4().hex[:10]}"
@@ -42,9 +53,10 @@ def start_process(command: str, *, cwd: str | None = None) -> dict[str, Any]:
     stderr_path = log_dir / f"{process_id}.err.log"
     stdout = stdout_path.open("w", encoding="utf-8")
     stderr = stderr_path.open("w", encoding="utf-8")
+    workdir = _resolve_cwd(cwd)
     proc = subprocess.Popen(
         ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", command],
-        cwd=cwd,
+        cwd=workdir,
         stdout=stdout,
         stderr=stderr,
         text=True,
@@ -59,7 +71,8 @@ def start_process(command: str, *, cwd: str | None = None) -> dict[str, Any]:
         "id": process_id,
         "pid": proc.pid,
         "command": command,
-        "cwd": cwd,
+        "cwd": workdir,
+        "requested_cwd": cwd,
         "stdout": str(stdout_path),
         "stderr": str(stderr_path),
         "started_at": now_iso(),

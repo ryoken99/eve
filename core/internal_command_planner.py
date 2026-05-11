@@ -69,6 +69,13 @@ INTERNAL_ACTIONS = [
         ("pesquisa", "research", "papers", "artigos", "internet", "vai online"),
     ),
     InternalAction(
+        "daily_research_pipeline",
+        "daily_research_pipeline",
+        "Listar ou agendar o pipeline diario de pesquisa da Eve baseado nos 17 pontos: gostos, mundo, tecnologia, papers, erros, memoria, lab e self-improvement.",
+        {"ensure_schedule": False, "schedule": "24h", "approved": True},
+        ("tipos de pesquisa", "pesquisa diaria", "pipeline diario", "17 pontos", "gostos da eve", "pesquisar todos os dias", "self-improvement research"),
+    ),
+    InternalAction(
         "memory",
         "memory_context",
         "Consultar memoria antes de responder a factos pessoais, continuidade ou identidade da Eve.",

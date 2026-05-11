@@ -56,6 +56,12 @@ from research.interest_evolution import (
     format_daily_interest_registers,
     read_daily_interest_registers,
 )
+from research.daily_research_plan import (
+    build_daily_research_pipeline_prompt,
+    daily_research_tracks,
+    ensure_daily_research_pipeline_schedule,
+    format_daily_research_tracks,
+)
 
 
 @dataclass(frozen=True)
@@ -150,6 +156,25 @@ def _interest_registers_read(args: dict) -> dict:
         "tool": "interest_registers_read",
         "result": registers,
         "text": format_daily_interest_registers(registers),
+    }
+
+
+def _daily_research_pipeline(args: dict) -> dict:
+    ensure_schedule = bool(args.get("ensure_schedule", False))
+    schedule = str(args.get("schedule") or "24h")
+    tracks = daily_research_tracks()
+    result = {
+        "tracks": tracks,
+        "prompt": build_daily_research_pipeline_prompt(),
+        "schedule": None,
+    }
+    if ensure_schedule:
+        result["schedule"] = ensure_daily_research_pipeline_schedule(schedule=schedule)
+    return {
+        "ok": True,
+        "tool": "daily_research_pipeline",
+        "result": result,
+        "text": format_daily_research_tracks(tracks),
     }
 
 
@@ -696,6 +721,7 @@ TOOLS: dict[str, EveTool] = {
     "schedule_web_research": EveTool("schedule_web_research", "Agenda pesquisa web auditavel no Chrome/perfil Eve, com varias fontes e fecho automatico do separador.", {"query": "ultimos movimentos do valor do ouro", "time": "01:05", "max_pages": 8}, _schedule_web_research),
     "interest_evolution_schedule": EveTool("interest_evolution_schedule", "Garante rotina recorrente para pesquisar gostos/interesses, registar por data e permitir divergencia gradual da personalidade da Eve.", {"schedule": "24h"}, _interest_evolution_schedule),
     "interest_registers_read": EveTool("interest_registers_read", "Le os ficheiros diarios de evolucao de interesses/pesquisa: world, technology e personality, indexados por DD-MM-AA. Usa esta ferramenta, nao run_terminal, quando Sandro pedir para mostrar o que ficou registado/escrito depois da pesquisa de interesses.", {"date": "11-05-26", "max_chars_per_file": 12000}, _interest_registers_read),
+    "daily_research_pipeline": EveTool("daily_research_pipeline", "Lista e opcionalmente agenda o pipeline diario de pesquisa da Eve baseado nos 17 pontos: gostos do Sandro, mundo, tecnologia/IA, papers/open source, erros, memoria/sonhos, lab e self-improvement.", {"ensure_schedule": False, "schedule": "24h", "approved": True}, _daily_research_pipeline),
     "git_pull_updates": EveTool("git_pull_updates", "Puxa atualizacoes do GitHub para o repo local da Eve quando Sandro pedir. Usa fetch + pull --ff-only --autostash, sem reset nem apagar memoria local.", {"remote": "origin", "branch": "main", "approved": True}, _git_pull_updates),
     "schedule_desktop_folder": EveTool("schedule_desktop_folder", "Agenda criacao de pasta no Ambiente de Trabalho.", {"name": "pasta", "time": "22:43"}, _schedule_desktop_folder),
     "schedule_x_post": EveTool("schedule_x_post", "Agenda post no X.", {"time": "22:21", "text": "texto em ingles"}, _schedule_x_post),
