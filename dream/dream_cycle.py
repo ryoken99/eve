@@ -6,7 +6,7 @@ from pathlib import Path
 
 from core.paths import LAB_DIR, MEMORY_DIR, ensure_project_dirs
 from core.self_report import functional_self_report
-from dream.memory_reorganizer import run_dream
+from dream.memory_reorganizer import dream_memory_decisions, run_dream
 from memory.semantic_vector.vector_store import rebuild_memory_index
 
 
@@ -27,6 +27,7 @@ def run_dream_cycle(day: str | None = None) -> dict:
     dream_reports_dir.mkdir(parents=True, exist_ok=True)
     mirror_path = dream_reports_dir / report_path.name
     mirror_path.write_text(report_path.read_text(encoding="utf-8"), encoding="utf-8")
+    memory_decisions = dream_memory_decisions(mirror_path.read_text(encoding="utf-8"))
 
     self_report = functional_self_report("dream_cycle")
     queue_path = LAB_DIR / "queue" / f"dream_cycle_{datetime.now().strftime('%Y-%m-%d_%H%M%S')}.json"
@@ -36,6 +37,7 @@ def run_dream_cycle(day: str | None = None) -> dict:
         "memory_report": str(mirror_path),
         "vector_index": str(index_path),
         "promotion_rules": PROMOTION_RULES,
+        "memory_decisions": memory_decisions,
         "self_report": self_report,
         "lab_candidates": [
             "avaliar se o sonho promoveu apenas memoria estavel",

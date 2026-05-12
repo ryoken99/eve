@@ -20,23 +20,27 @@ from core.awareness_engine import collect_awareness, describe_awareness
 from core.diagnostics import build_diagnostics_bundle
 from core.internal_command_planner import all_internal_actions, plan_internal_actions
 from core.plugin_registry import plugin_summary
+from core.personality_engine import update_preference_candidate
 from core.session_handoff import context_status, create_session_checkpoint, format_active_handoff, rotate_session
 from core.paths import EVE_ROOT
 from core.capability_self_test import format_capability_self_test
 from core.session_store import add_session_message, export_session, search_sessions
 from core.subagent_manager import list_subagents, spawn_subagent
-from dream.diary_consolidator import consolidate
+from dream.diary_consolidator import consolidate, ensure_diary_consolidation_schedule
 from learning.skill_curator import curate_skills, record_skill_usage
 from learning.skill_manager import run_skill
+from lab.lab_manager import record_candidate_result
 from memory.diary_manager import read_diary
 from memory.memory_manager import append_memory_file, context_bundle, read_memory_file, remember_fact, write_memory_file
+from memory.layered_memory import classify_memory_item, route_memory_item
 from memory.vector_provider import rebuild_vector_memory, vector_prefetch
 from memory.daily_transcripts import ensure_daily_transcript_files
 from security.secrets_vault import get_secret, list_secrets, mask_secret, store_secret
 from security.safety_modes import current_safety_mode, describe_safety, set_safety_mode
 from security.tool_policy import classify_tool, decide_tool_execution
 from self_improvement.verified_self_update import verified_core_update
-from tools.admin_executor import launch_elevated_powershell, run_admin_command
+from self_improvement.improvement_planner import plan_autonomous_system_improvements
+from tools.admin_executor import admin_status, launch_elevated_powershell, run_admin_command
 from tools.browser_advanced import browser_back, browser_click_text, browser_fetch_url, browser_scroll, browser_snapshot, browser_type_text
 from tools.browser_human import browser_visual_task, close_browser_page, navigate_address_bar, open_url, search_web
 from tools.desktop_tasks import create_desktop_file, create_desktop_folder, schedule_desktop_folder_creation
@@ -63,6 +67,7 @@ from research.daily_research_plan import (
     ensure_daily_research_pipeline_schedule,
     format_daily_research_tracks,
 )
+from research.research_notes import decide_research_for_lab
 
 
 @dataclass(frozen=True)
@@ -421,9 +426,73 @@ def _consolidate_diary(args: dict) -> dict:
     return {"ok": True, "tool": "consolidate_diary", "result": {"path": str(path)}}
 
 
+def _diary_consolidation_schedule(args: dict) -> dict:
+    return {
+        "ok": True,
+        "tool": "diary_consolidation_schedule",
+        "result": ensure_diary_consolidation_schedule(schedule=str(args.get("schedule") or "6h")),
+    }
+
+
 def _remember_fact(args: dict) -> dict:
     path = remember_fact(str(args.get("text") or ""))
     return {"ok": True, "tool": "remember_fact", "result": {"path": str(path)}}
+
+
+def _preference_candidate(args: dict) -> dict:
+    return {
+        "ok": True,
+        "tool": "preference_candidate",
+        "result": update_preference_candidate(
+            str(args.get("topic") or ""),
+            str(args.get("evidence") or ""),
+            sentiment=str(args.get("sentiment") or "positive"),
+        ),
+    }
+
+
+def _lab_candidate_result(args: dict) -> dict:
+    return {
+        "ok": True,
+        "tool": "lab_candidate_result",
+        "result": record_candidate_result(
+            str(args.get("title") or ""),
+            metric_value=float(args.get("metric_value") or 0),
+            threshold=float(args.get("threshold") or 0),
+            notes=str(args.get("notes") or ""),
+        ),
+    }
+
+
+def _research_lab_decision(args: dict) -> dict:
+    return {
+        "ok": True,
+        "tool": "research_lab_decision",
+        "result": decide_research_for_lab(
+            str(args.get("title") or ""),
+            str(args.get("summary") or ""),
+            confidence=float(args.get("confidence") or 0.5),
+        ),
+    }
+
+
+def _improvement_plan(args: dict) -> dict:
+    return {
+        "ok": True,
+        "tool": "improvement_plan",
+        "result": plan_autonomous_system_improvements(
+            target_score=float(args.get("target_score") or 8.5),
+            max_items=int(args.get("max_items") or 3),
+        ),
+    }
+
+
+def _memory_route(args: dict) -> dict:
+    text = str(args.get("text") or "")
+    metadata = args.get("metadata") or {}
+    if bool(args.get("dry_run", False)):
+        return {"ok": True, "tool": "memory_route", "result": {"decision": classify_memory_item(text, metadata=metadata), "dry_run": True}}
+    return {"ok": True, "tool": "memory_route", "result": route_memory_item(text, metadata=metadata)}
 
 
 def _memory_read(args: dict) -> dict:
@@ -494,8 +563,20 @@ def _admin_command(args: dict) -> dict:
     }
 
 
+def _admin_status(args: dict) -> dict:
+    return {"ok": True, "tool": "admin_status", "result": admin_status()}
+
+
 def _launch_elevated_powershell(args: dict) -> dict:
-    return {"ok": True, "tool": "launch_elevated_powershell", "result": launch_elevated_powershell(str(args.get("command") or ""))}
+    return {
+        "ok": True,
+        "tool": "launch_elevated_powershell",
+        "result": launch_elevated_powershell(
+            str(args.get("command") or ""),
+            reason=str(args.get("reason") or "Eve elevated command"),
+            dry_run=bool(args.get("dry_run", False)),
+        ),
+    }
 
 
 def _tool_policy(args: dict) -> dict:
@@ -654,7 +735,7 @@ def _diagnostics_export(args: dict) -> dict:
 
 
 def _install_startup_daemon(args: dict) -> dict:
-    return {"ok": True, "tool": "install_startup_daemon", "result": install_startup_daemon_task(time_hhmm=str(args.get("time") or "09:00"))}
+    return {"ok": True, "tool": "install_startup_daemon", "result": install_startup_daemon_task(time_hhmm=str(args.get("time") or "09:00"), highest=bool(args.get("highest", True)))}
 
 
 def _install_startup_console(args: dict) -> dict:
@@ -767,7 +848,13 @@ TOOLS: dict[str, EveTool] = {
     "awareness": EveTool("awareness", "Recolhe awareness temporal, sistema, janela ativa e processos.", {}, _awareness),
     "read_diary": EveTool("read_diary", "Le diario de hoje.", {}, _read_diary),
     "consolidate_diary": EveTool("consolidate_diary", "Consolida diario numa memoria resumida.", {"date": ""}, _consolidate_diary),
+    "diary_consolidation_schedule": EveTool("diary_consolidation_schedule", "Garante consolidacao do diario varias vezes por dia.", {"schedule": "6h", "approved": True}, _diary_consolidation_schedule),
     "remember_fact": EveTool("remember_fact", "Guarda facto em memoria media.", {"text": "Sandro prefere..."}, _remember_fact),
+    "preference_candidate": EveTool("preference_candidate", "Regista/reforca/rejeita um gosto candidato da Eve antes de virar gosto estavel.", {"topic": "narrativa procedural", "evidence": "apareceu em pesquisa", "sentiment": "positive"}, _preference_candidate),
+    "lab_candidate_result": EveTool("lab_candidate_result", "Regista resultado, metrica e decisao de um candidato do lab.", {"title": "experiencia", "metric_value": 0.9, "threshold": 0.8, "notes": ""}, _lab_candidate_result),
+    "research_lab_decision": EveTool("research_lab_decision", "Decide se uma pesquisa vira candidato no lab, fica em watch, aplica apos revisao ou e ignorada.", {"title": "paper", "summary": "agent memory benchmark", "confidence": 0.8}, _research_lab_decision),
+    "improvement_plan": EveTool("improvement_plan", "Cria plano deterministico de melhorias a partir dos 17 pontos e erros recentes.", {"target_score": 8.5, "max_items": 3, "approved": True}, _improvement_plan),
+    "memory_route": EveTool("memory_route", "Classifica e grava uma memoria na camada certa: curto, medio, longo prazo ou arquivo.", {"text": "Sandro prefere...", "metadata": {}, "dry_run": False}, _memory_route),
     "memory_read": EveTool("memory_read", "Le ficheiro de memoria.", {"layer": "long_term", "name": "sandro_core_memory.md"}, _memory_read),
     "memory_write": EveTool("memory_write", "Escreve ficheiro de memoria.", {"layer": "medium_term", "name": "note.md", "content": "texto"}, _memory_write),
     "memory_append": EveTool("memory_append", "Acrescenta texto a ficheiro de memoria.", {"layer": "medium_term", "name": "note.md", "content": "texto"}, _memory_append),
@@ -778,7 +865,8 @@ TOOLS: dict[str, EveTool] = {
     "safety_status": EveTool("safety_status", "Mostra modo de seguranca atual.", {}, _safety_status),
     "set_safety_mode": EveTool("set_safety_mode", "Altera modo de seguranca da Eve.", {"mode": "unrestricted_mode", "reason": "Sandro pediu"}, _set_safety_mode),
     "admin_command": EveTool("admin_command", "Executa comando admin quando aprovado/liberado.", {"command": "Get-Process", "reason": "diagnostico", "approved": True}, _admin_command),
-    "launch_elevated_powershell": EveTool("launch_elevated_powershell", "Abre PowerShell elevado temporario com comando.", {"command": "Write-Host Eve"}, _launch_elevated_powershell),
+    "admin_status": EveTool("admin_status", "Mostra se o processo atual esta elevado, modo de seguranca admin e log auditavel.", {}, _admin_status),
+    "launch_elevated_powershell": EveTool("launch_elevated_powershell", "Prepara e abre PowerShell elevado temporario com comando auditado.", {"command": "Write-Host Eve", "reason": "diagnostico", "dry_run": False}, _launch_elevated_powershell),
     "tool_policy": EveTool("tool_policy", "Classifica risco/aprovacao de uma ferramenta.", {"tool": "run_terminal", "args": {}}, _tool_policy),
     "plugin_summary": EveTool("plugin_summary", "Lista plugins locais da Eve.", {}, _plugin_summary),
     "session_add_message": EveTool("session_add_message", "Grava mensagem numa session database pesquisavel.", {"session_id": "main", "role": "user", "content": "texto", "metadata": {}}, _session_add_message),
@@ -812,7 +900,7 @@ TOOLS: dict[str, EveTool] = {
     "secrets_list": EveTool("secrets_list", "Lista nomes de segredos mascarados.", {}, _secrets_list),
     "secrets_mask": EveTool("secrets_mask", "Mascara texto sensivel para logs/respostas.", {"value": "secret"}, _secrets_mask),
     "diagnostics_export": EveTool("diagnostics_export", "Exporta diagnostico/trajectory basica da Eve.", {"note": "debug"}, _diagnostics_export),
-    "install_startup_daemon": EveTool("install_startup_daemon", "Instala tarefa Windows para tick autonomo recorrente.", {"time": "09:00"}, _install_startup_daemon),
+    "install_startup_daemon": EveTool("install_startup_daemon", "Instala tarefa Windows para tick autonomo recorrente, por defeito com RunLevel Highest.", {"time": "09:00", "highest": True}, _install_startup_daemon),
     "install_startup_console": EveTool("install_startup_console", "Instala tarefa Windows para abrir consola Eve.", {"time": "09:01"}, _install_startup_console),
     "triggers_discover": EveTool("triggers_discover", "Descobre impulsos/triggers autonomos.", {}, _triggers_discover),
     "triggers_create_missions": EveTool("triggers_create_missions", "Cria missoes propostas a partir de triggers.", {"max_new": 2}, _triggers_create_missions),

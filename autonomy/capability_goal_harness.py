@@ -7,29 +7,30 @@ from typing import Any
 
 from autonomy.capability_roadmap import TARGET_CAPABILITY_SCORE, append_capability_review_history, capability_audit, ensure_capability_review_schedule, write_capability_audit
 from core.paths import LOGS_DIR, MEMORY_DIR, ensure_project_dirs
+from dream.diary_consolidator import ensure_diary_consolidation_schedule
 from memory.daily_transcripts import ensure_daily_transcript_files
 from research.daily_research_plan import ensure_daily_research_pipeline_schedule
 from research.interest_evolution import ensure_interest_evolution_schedule
 
 
 HARNESS_CONTROLS: dict[int, list[str]] = {
-    1: ["admin policy is gated", "admin actions have a log target", "admin command path is explicit"],
-    2: ["daily transcript files exist", "chat/tools/actions/errors channels are separated", "runtime can append events"],
-    3: ["capability review is scheduled", "daemon calls the harness", "history is appended"],
-    4: ["short/medium/long memory directories exist", "promotion outputs are auditable", "context retrieval has a stable entrypoint"],
+    1: ["admin status probe exists", "admin actions have a log target", "elevated command path is auditably prepared", "startup tasks support RunLevel Highest"],
+    2: ["daily transcript files exist", "chat/tools/actions/errors/console/interface channels are separated", "runtime can append tool events", "console/interface/loop messages are captured"],
+    3: ["diary consolidation is scheduled several times per day", "daemon calls the harness", "consolidation run history is appended"],
+    4: ["short/medium/long memory directories exist", "memory items are classified before storage", "promotion/routing outputs are auditable", "context retrieval has a stable entrypoint"],
     5: ["semantic vector directory exists", "vector rebuild is callable", "prefetch is exposed as a tool"],
-    6: ["dream report directory exists", "dream cycle can queue lab ideas", "memory decisions are written to reports"],
-    7: ["awareness engine is callable", "screen/window tools are present", "tool results require verification"],
-    8: ["personality memory exists", "interest evolution schedule exists", "candidate preferences are dated"],
-    9: ["lab candidate directory exists", "candidate creation API exists", "reports/queue directories exist"],
-    10: ["error transcript exists", "error memory exists", "terminal/tool transcript exists"],
-    11: ["daily research pipeline schedule exists", "technology watcher exists", "frontier labs/open-source/papers are tracked"],
-    12: ["research-to-lab target exists", "candidate improvement path exists", "daily research prompt includes lab decision"],
-    13: ["world daily target exists", "technology daily target exists", "personality daily target exists"],
-    14: ["autonomy cycle exists", "verified update path exists", "improvements require tests before core changes"],
-    15: ["browser control exists", "keyboard/mouse control exists", "screenshots/OCR are available"],
-    16: ["recursive self-improvement policy exists", "backup path exists", "verified update requires rollback/test discipline"],
-    17: ["daemon heartbeat exists or can be written", "cron jobs exist", "autonomous executor is bounded and auditable"],
+    6: ["dream report directory exists", "dream cycle queues lab ideas", "dream cycle emits structured memory decisions", "memory decisions are written to reports"],
+    7: ["awareness engine is callable", "screen/window tools are present", "tool runtime captures before/after awareness", "tool results require verification"],
+    8: ["personality memory exists", "interest evolution schedule exists", "candidate preferences have states", "preferences mature only after repeated evidence"],
+    9: ["lab candidate directory exists", "candidate creation API exists", "candidate results include metrics and decisions", "reports/queue directories exist"],
+    10: ["error transcript exists", "error memory exists", "terminal commands enter tool transcript", "errors can create lab candidates"],
+    11: ["daily research pipeline schedule exists", "technology watcher exists", "frontier labs are explicit", "open-source and papers sources are explicit"],
+    12: ["research-to-lab target exists", "candidate improvement path exists", "daily research prompt includes lab decision", "research items get formal apply/test/watch/ignore decisions"],
+    13: ["world daily target exists", "technology daily target exists", "personality daily target exists", "daily learning separation is verifiable"],
+    14: ["autonomy cycle exists", "deterministic improvement planner exists", "verified update path exists", "improvements require tests before core changes"],
+    15: ["browser control exists", "keyboard/mouse control exists", "screenshots/OCR are available", "critical visual tools require explicit verification"],
+    16: ["recursive self-improvement policy exists", "backup path exists", "RSI cycle exposes gates", "verified update requires rollback/test discipline"],
+    17: ["daemon heartbeat exists or can be written", "cron jobs exist", "proactive decisions are logged", "autonomous executor is bounded and auditable"],
 }
 
 
@@ -78,6 +79,7 @@ def _format_report(result: dict[str, Any]) -> str:
         "## Operational Setup",
         f"- Transcripts: {result['setup']['transcripts']}",
         f"- Capability schedule: {result['setup']['capability_schedule']}",
+        f"- Diary consolidation schedule: {result['setup']['diary_consolidation_schedule']}",
         f"- Interest schedule: {result['setup']['interest_schedule']}",
         f"- Daily research schedule: {result['setup']['daily_research_schedule']}",
         f"- Roadmap path: {result['setup']['roadmap_path']}",
@@ -119,6 +121,7 @@ def run_capability_goal_harness(
     roadmap_path = write_capability_audit()
     history_path = append_capability_review_history()
     capability_schedule = ensure_capability_review_schedule(schedule="6h") if ensure_schedules else None
+    diary_consolidation_schedule = ensure_diary_consolidation_schedule(schedule="6h") if ensure_schedules else None
     interest_schedule = ensure_interest_evolution_schedule(schedule="24h") if ensure_schedules else None
     daily_research_schedule = ensure_daily_research_pipeline_schedule(schedule="24h") if ensure_schedules else None
 
@@ -134,6 +137,7 @@ def run_capability_goal_harness(
         "setup": {
             "transcripts": transcripts,
             "capability_schedule": capability_schedule,
+            "diary_consolidation_schedule": diary_consolidation_schedule,
             "interest_schedule": interest_schedule,
             "daily_research_schedule": daily_research_schedule,
             "roadmap_path": str(roadmap_path),

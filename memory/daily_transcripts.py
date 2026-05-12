@@ -9,7 +9,7 @@ from typing import Any
 from core.paths import LOGS_DIR, ensure_project_dirs
 
 
-TRANSCRIPT_TYPES = ("chat", "tools", "actions", "errors")
+TRANSCRIPT_TYPES = ("chat", "tools", "actions", "errors", "console", "interface")
 
 
 def now_iso() -> str:
@@ -56,3 +56,15 @@ def append_transcript(kind: str, event: str, payload: dict[str, Any], *, day: da
     with path.open("a", encoding="utf-8") as handle:
         handle.write(json.dumps(entry, ensure_ascii=False) + "\n")
     return entry
+
+
+def append_console_transcript(text: object, *, stream: str = "stdout", event: str = "console_output") -> dict[str, Any]:
+    return append_transcript("console", event, {"stream": stream, "text": str(text)})
+
+
+def append_interface_transcript(source: str, target: str, content: str, *, tags: list[str] | None = None) -> dict[str, Any]:
+    return append_transcript(
+        "interface",
+        "interface_message",
+        {"source": source, "target": target, "content": content, "tags": tags or []},
+    )

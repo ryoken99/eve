@@ -19,6 +19,7 @@ if str(EVE_ROOT) not in sys.path:
     sys.path.insert(0, str(EVE_ROOT))
 
 from memory.diary_manager import append_chat, chat_log_path, list_diary_days, read_diary
+from memory.daily_transcripts import append_console_transcript, append_interface_transcript, append_transcript
 from memory.memory_manager import consolidate_today, context_bundle, remember_fact
 from tools.filesystem import append_file, list_dir, read_file, write_file
 from tools.terminal import run_command
@@ -170,6 +171,7 @@ def safe_print(text: object = "", **kwargs) -> None:
     except UnicodeEncodeError:
         encoded = str(text).encode(sys.stdout.encoding or "utf-8", errors="replace")
         print(encoded.decode(sys.stdout.encoding or "utf-8", errors="replace"), **kwargs)
+    append_console_transcript(text)
 
 
 def publish_interface_message(source: str, content: str, *, target: str = "Eve", tags: list[str] | None = None) -> None:
@@ -183,6 +185,7 @@ def publish_interface_message(source: str, content: str, *, target: str = "Eve",
     }
     with INTERFACE_INBOX_PATH.open("a", encoding="utf-8") as fh:
         fh.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    append_interface_transcript(source, target, content, tags=tags)
 
 
 def _record_session_message(role: str, content: str, metadata: dict | None = None) -> None:
@@ -235,6 +238,7 @@ def append_loop_event(event: str, payload: dict) -> Path:
     row = {"timestamp": now_iso(), "event": event, **payload}
     with path.open("a", encoding="utf-8") as fh:
         fh.write(json.dumps(row, ensure_ascii=False) + "\n")
+    append_transcript("actions", "loop_event", row)
     return path
 
 

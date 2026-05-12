@@ -51,6 +51,8 @@ def ensure_project_dirs() -> None:
         LOGS_DIR / "transcripts" / "tools",
         LOGS_DIR / "transcripts" / "actions",
         LOGS_DIR / "transcripts" / "errors",
+        LOGS_DIR / "transcripts" / "console",
+        LOGS_DIR / "transcripts" / "interface",
         LOGS_DIR / "admin_actions",
         LOGS_DIR / "loops",
         LOGS_DIR / "autonomy",

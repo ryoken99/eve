@@ -8,6 +8,7 @@ from security.safety_modes import current_safety_mode, current_safety_profile
 
 READONLY_TOOLS = {
     "capability_self_test",
+    "admin_status",
     "workspace_list_dir",
     "workspace_read_file",
     "describe_screen",
@@ -60,8 +61,14 @@ MUTATING_TOOLS = {
     "run_skill",
     "memory_write",
     "memory_append",
+    "memory_route",
     "remember_fact",
+    "preference_candidate",
+    "lab_candidate_result",
+    "research_lab_decision",
+    "improvement_plan",
     "consolidate_diary",
+    "diary_consolidation_schedule",
     "autonomy_cycle",
     "windows_create_daily_task",
     "set_safety_mode",

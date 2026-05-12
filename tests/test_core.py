@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import json
 import unittest
 import contextlib
 import io
@@ -17,7 +18,7 @@ from tools.browser_human import browser_launch_args
 from core.self_report import functional_self_report
 from core.capability_self_test import collect_capability_self_test, format_capability_self_test
 from core.paths import SKILLS_DIR, WORKSPACE_DIR
-from core.personality_engine import score_options
+from core.personality_engine import score_options, update_preference_candidate
 from learning.skill_learning_loop import run_skill_learning_loop, skill_result_successful
 from app.eve_codex import (
     _format_interface_message,
@@ -41,16 +42,21 @@ from app.eve_codex import (
     speaker_display_name,
     speaker_role,
     _is_interest_register_request,
+    append_loop_event,
     ask,
+    publish_interface_message,
+    safe_print,
 )
 from core.pending_intent import extract_x_post_draft, maybe_save_x_post_draft
 from memory.memory_manager import context_bundle
+from memory.layered_memory import classify_memory_item, route_memory_item
 from memory.sandro_profile_builder import build_sandro_core_memory
 from dream.dream_cycle import run_dream_cycle
+from dream.diary_consolidator import consolidate, ensure_diary_consolidation_schedule
 from memory.semantic_vector.vector_store import add_document, search
 from security.permission_manager import check_action, check_command
 from security.safety_modes import set_safety_mode
-from research.technology_watcher import classify_research_item
+from research.technology_watcher import classify_research_item, technology_source_plan
 from research.interest_evolution import (
     build_interest_evolution_prompt,
     current_daily_interest_paths,
@@ -60,7 +66,7 @@ from research.interest_evolution import (
     write_interest_seed_memory,
 )
 from research.daily_research_plan import build_daily_research_pipeline_prompt, daily_research_tracks, format_daily_research_tracks
-from research.research_notes import append_daily_learning, daily_learning_path
+from research.research_notes import append_daily_learning, daily_learning_path, decide_research_for_lab, verify_daily_learning_separation
 from learning.skill_manager import run_skill
 from tools.web_research import build_research_report_from_pages, candidate_article_links, default_seed_urls_for_query, extract_links, recent_enough_for_query, run_web_research_report
 from core.mission_control import (
@@ -78,9 +84,11 @@ from autonomy.capability_roadmap import append_capability_review_history, capabi
 from autonomy.capability_goal_harness import run_capability_goal_harness
 from autonomy.token_gate import decide_llm_call, record_llm_call
 from autonomy.autonomy_reporter import run_autonomy_report_cycle
+from autonomy.proactive_decider import decide_proactive_actions
 from tools.x_scheduler import build_x_post_task_command, schedule_repeated_x_posts, schedule_x_post
 from tools.research_scheduler import build_web_research_task_command, schedule_web_research_report
-from tools.windows_scheduler import build_task_wrapper_command, write_task_wrapper
+from tools.windows_scheduler import build_task_wrapper_command, create_daily_task, write_task_wrapper
+from tools.admin_executor import admin_status, launch_elevated_powershell
 from autonomy.cron_manager import add_prompt_job, run_due_jobs
 from tools.desktop_tasks import parse_desktop_file_request, parse_desktop_folder_request, parse_desktop_folder_schedule_request, schedule_desktop_folder_creation
 from security.tool_policy import classify_tool, decide_tool_execution
@@ -96,10 +104,15 @@ from memory.vector_provider import LocalVectorMemoryProvider
 from learning.skill_curator import record_skill_usage, curate_skills
 from security.secrets_vault import mask_secret
 from self_improvement.verified_self_update import verified_core_update
+from self_improvement.improvement_planner import plan_autonomous_system_improvements
+from self_improvement.recursive_self_improvement import run_controlled_rsi_cycle
 from memory.daily_transcripts import append_transcript, ensure_daily_transcript_files, transcript_date_key, transcript_path
 from app.eve_web import check_access_code, recent_chat_messages, render_index
 from tools.x_human import fit_x_post_text, validate_x_post_text
 from tools.git_sync import git_pull_updates
+from lab.lab_manager import create_candidate, record_candidate_result
+from memory.errors.error_memory import record_error
+from tools.terminal import run_command
 
 
 class EveCoreTests(unittest.TestCase):
@@ -128,9 +141,29 @@ class EveCoreTests(unittest.TestCase):
         result = classify_research_item("New agent benchmark", "Tool using agents and automation")
         self.assertTrue(result["useful"])
 
+    def test_technology_watcher_has_frontier_papers_and_open_source_sources(self):
+        plan = technology_source_plan()
+        groups = plan["groups"]
+        self.assertTrue({"frontier_labs", "papers", "open_source"}.issubset(groups))
+        frontier_sources = set(groups["frontier_labs"])
+        self.assertTrue({"openai_blog", "anthropic_news", "google_research", "meta_ai_blog", "xai_news"}.issubset(frontier_sources))
+        self.assertIn("arxiv_ai", groups["papers"])
+        self.assertIn("github_trending_ai", groups["open_source"])
+
     def test_personality_scoring(self):
         rows = score_options(["melhorar OCR", "limpar ficheiros"])
         self.assertEqual(rows[0]["option"], "melhorar OCR")
+
+    def test_preference_candidates_mature_with_repeated_evidence(self):
+        topic = f"unit procedural narrative {datetime.now().timestamp()}"
+        first = update_preference_candidate(topic, "seed from Sandro interest")
+        second = update_preference_candidate(topic, "appeared again in research")
+        third = update_preference_candidate(topic, "generated useful prototype idea")
+        self.assertEqual(first["status"], "candidate")
+        self.assertEqual(second["status"], "reinforced")
+        self.assertEqual(third["status"], "stable")
+        rejected = update_preference_candidate("unit discarded taste", "bad fit", sentiment="negative")
+        self.assertEqual(rejected["status"], "rejected")
 
     def test_publish_skill_requires_approval(self):
         with self.assertRaises(PermissionError):
@@ -263,6 +296,48 @@ class EveCoreTests(unittest.TestCase):
         self.assertIn("direct command from Sandro", bundle)
         self.assertIn("English", bundle)
         self.assertIn("Do not claim that X access is unavailable", bundle)
+
+    def test_layered_memory_classifies_and_routes_items(self):
+        short_decision = classify_memory_item("erro recente nesta tarefa atual", metadata={"temporary": True})
+        long_decision = classify_memory_item("regra: Sandro prefere Portugues de Portugal", metadata={"stable": True})
+        default_decision = classify_memory_item("ideia util para iterar no projeto")
+        self.assertEqual(short_decision["layer"], "short_term")
+        self.assertEqual(long_decision["layer"], "long_term")
+        self.assertEqual(default_decision["layer"], "medium_term")
+        routed = route_memory_item("regra: correcao importante feita por Sandro", metadata={"stable": True})
+        self.assertIn("long_term", routed["path"])
+        self.assertTrue(Path(routed["path"]).exists())
+        self.assertTrue(Path(routed["log_path"]).exists())
+        self.assertTrue(Path(routed["vector_index"]).exists())
+        hits = LocalVectorMemoryProvider().prefetch("correcao importante Sandro", limit=3)
+        self.assertTrue(any("correcao importante" in item.get("excerpt", "") for item in hits))
+
+    def test_lab_candidate_records_metric_and_decision(self):
+        title = f"unit lab metric {datetime.now().timestamp()}"
+        candidate = create_candidate(title, "metric should decide this candidate", metric="unit_score")
+        self.assertTrue(candidate.exists())
+        accepted = record_candidate_result(title, metric_value=0.91, threshold=0.85, notes="passed")
+        self.assertEqual(accepted["result"]["decision"], "accept")
+        payload = json.loads(candidate.read_text(encoding="utf-8"))
+        self.assertEqual(payload["status"], "decided")
+        self.assertEqual(payload["decision"], "accept")
+        self.assertTrue(Path(accepted["report"]).exists())
+
+    def test_research_items_receive_formal_lab_decision(self):
+        title = f"Unit Agent Memory Benchmark {datetime.now().timestamp()}"
+        decision = decide_research_for_lab(title, "agent memory evaluation benchmark for tool use", confidence=0.85)
+        self.assertEqual(decision["decision"], "test_in_lab")
+        self.assertTrue(decision["candidate"])
+        self.assertTrue(Path(decision["candidate"]).exists())
+        watch = decide_research_for_lab(f"Unit Watch {datetime.now().timestamp()}", "agent automation note", confidence=0.65)
+        self.assertEqual(watch["decision"], "watch")
+
+    def test_autonomous_improvement_plan_uses_capability_and_error_inputs(self):
+        record_error("unit_improvement", "planner", "UnitPlannerError", "planner should create candidate", lesson="unit", resolved=False)
+        plan = plan_autonomous_system_improvements(target_score=10.0, max_items=2)
+        self.assertGreaterEqual(plan["count"], 1)
+        self.assertIn("audit_summary", plan)
+        self.assertTrue(all(Path(item["path"]).exists() for item in plan["planned"]))
 
     def test_eve_helix_identity_enters_default_context(self):
         bundle = context_bundle()
@@ -547,8 +622,14 @@ class EveCoreTests(unittest.TestCase):
             "awareness",
             "read_diary",
             "memory_read",
+            "memory_route",
+            "preference_candidate",
+            "lab_candidate_result",
+            "research_lab_decision",
+            "improvement_plan",
             "autonomy_cycle",
             "admin_command",
+            "admin_status",
             "run_skill",
             "tool_policy",
             "plugin_summary",
@@ -572,6 +653,7 @@ class EveCoreTests(unittest.TestCase):
             "internal_plan",
             "verified_self_update",
             "ensure_daily_transcripts",
+            "diary_consolidation_schedule",
         }
         self.assertTrue(required.issubset(set(TOOLS)))
         self.assertGreaterEqual(len(TOOLS), 80)
@@ -581,6 +663,13 @@ class EveCoreTests(unittest.TestCase):
         self.assertEqual(classify_tool("interest_registers_read").approval_class, "readonly")
         self.assertEqual(classify_tool("daily_research_pipeline").approval_class, "mutating")
         self.assertEqual(classify_tool("capability_goal_harness").approval_class, "mutating")
+        self.assertEqual(classify_tool("diary_consolidation_schedule").approval_class, "mutating")
+        self.assertEqual(classify_tool("admin_status").approval_class, "readonly")
+        self.assertEqual(classify_tool("memory_route").approval_class, "mutating")
+        self.assertEqual(classify_tool("preference_candidate").approval_class, "mutating")
+        self.assertEqual(classify_tool("lab_candidate_result").approval_class, "mutating")
+        self.assertEqual(classify_tool("research_lab_decision").approval_class, "mutating")
+        self.assertEqual(classify_tool("improvement_plan").approval_class, "mutating")
         self.assertEqual(classify_tool("git_pull_updates").approval_class, "mutating")
         self.assertEqual(classify_tool("run_terminal").approval_class, "exec_capable")
         self.assertEqual(classify_tool("publish_x_post_now").approval_class, "public_or_external")
@@ -693,10 +782,27 @@ class EveCoreTests(unittest.TestCase):
         day = datetime(2026, 5, 10, 0, 1)
         paths = ensure_daily_transcript_files(day)
         self.assertIn("10-05-26", paths["chat"])
+        self.assertIn("10-05-26", paths["console"])
+        self.assertIn("10-05-26", paths["interface"])
         self.assertEqual(transcript_date_key(day), "10/05/26")
         entry = append_transcript("actions", "unit_event", {"ok": True}, day=day)
         self.assertEqual(entry["date_key"], "10/05/26")
         self.assertTrue(transcript_path("actions", day).exists())
+
+    def test_console_interface_and_loop_events_enter_daily_transcripts(self):
+        console_path = transcript_path("console")
+        interface_path = transcript_path("interface")
+        actions_path = transcript_path("actions")
+        before_console = console_path.read_text(encoding="utf-8") if console_path.exists() else ""
+        before_interface = interface_path.read_text(encoding="utf-8") if interface_path.exists() else ""
+        before_actions = actions_path.read_text(encoding="utf-8") if actions_path.exists() else ""
+        with contextlib.redirect_stdout(io.StringIO()):
+            safe_print("unit console transcript")
+        publish_interface_message("unit", "unit interface transcript", target="Eve", tags=["unit"])
+        append_loop_event("unit_loop_transcript", {"ok": True})
+        self.assertIn("unit console transcript", console_path.read_text(encoding="utf-8").replace(before_console, "", 1))
+        self.assertIn("unit interface transcript", interface_path.read_text(encoding="utf-8").replace(before_interface, "", 1))
+        self.assertIn("unit_loop_transcript", actions_path.read_text(encoding="utf-8").replace(before_actions, "", 1))
 
     def test_tool_runtime_adds_verification_and_transcript(self):
         from app.eve_codex import execute_eve_tool_call
@@ -705,6 +811,24 @@ class EveCoreTests(unittest.TestCase):
         self.assertTrue(result["ok"])
         self.assertTrue(result["verification"]["ok"])
         self.assertIn("runtime", result)
+        self.assertIn("awareness_before", result["runtime"])
+        self.assertIn("awareness_after", result["runtime"])
+
+    def test_errors_enter_transcript_and_lab_candidates(self):
+        errors_path = transcript_path("errors")
+        before = errors_path.read_text(encoding="utf-8") if errors_path.exists() else ""
+        entry = record_error("unit", "terminal failure", "exit_9", "unit terminal failure", lesson="unit lesson", resolved=False)
+        delta = errors_path.read_text(encoding="utf-8").replace(before, "", 1)
+        self.assertIn(entry["error_type"], delta)
+        self.assertTrue(any("error_unit_exit_9" in path.name for path in (Path(__file__).resolve().parents[1] / "lab" / "candidate_improvements").glob("*.json")))
+
+    def test_terminal_commands_enter_tool_transcript(self):
+        tools_path = transcript_path("tools")
+        before = tools_path.read_text(encoding="utf-8") if tools_path.exists() else ""
+        result = run_command("Write-Output unit-terminal-transcript", approved=True)
+        self.assertEqual(result["returncode"], 0)
+        delta = tools_path.read_text(encoding="utf-8").replace(before, "", 1)
+        self.assertIn("unit-terminal-transcript", delta)
 
     def test_web_interface_has_access_code_and_account_switcher(self):
         self.assertTrue(check_access_code("172099"))
@@ -742,6 +866,27 @@ class EveCoreTests(unittest.TestCase):
         process_id = result["result"]["id"]
         self.assertIn(poll_process(process_id)["status"], {"running", "exited"})
         stop_process(process_id)
+
+    def test_admin_status_and_elevated_launcher_are_auditable(self):
+        status = admin_status()
+        self.assertIn("is_admin_process", status)
+        self.assertTrue(status["can_launch_elevated_powershell"])
+        self.assertTrue(status["elevated_startup_supported"])
+        self.assertTrue(status["audit_log"].endswith(".jsonl"))
+        dry = launch_elevated_powershell("Write-Host EveAdminUnit", reason="unit", dry_run=True)
+        self.assertEqual(dry["status"], "dry_run")
+        self.assertIn("-Verb RunAs", dry["powershell_command"])
+        self.assertTrue(Path(dry["script"]).exists())
+        self.assertIn("EveAdminUnit", Path(dry["script"]).read_text(encoding="utf-8"))
+
+    def test_windows_daily_task_can_request_highest_runlevel(self):
+        completed = type("Completed", (), {"returncode": 0, "stdout": "ok", "stderr": ""})()
+        with patch("tools.windows_scheduler.subprocess.run", return_value=completed) as mocked:
+            result = create_daily_task("Unit_Highest", "09:00", "python app\\eve_codex.py daemon-tick", highest=True)
+        args = mocked.call_args.args[0]
+        self.assertEqual(result["highest"], True)
+        self.assertIn("/RL", args)
+        self.assertIn("HIGHEST", args)
 
     def test_supporting_gap_modules_smoke(self):
         self.assertIn("plugin_root", plugin_summary())
@@ -821,6 +966,16 @@ class EveCoreTests(unittest.TestCase):
         verification = verify_tool_result("publish_x_post_now", result)
         self.assertFalse(verification["ok"])
         self.assertIn("needs_review", verification["reason"])
+
+    def test_visual_tools_require_explicit_verification(self):
+        missing = verify_tool_result("browser_click_text", {"ok": True, "tool": "browser_click_text", "result": {"status": "clicked"}})
+        self.assertFalse(missing["ok"])
+        self.assertEqual(missing["status"], "verification_required")
+        present = verify_tool_result(
+            "browser_click_text",
+            {"ok": True, "tool": "browser_click_text", "result": {"status": "clicked", "verification": {"ok": True}}},
+        )
+        self.assertTrue(present["ok"])
 
     def test_pending_x_post_draft_extraction(self):
         text = (
@@ -954,6 +1109,28 @@ class EveCoreTests(unittest.TestCase):
         self.assertIn("dream_report", payload)
         self.assertIn("self_report", payload)
         self.assertIn("long_term", payload["promotion_rules"])
+        self.assertIn("memory_decisions", payload)
+        self.assertTrue(payload["memory_decisions"])
+        self.assertTrue(all("layer" in item["decision"] for item in payload["memory_decisions"]))
+
+    def test_controlled_rsi_cycle_exposes_gates_and_rollback(self):
+        result = run_controlled_rsi_cycle()
+        self.assertFalse(result["core_changed"])
+        self.assertIn("rollback_plan", result)
+        self.assertTrue(result["gates"]["core_write_blocked_in_cycle"])
+        self.assertTrue(result["gates"]["rollback_plan_present"])
+
+    def test_diary_consolidation_has_schedule_and_run_history(self):
+        summary = consolidate("2099-01-02")
+        self.assertTrue(summary.exists())
+        scheduled = ensure_diary_consolidation_schedule(schedule="6h")
+        self.assertIn(scheduled["status"], {"created", "exists"})
+        self.assertEqual(scheduled["job"]["name"], "Eve Diary Consolidation")
+        self.assertEqual(scheduled["job"]["schedule"], "6h")
+        self.assertIn("diary_consolidation.py", scheduled["job"]["command"])
+        history = Path(__file__).resolve().parents[1] / "logs" / "autonomy" / "diary_consolidation_runs.jsonl"
+        self.assertTrue(history.exists())
+        self.assertIn("2099-01-02", history.read_text(encoding="utf-8"))
 
     def test_web_research_report_separates_facts_from_interpretation(self):
         pages = [
@@ -1122,6 +1299,7 @@ class EveCoreTests(unittest.TestCase):
         self.assertTrue(Path(result["log_path"]).exists())
         self.assertIn("transcripts", result["setup"])
         self.assertEqual(result["setup"]["capability_schedule"]["job"]["name"], "Eve Capability Roadmap Review")
+        self.assertEqual(result["setup"]["diary_consolidation_schedule"]["job"]["name"], "Eve Diary Consolidation")
         self.assertEqual(result["setup"]["interest_schedule"]["job"]["name"], "Eve Interest Evolution Research")
         self.assertEqual(result["setup"]["daily_research_schedule"]["job"]["name"], "Eve Daily Research Pipeline")
         first = result["points"][0]
@@ -1198,6 +1376,13 @@ class EveCoreTests(unittest.TestCase):
         self.assertEqual(load_mission(allowed["id"])["status"], "done")
         self.assertEqual(load_mission(blocked["id"])["status"], "proposed")
 
+    def test_proactive_decider_logs_structured_low_risk_actions(self):
+        decision = decide_proactive_actions()
+        self.assertGreaterEqual(decision["count"], 1)
+        self.assertTrue(Path(decision["log_path"]).exists())
+        self.assertTrue(all(item["risk"] == "low" for item in decision["actions"]))
+        self.assertTrue(any(item["kind"] == "continuity" for item in decision["actions"]))
+
     def test_token_gate_calls_llm_for_repeated_error(self):
         context = {
             "impulses": [{"kind": "error_review", "risk": "low"}],
@@ -1254,6 +1439,12 @@ class EveCoreTests(unittest.TestCase):
         with patch("research.research_notes.MEMORY_DIR", memory_root):
             self.assertEqual(path, daily_learning_path("world", moment))
         self.assertIn("unit daily learning", path.read_text(encoding="utf-8"))
+        with patch("research.research_notes.MEMORY_DIR", memory_root):
+            separation = verify_daily_learning_separation(moment)
+        self.assertTrue(separation["ok"])
+        self.assertIn("world", separation["paths"])
+        self.assertIn("technology", separation["paths"])
+        self.assertIn("personality", separation["paths"])
 
     def test_interest_evolution_schedule_uses_recurring_prompt_job(self):
         memory_root = TEST_LOG_ROOT / "memory_interest_schedule"

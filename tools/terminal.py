@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from core.paths import LOGS_DIR, WORKSPACE_DIR, ensure_project_dirs
+from memory.daily_transcripts import append_transcript
 from memory.errors.error_memory import record_error
 from security.approval import request_approval
 from security.audit_log import log_event
@@ -85,3 +86,4 @@ def run_command(command: str, *, cwd: str | None = None, approved: bool = False,
 def _append_log(entry: dict) -> None:
     with terminal_log_path().open("a", encoding="utf-8") as fh:
         fh.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    append_transcript("tools", "terminal_command", entry)

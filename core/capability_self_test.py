@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import ctypes
 import os
 import platform
 import uuid
@@ -9,15 +8,7 @@ from zoneinfo import ZoneInfo
 
 from core.paths import EVE_ROOT, SKILLS_DIR, WORKSPACE_DIR, ensure_project_dirs
 from security.safety_modes import current_safety_mode, current_safety_profile
-
-
-def is_admin_process() -> bool:
-    if platform.system().lower() != "windows":
-        return os.geteuid() == 0 if hasattr(os, "geteuid") else False
-    try:
-        return bool(ctypes.windll.shell32.IsUserAnAdmin())
-    except Exception:
-        return False
+from tools.admin_executor import admin_status
 
 
 def _writable(path) -> bool:
@@ -34,6 +25,7 @@ def _writable(path) -> bool:
 def collect_capability_self_test() -> dict:
     ensure_project_dirs()
     profile = current_safety_profile()
+    admin = admin_status()
     try:
         from core.eve_tool_registry import TOOLS
         tool_count = len(TOOLS)
@@ -81,10 +73,12 @@ def collect_capability_self_test() -> dict:
             "policy": "workspace writes are normal; core/project edits are done by Codex/local runtime with tests and git.",
         },
         "admin": {
-            "is_admin_process": is_admin_process(),
+            "is_admin_process": admin["is_admin_process"],
             "safety_mode": current_safety_mode(),
             "admin_requires_approval": profile.get("admin_requires_approval", True),
-            "can_launch_elevated_powershell": True,
+            "can_launch_elevated_powershell": admin["can_launch_elevated_powershell"],
+            "elevated_startup_supported": admin["elevated_startup_supported"],
+            "audit_log": admin["audit_log"],
         },
         "awareness": {
             "has_time_awareness": True,

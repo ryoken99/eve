@@ -14,9 +14,24 @@ SOURCES = {
     "arxiv_ai": "https://export.arxiv.org/rss/cs.AI",
     "arxiv_cl": "https://export.arxiv.org/rss/cs.CL",
     "openai_blog": "https://openai.com/news/rss.xml",
+    "anthropic_news": "https://www.anthropic.com/news/rss.xml",
     "huggingface_blog": "https://huggingface.co/blog/feed.xml",
     "google_research": "https://research.google/blog/rss/",
+    "meta_ai_blog": "https://ai.meta.com/blog/rss/",
+    "github_trending_ai": "https://github.com/trending/python?since=daily",
+    "papers_with_code": "https://paperswithcode.com/latest",
+    "xai_news": "https://x.ai/news",
 }
+
+SOURCE_GROUPS = {
+    "frontier_labs": ("openai_blog", "anthropic_news", "google_research", "meta_ai_blog", "xai_news"),
+    "papers": ("arxiv_ai", "arxiv_cl", "papers_with_code"),
+    "open_source": ("huggingface_blog", "github_trending_ai"),
+}
+
+
+def technology_source_plan() -> dict:
+    return {"sources": SOURCES, "groups": SOURCE_GROUPS}
 
 
 def _strip(text: str) -> str:
@@ -56,7 +71,9 @@ def run_technology_watch(limit_per_source: int = 3) -> Path:
     ensure_project_dirs()
     path = MEMORY_DIR / "technology" / "daily_technology_watch.md"
     timestamp = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
-    lines = [f"\n# Technology watch {timestamp}\n"]
+    lines = [f"\n# Technology watch {timestamp}\n", "## Source groups\n"]
+    for group, names in SOURCE_GROUPS.items():
+        lines.append(f"- {group}: {', '.join(names)}")
     for name, url in SOURCES.items():
         lines.append(f"\n## {name}\n")
         try:

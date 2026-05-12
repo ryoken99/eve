@@ -6,6 +6,7 @@ from pathlib import Path
 
 from core.paths import LAB_DIR, ensure_project_dirs
 from memory.errors.error_memory import recent_errors
+from autonomy.capability_roadmap import capability_audit
 from security.audit_log import log_event
 
 
@@ -39,3 +40,22 @@ def propose_from_recent_errors() -> list[Path]:
             )
         )
     return proposals
+
+
+def plan_autonomous_system_improvements(*, target_score: float = 8.5, max_items: int = 3) -> dict:
+    audit = capability_audit()
+    planned: list[dict] = []
+    for point in sorted(audit["points"], key=lambda item: (item["score_10"], item["id"])):
+        if len(planned) >= max_items:
+            break
+        if float(point["score_10"]) < target_score or point.get("goal_gaps"):
+            path = propose_improvement(
+                f"capability_{point['id']}",
+                point["title"],
+                f"Hardening necessario: score={point['score_10']} gaps={', '.join(point.get('goal_gaps') or []) or 'quality headroom'}",
+                "low",
+            )
+            planned.append({"kind": "capability", "point": point["id"], "path": str(path), "score_10": point["score_10"]})
+    for err_path in propose_from_recent_errors()[: max(0, max_items - len(planned))]:
+        planned.append({"kind": "error", "path": str(err_path)})
+    return {"target_score": target_score, "planned": planned, "count": len(planned), "audit_summary": audit["summary"]}

@@ -6,6 +6,7 @@ from pathlib import Path
 from core.paths import MEMORY_DIR, ensure_project_dirs
 from memory.diary_manager import diary_path, read_diary, today_key
 from dream.diary_consolidator import consolidate
+from memory.layered_memory import route_memory_item
 
 
 CRITICAL_CONTEXT_ANCHOR = """## Eve Operational Capabilities anchor
@@ -107,5 +108,5 @@ def consolidate_today() -> Path:
 
 
 def remember_fact(text: str) -> Path:
-    stamp = datetime.now().isoformat(timespec="seconds")
-    return append_memory_file("medium_term", "remembered_facts.md", f"- {stamp}: {text}")
+    routed = route_memory_item(text, metadata={"source": "remember_fact"})
+    return Path(routed["path"])

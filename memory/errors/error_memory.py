@@ -5,6 +5,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from core.paths import LOGS_DIR, MEMORY_DIR, ensure_project_dirs
+from lab.lab_manager import create_candidate
+from memory.daily_transcripts import append_transcript
 from security.audit_log import log_event
 
 
@@ -33,6 +35,11 @@ def record_error(source: str, task: str, error_type: str, error_text: str, *, le
         fh.write(line + "\n")
     with error_log_path().open("a", encoding="utf-8") as fh:
         fh.write(line + "\n")
+    append_transcript("errors", "error_recorded", entry)
+    if lesson or error_type.startswith("exit_"):
+        title = f"error_{source}_{error_type}_{datetime.now().strftime('%Y%m%d%H%M%S')}"
+        hypothesis = f"Erro em {source}/{task}: {error_type}. Lesson: {lesson or 'needs analysis'}"
+        create_candidate(title, hypothesis, metric="error_recurrence_reduction")
     log_event("error_recorded", entry)
     return entry
 

@@ -67,7 +67,7 @@ def create_once_task(
     return result
 
 
-def create_daily_task(name: str, time_hhmm: str, command: str | None = None) -> dict:
+def create_daily_task(name: str, time_hhmm: str, command: str | None = None, *, highest: bool = False) -> dict:
     command = command or f'"{sys.executable}" "{EVE_ROOT / "scripts" / "eve_maintenance.py"}"'
     task_name = f"Eve_{name}"
     args = [
@@ -83,8 +83,10 @@ def create_daily_task(name: str, time_hhmm: str, command: str | None = None) -> 
         time_hhmm,
         "/F",
     ]
+    if highest:
+        args.extend(["/RL", "HIGHEST"])
     completed = subprocess.run(args, capture_output=True, text=True, timeout=60)
-    result = {"task": task_name, "returncode": completed.returncode, "stdout": completed.stdout, "stderr": completed.stderr}
+    result = {"task": task_name, "returncode": completed.returncode, "stdout": completed.stdout, "stderr": completed.stderr, "highest": highest, "args": args}
     log_event("windows_task_create", result)
     return result
 

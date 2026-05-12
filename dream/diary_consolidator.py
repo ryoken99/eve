@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import re
+import json
 from collections import Counter
 from datetime import datetime
 from pathlib import Path
 
-from core.paths import MEMORY_DIR, ensure_project_dirs
+from autonomy.cron_manager import add_cron_job, list_cron_jobs
+from core.paths import LOGS_DIR, MEMORY_DIR, ensure_project_dirs
 from memory.diary_manager import read_diary, today_key
 
 
@@ -17,6 +19,8 @@ KEYWORDS = {
     "self_improvement": ["melhorar", "auto", "recursive", "rollback", "lab"],
     "research": ["pesquisa", "tecnologia", "openai", "anthropic", "google", "meta", "xai"],
 }
+
+CONSOLIDATION_JOB_NAME = "Eve Diary Consolidation"
 
 
 def _sentences(text: str) -> list[str]:
@@ -31,8 +35,12 @@ def consolidate(day: str | None = None) -> Path:
     diary = read_diary(day)
     out = MEMORY_DIR / "medium_term" / f"daily_summary_{day}.md"
     candidates = MEMORY_DIR / "long_term" / "candidate_memories.md"
+    log_path = LOGS_DIR / "autonomy" / "diary_consolidation_runs.jsonl"
+    log_path.parent.mkdir(parents=True, exist_ok=True)
     if not diary.strip():
         out.write_text(f"# Daily Summary {day}\n\nNo diary entries yet.\n", encoding="utf-8")
+        with log_path.open("a", encoding="utf-8") as handle:
+            handle.write(json.dumps({"day": day, "status": "empty", "summary": str(out), "generated_at": datetime.now().isoformat(timespec="seconds")}, ensure_ascii=False) + "\n")
         return out
 
     sentences = _sentences(diary)
@@ -67,8 +75,34 @@ def consolidate(day: str | None = None) -> Path:
     out.write_text("\n".join(lines), encoding="utf-8")
 
     with candidates.open("a", encoding="utf-8") as fh:
+        promoted = 0
         fh.write(f"\n## Candidates from {day}\n\n")
         for theme, values in hits.items():
             for value in values[-3:]:
                 fh.write(f"- [{theme}] {value}\n")
+                promoted += 1
+    with log_path.open("a", encoding="utf-8") as handle:
+        handle.write(
+            json.dumps(
+                {
+                    "day": day,
+                    "status": "ok",
+                    "summary": str(out),
+                    "candidate_memory": str(candidates),
+                    "themes": {theme: len(values) for theme, values in hits.items()},
+                    "promoted_candidates": promoted,
+                    "generated_at": datetime.now().isoformat(timespec="seconds"),
+                },
+                ensure_ascii=False,
+            )
+            + "\n"
+        )
     return out
+
+
+def ensure_diary_consolidation_schedule(*, schedule: str = "6h") -> dict:
+    existing = [job for job in list_cron_jobs() if job.get("name") == CONSOLIDATION_JOB_NAME]
+    if existing:
+        return {"status": "exists", "job": existing[0]}
+    job = add_cron_job(CONSOLIDATION_JOB_NAME, schedule, "Set-Location D:\\Eve; python scripts\\diary_consolidation.py", enabled=True)
+    return {"status": "created", "job": job}

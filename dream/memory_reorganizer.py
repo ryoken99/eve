@@ -6,6 +6,23 @@ from pathlib import Path
 from core.paths import LAB_DIR, MEMORY_DIR, ensure_project_dirs
 from dream.diary_consolidator import consolidate
 from memory.diary_manager import today_key
+from memory.layered_memory import classify_memory_item
+
+
+def dream_memory_decisions(summary: str) -> list[dict]:
+    candidates = [
+        "Keep stable user requirements in long-term memory.",
+        "Keep daily operational notes in medium-term memory.",
+        "Keep active task state in short-term memory.",
+    ]
+    if "erro" in summary.lower() or "error" in summary.lower():
+        candidates.append("Recent repeated errors should become medium-term lessons and lab candidates.")
+    if "prefer" in summary.lower() or "gosto" in summary.lower():
+        candidates.append("Stable preferences should mature only after repeated evidence.")
+    return [
+        {"text": item, "decision": classify_memory_item(item, metadata={"source": "dream_cycle"})}
+        for item in candidates
+    ]
 
 
 def run_dream(day: str | None = None) -> Path:
@@ -13,6 +30,7 @@ def run_dream(day: str | None = None) -> Path:
     day = day or today_key()
     summary_path = consolidate(day)
     summary = summary_path.read_text(encoding="utf-8") if summary_path.exists() else ""
+    decisions = dream_memory_decisions(summary)
     report_dir = LAB_DIR / "reports"
     report_dir.mkdir(parents=True, exist_ok=True)
     report = report_dir / f"dream_{day}.md"
@@ -50,9 +68,7 @@ def run_dream(day: str | None = None) -> Path:
             "",
             "## Proposed Memory Moves",
             "",
-            "- Keep stable user requirements in long-term memory.",
-            "- Keep daily operational notes in medium-term memory.",
-            "- Keep active task state in short-term memory.",
+            *[f"- {item['text']} -> {item['decision']['layer']} ({item['decision']['reason']})" for item in decisions],
         ]
     )
     report.write_text("\n".join(lines) + "\n", encoding="utf-8")

@@ -5,7 +5,7 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-from autonomy.proactive_decider import propose_low_risk_actions
+from autonomy.proactive_decider import decide_proactive_actions
 from autonomy.autonomy_director import run_autonomy_cycle
 from autonomy.autonomous_executor import execute_autonomous_backlog
 from autonomy.cron_manager import run_due_jobs
@@ -31,7 +31,7 @@ def daemon_tick() -> dict:
     trigger_missions = {"created": []}
     if not proposed_backlog:
         trigger_missions = create_missions_from_triggers(max_new=1)
-    proposals = propose_low_risk_actions()
+    proposals = decide_proactive_actions()
     trigger_kinds = [str(item.get("kind") or "trigger") for item in triggers[:5]]
     autonomy = run_autonomy_cycle(
         triggers=["daemon_tick", *trigger_kinds],
@@ -47,7 +47,8 @@ def daemon_tick() -> dict:
         "transcripts": transcripts,
         "cron": cron,
         "triggers": {"discovered": trigger_kinds, "created_missions": trigger_missions.get("created", [])},
-        "proposals": proposals,
+        "proposals": proposals["actions"],
+        "proactive_decisions": {"count": proposals["count"], "log_path": proposals["log_path"]},
         "autonomy": {
             "created_missions": autonomy["created_missions"],
             "executed_missions": autonomous_execution["executed"],

@@ -5,6 +5,7 @@ from typing import Any, Callable
 
 from memory.daily_transcripts import append_transcript
 from security.audit_log import log_event
+from core.awareness_engine import collect_awareness
 
 
 Handler = Callable[[dict[str, Any]], dict[str, Any]]
@@ -25,6 +26,13 @@ FAILURE_STATUSES = {
     "text_too_long",
     "composer_not_verified",
     "post_button_not_found",
+}
+
+VISUAL_VERIFICATION_TOOLS = {
+    "browser_click_text",
+    "browser_type_text",
+    "browser_visual_steps",
+    "publish_x_post_now",
 }
 
 
@@ -69,6 +77,8 @@ def verify_tool_result(tool: str, result: dict[str, Any]) -> dict[str, Any]:
                 "status": nested["status"],
                 "reason": f"{nested['path']}: {nested['reason']}",
             }
+        if tool in VISUAL_VERIFICATION_TOOLS and "verification" not in payload:
+            return {"ok": False, "status": "verification_required", "reason": f"{tool} requires explicit visual verification evidence"}
     return {"ok": True, "status": "verified", "reason": "generic result check passed"}
 
 
@@ -76,6 +86,10 @@ def run_tool_with_runtime(tool: str, args: dict[str, Any], handler: Handler, *, 
     attempts = max(1, int(max_attempts or args.get("_max_attempts") or 1))
     last_result: dict[str, Any] | None = None
     history = []
+    try:
+        awareness_before = collect_awareness()
+    except Exception as exc:
+        awareness_before = {"error": f"{type(exc).__name__}: {exc}"}
     for attempt in range(1, attempts + 1):
         console_action(f"tool={tool} attempt={attempt}/{attempts} args={json.dumps(args, ensure_ascii=False)[:800]}")
         append_transcript("actions", "tool_start", {"tool": tool, "args": args, "attempt": attempt, "attempts": attempts})
@@ -92,8 +106,12 @@ def run_tool_with_runtime(tool: str, args: dict[str, Any], handler: Handler, *, 
         if attempt < attempts:
             console_action(f"tool={tool} retrying_after={verification['reason']}")
     assert last_result is not None
+    try:
+        awareness_after = collect_awareness()
+    except Exception as exc:
+        awareness_after = {"error": f"{type(exc).__name__}: {exc}"}
     last_result.setdefault("runtime", {})
-    last_result["runtime"].update({"attempts": len(history), "history": history})
+    last_result["runtime"].update({"attempts": len(history), "history": history, "awareness_before": awareness_before, "awareness_after": awareness_after})
     if not last_result["verification"]["ok"]:
         append_transcript("errors", "tool_verification_failed", {"tool": tool, "args": args, "result": last_result})
         log_event("tool_verification_failed", {"tool": tool, "verification": last_result["verification"]})
