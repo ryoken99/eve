@@ -1,0 +1,192 @@
+{
+  "admin-20260513211102": {
+    "session_id": "admin-20260513211102",
+    "reason": "unit test",
+    "created_at": "2026-05-13T21:11:02.360367Z",
+    "expires_at": "2026-05-13T21:16:02.360367Z",
+    "allowed_commands": [
+      "Get-Process*"
+    ],
+    "active": false
+  },
+  "admin-20260513211117": {
+    "session_id": "admin-20260513211117",
+    "reason": "unit test",
+    "created_at": "2026-05-13T21:11:17.099218Z",
+    "expires_at": "2026-05-13T21:16:17.099218Z",
+    "allowed_commands": [
+      "Get-Process*"
+    ],
+    "active": false
+  },
+  "admin-20260513211443": {
+    "session_id": "admin-20260513211443",
+    "reason": "unit test",
+    "created_at": "2026-05-13T21:14:43.988064Z",
+    "expires_at": "2026-05-13T21:19:43.988064Z",
+    "allowed_commands": [
+      "Get-Process*"
+    ],
+    "active": false
+  },
+  "admin-20260513211540": {
+    "session_id": "admin-20260513211540",
+    "reason": "unit test",
+    "created_at": "2026-05-13T21:15:40.130116Z",
+    "expires_at": "2026-05-13T21:20:40.130116Z",
+    "allowed_commands": [
+      "Get-Process*"
+    ],
+    "active": false
+  },
+  "admin-20260513214322": {
+    "session_id": "admin-20260513214322",
+    "reason": "runtime audit",
+    "created_at": "2026-05-13T21:43:22.130415Z",
+    "expires_at": "2026-05-13T21:48:22.130415Z",
+    "allowed_commands": [
+      "Get-Process*"
+    ],
+    "active": false
+  },
+  "admin-20260513214353": {
+    "session_id": "admin-20260513214353",
+    "reason": "runtime audit",
+    "created_at": "2026-05-13T21:43:53.724273Z",
+    "expires_at": "2026-05-13T21:48:53.724273Z",
+    "allowed_commands": [
+      "Get-Process*"
+    ],
+    "active": false
+  },
+  "admin-20260513214500": {
+    "session_id": "admin-20260513214500",
+    "reason": "runtime audit",
+    "created_at": "2026-05-13T21:45:00.171189Z",
+    "expires_at": "2026-05-13T21:50:00.171189Z",
+    "allowed_commands": [
+      "Get-Process*"
+    ],
+    "active": false
+  },
+  "admin-20260513214514": {
+    "session_id": "admin-20260513214514",
+    "reason": "unit test",
+    "created_at": "2026-05-13T21:45:14.325178Z",
+    "expires_at": "2026-05-13T21:50:14.325178Z",
+    "allowed_commands": [
+      "Get-Process*"
+    ],
+    "active": false
+  },
+  "admin-20260513214612": {
+    "session_id": "admin-20260513214612",
+    "reason": "unit test",
+    "created_at": "2026-05-13T21:46:12.662310Z",
+    "expires_at": "2026-05-13T21:51:12.662310Z",
+    "allowed_commands": [
+      "Get-Process*"
+    ],
+    "active": false
+  },
+  "admin-20260513214615": {
+    "session_id": "admin-20260513214615",
+    "reason": "unit test",
+    "created_at": "2026-05-13T21:46:15.549480Z",
+    "expires_at": "2026-05-13T21:51:15.549480Z",
+    "allowed_commands": [
+      "Get-Process*"
+    ],
+    "active": false
+  },
+  "admin-20260513214709": {
+    "session_id": "admin-20260513214709",
+    "reason": "unit test",
+    "created_at": "2026-05-13T21:47:09.058485Z",
+    "expires_at": "2026-05-13T21:52:09.058485Z",
+    "allowed_commands": [
+      "Get-Process*"
+    ],
+    "active": false
+  },
+  "admin-20260513214810": {
+    "session_id": "admin-20260513214810",
+    "reason": "runtime audit",
+    "created_at": "2026-05-13T21:48:10.616793Z",
+    "expires_at": "2026-05-13T21:53:10.616793Z",
+    "allowed_commands": [
+      "Get-Process*"
+    ],
+    "active": false
+  },
+  "admin-20260513222810": {
+    "session_id": "admin-20260513222810",
+    "reason": "runtime audit",
+    "created_at": "2026-05-13T22:28:10.898485Z",
+    "expires_at": "2026-05-13T22:33:10.898485Z",
+    "allowed_commands": [
+      "Get-Process*"
+    ],
+    "active": false
+  },
+  "admin-20260513222902": {
+    "session_id": "admin-20260513222902",
+    "reason": "runtime audit",
+    "created_at": "2026-05-13T22:29:02.620376Z",
+    "expires_at": "2026-05-13T22:34:02.620376Z",
+    "allowed_commands": [
+      "Get-Process*"
+    ],
+    "active": false
+  },
+  "admin-20260513222927": {
+    "session_id": "admin-20260513222927",
+    "reason": "unit test",
+    "created_at": "2026-05-13T22:29:27.297189Z",
+    "expires_at": "2026-05-13T22:34:27.297189Z",
+    "allowed_commands": [
+      "Get-Process*"
+    ],
+    "active": false
+  },
+  "admin-20260513223046": {
+    "session_id": "admin-20260513223046",
+    "reason": "unit test",
+    "created_at": "2026-05-13T22:30:46.154158Z",
+    "expires_at": "2026-05-13T22:35:46.154158Z",
+    "allowed_commands": [
+      "Get-Process*"
+    ],
+    "active": false
+  },
+  "admin-20260513223158": {
+    "session_id": "admin-20260513223158",
+    "reason": "unit test",
+    "created_at": "2026-05-13T22:31:58.919844Z",
+    "expires_at": "2026-05-13T22:36:58.919844Z",
+    "allowed_commands": [
+      "Get-Process*"
+    ],
+    "active": false
+  },
+  "admin-20260513223218": {
+    "session_id": "admin-20260513223218",
+    "reason": "unit test",
+    "created_at": "2026-05-13T22:32:18.414686Z",
+    "expires_at": "2026-05-13T22:37:18.414686Z",
+    "allowed_commands": [
+      "Get-Process*"
+    ],
+    "active": false
+  },
+  "admin-20260513223327": {
+    "session_id": "admin-20260513223327",
+    "reason": "unit test",
+    "created_at": "2026-05-13T22:33:27.410645Z",
+    "expires_at": "2026-05-13T22:38:27.410645Z",
+    "allowed_commands": [
+      "Get-Process*"
+    ],
+    "active": false
+  }
+}

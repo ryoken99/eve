@@ -1,0 +1,515 @@
+{
+  "unit taste 1778706662.727058": {
+    "topic": "unit taste 1778706662.727058",
+    "status": "stable",
+    "evidence": [
+      {
+        "text": "first",
+        "source": "unit",
+        "timestamp": "2026-05-13T21:11:02.744059Z"
+      },
+      {
+        "text": "second",
+        "source": "unit",
+        "timestamp": "2026-05-13T21:11:02.770057Z"
+      },
+      {
+        "text": "third",
+        "source": "unit",
+        "timestamp": "2026-05-13T21:11:02.796058Z"
+      }
+    ],
+    "counter_evidence": [],
+    "reason": "3 positive evidence items, 0 counter-evidence items",
+    "first_seen": "2026-05-13T21:11:02.744059Z",
+    "last_seen": "2026-05-13T21:11:02.796058Z",
+    "stability_score": 1.0,
+    "source": "unit"
+  },
+  "unit taste 1778706677.445567": {
+    "topic": "unit taste 1778706677.445567",
+    "status": "stable",
+    "evidence": [
+      {
+        "text": "first",
+        "source": "unit",
+        "timestamp": "2026-05-13T21:11:17.470567Z"
+      },
+      {
+        "text": "second",
+        "source": "unit",
+        "timestamp": "2026-05-13T21:11:17.497568Z"
+      },
+      {
+        "text": "third",
+        "source": "unit",
+        "timestamp": "2026-05-13T21:11:17.523567Z"
+      }
+    ],
+    "counter_evidence": [],
+    "reason": "3 positive evidence items, 0 counter-evidence items",
+    "first_seen": "2026-05-13T21:11:17.470567Z",
+    "last_seen": "2026-05-13T21:11:17.523567Z",
+    "stability_score": 1.0,
+    "source": "unit"
+  },
+  "unit taste 1778706884.415515": {
+    "topic": "unit taste 1778706884.415515",
+    "status": "stable",
+    "evidence": [
+      {
+        "text": "first",
+        "source": "unit",
+        "timestamp": "2026-05-13T21:14:44.433368Z"
+      },
+      {
+        "text": "second",
+        "source": "unit",
+        "timestamp": "2026-05-13T21:14:44.461814Z"
+      },
+      {
+        "text": "third",
+        "source": "unit",
+        "timestamp": "2026-05-13T21:14:44.489927Z"
+      }
+    ],
+    "counter_evidence": [],
+    "reason": "3 positive evidence items, 0 counter-evidence items",
+    "first_seen": "2026-05-13T21:14:44.433368Z",
+    "last_seen": "2026-05-13T21:14:44.489927Z",
+    "stability_score": 1.0,
+    "source": "unit"
+  },
+  "unit taste 1778706940.436572": {
+    "topic": "unit taste 1778706940.436572",
+    "status": "stable",
+    "evidence": [
+      {
+        "text": "first",
+        "source": "unit",
+        "timestamp": "2026-05-13T21:15:40.455211Z"
+      },
+      {
+        "text": "second",
+        "source": "unit",
+        "timestamp": "2026-05-13T21:15:40.481626Z"
+      },
+      {
+        "text": "third",
+        "source": "unit",
+        "timestamp": "2026-05-13T21:15:40.509278Z"
+      }
+    ],
+    "counter_evidence": [],
+    "reason": "3 positive evidence items, 0 counter-evidence items",
+    "first_seen": "2026-05-13T21:15:40.455211Z",
+    "last_seen": "2026-05-13T21:15:40.509278Z",
+    "stability_score": 1.0,
+    "source": "unit"
+  },
+  "runtime preference 1778708602.55567": {
+    "topic": "runtime preference 1778708602.55567",
+    "status": "stable",
+    "evidence": [
+      {
+        "text": "first",
+        "source": "runtime",
+        "timestamp": "2026-05-13T21:43:22.579178Z"
+      },
+      {
+        "text": "second",
+        "source": "runtime",
+        "timestamp": "2026-05-13T21:43:22.605024Z"
+      },
+      {
+        "text": "third",
+        "source": "runtime",
+        "timestamp": "2026-05-13T21:43:22.635928Z"
+      }
+    ],
+    "counter_evidence": [],
+    "reason": "3 positive evidence items, 0 counter-evidence items",
+    "first_seen": "2026-05-13T21:43:22.579178Z",
+    "last_seen": "2026-05-13T21:43:22.635928Z",
+    "stability_score": 1.0,
+    "source": "runtime"
+  },
+  "runtime preference 1778708634.067563": {
+    "topic": "runtime preference 1778708634.067563",
+    "status": "stable",
+    "evidence": [
+      {
+        "text": "first",
+        "source": "runtime",
+        "timestamp": "2026-05-13T21:43:54.086619Z"
+      },
+      {
+        "text": "second",
+        "source": "runtime",
+        "timestamp": "2026-05-13T21:43:54.113639Z"
+      },
+      {
+        "text": "third",
+        "source": "runtime",
+        "timestamp": "2026-05-13T21:43:54.140157Z"
+      }
+    ],
+    "counter_evidence": [],
+    "reason": "3 positive evidence items, 0 counter-evidence items",
+    "first_seen": "2026-05-13T21:43:54.086619Z",
+    "last_seen": "2026-05-13T21:43:54.140157Z",
+    "stability_score": 1.0,
+    "source": "runtime"
+  },
+  "runtime preference 1778708700.549489": {
+    "topic": "runtime preference 1778708700.549489",
+    "status": "stable",
+    "evidence": [
+      {
+        "text": "first",
+        "source": "runtime",
+        "timestamp": "2026-05-13T21:45:00.578667Z"
+      },
+      {
+        "text": "second",
+        "source": "runtime",
+        "timestamp": "2026-05-13T21:45:00.606583Z"
+      },
+      {
+        "text": "third",
+        "source": "runtime",
+        "timestamp": "2026-05-13T21:45:00.635424Z"
+      }
+    ],
+    "counter_evidence": [],
+    "reason": "3 positive evidence items, 0 counter-evidence items",
+    "first_seen": "2026-05-13T21:45:00.578667Z",
+    "last_seen": "2026-05-13T21:45:00.635424Z",
+    "stability_score": 1.0,
+    "source": "runtime"
+  },
+  "unit taste 1778708714.71099": {
+    "topic": "unit taste 1778708714.71099",
+    "status": "stable",
+    "evidence": [
+      {
+        "text": "first",
+        "source": "unit",
+        "timestamp": "2026-05-13T21:45:14.738921Z"
+      },
+      {
+        "text": "second",
+        "source": "unit",
+        "timestamp": "2026-05-13T21:45:14.765919Z"
+      },
+      {
+        "text": "third",
+        "source": "unit",
+        "timestamp": "2026-05-13T21:45:14.794752Z"
+      }
+    ],
+    "counter_evidence": [],
+    "reason": "3 positive evidence items, 0 counter-evidence items",
+    "first_seen": "2026-05-13T21:45:14.738921Z",
+    "last_seen": "2026-05-13T21:45:14.794752Z",
+    "stability_score": 1.0,
+    "source": "unit"
+  },
+  "unit taste 1778708772.9806": {
+    "topic": "unit taste 1778708772.9806",
+    "status": "stable",
+    "evidence": [
+      {
+        "text": "first",
+        "source": "unit",
+        "timestamp": "2026-05-13T21:46:13.001446Z"
+      },
+      {
+        "text": "second",
+        "source": "unit",
+        "timestamp": "2026-05-13T21:46:13.028580Z"
+      },
+      {
+        "text": "third",
+        "source": "unit",
+        "timestamp": "2026-05-13T21:46:13.056310Z"
+      }
+    ],
+    "counter_evidence": [],
+    "reason": "3 positive evidence items, 0 counter-evidence items",
+    "first_seen": "2026-05-13T21:46:13.001446Z",
+    "last_seen": "2026-05-13T21:46:13.056310Z",
+    "stability_score": 1.0,
+    "source": "unit"
+  },
+  "unit taste 1778708775.876779": {
+    "topic": "unit taste 1778708775.876779",
+    "status": "stable",
+    "evidence": [
+      {
+        "text": "first",
+        "source": "unit",
+        "timestamp": "2026-05-13T21:46:15.904052Z"
+      },
+      {
+        "text": "second",
+        "source": "unit",
+        "timestamp": "2026-05-13T21:46:15.930706Z"
+      },
+      {
+        "text": "third",
+        "source": "unit",
+        "timestamp": "2026-05-13T21:46:15.967115Z"
+      }
+    ],
+    "counter_evidence": [],
+    "reason": "3 positive evidence items, 0 counter-evidence items",
+    "first_seen": "2026-05-13T21:46:15.903048Z",
+    "last_seen": "2026-05-13T21:46:15.967115Z",
+    "stability_score": 1.0,
+    "source": "unit"
+  },
+  "unit taste 1778708829.365486": {
+    "topic": "unit taste 1778708829.365486",
+    "status": "stable",
+    "evidence": [
+      {
+        "text": "first",
+        "source": "unit",
+        "timestamp": "2026-05-13T21:47:09.384485Z"
+      },
+      {
+        "text": "second",
+        "source": "unit",
+        "timestamp": "2026-05-13T21:47:09.412997Z"
+      },
+      {
+        "text": "third",
+        "source": "unit",
+        "timestamp": "2026-05-13T21:47:09.444998Z"
+      }
+    ],
+    "counter_evidence": [],
+    "reason": "3 positive evidence items, 0 counter-evidence items",
+    "first_seen": "2026-05-13T21:47:09.384485Z",
+    "last_seen": "2026-05-13T21:47:09.444998Z",
+    "stability_score": 1.0,
+    "source": "unit"
+  },
+  "runtime preference 1778708890.970576": {
+    "topic": "runtime preference 1778708890.970576",
+    "status": "stable",
+    "evidence": [
+      {
+        "text": "first",
+        "source": "runtime",
+        "timestamp": "2026-05-13T21:48:10.998752Z"
+      },
+      {
+        "text": "second",
+        "source": "runtime",
+        "timestamp": "2026-05-13T21:48:11.026277Z"
+      },
+      {
+        "text": "third",
+        "source": "runtime",
+        "timestamp": "2026-05-13T21:48:11.053793Z"
+      }
+    ],
+    "counter_evidence": [],
+    "reason": "3 positive evidence items, 0 counter-evidence items",
+    "first_seen": "2026-05-13T21:48:10.998752Z",
+    "last_seen": "2026-05-13T21:48:11.053793Z",
+    "stability_score": 1.0,
+    "source": "runtime"
+  },
+  "runtime preference 1778711304.472211": {
+    "topic": "runtime preference 1778711304.472211",
+    "status": "stable",
+    "evidence": [
+      {
+        "text": "first",
+        "source": "runtime",
+        "timestamp": "2026-05-13T22:28:24.492211Z"
+      },
+      {
+        "text": "second",
+        "source": "runtime",
+        "timestamp": "2026-05-13T22:28:24.518210Z"
+      },
+      {
+        "text": "third",
+        "source": "runtime",
+        "timestamp": "2026-05-13T22:28:24.545210Z"
+      }
+    ],
+    "counter_evidence": [],
+    "reason": "3 positive evidence items, 0 counter-evidence items",
+    "first_seen": "2026-05-13T22:28:24.492211Z",
+    "last_seen": "2026-05-13T22:28:24.545210Z",
+    "stability_score": 1.0,
+    "source": "runtime"
+  },
+  "runtime preference 1778711356.219439": {
+    "topic": "runtime preference 1778711356.219439",
+    "status": "stable",
+    "evidence": [
+      {
+        "text": "first",
+        "source": "runtime",
+        "timestamp": "2026-05-13T22:29:16.247440Z"
+      },
+      {
+        "text": "second",
+        "source": "runtime",
+        "timestamp": "2026-05-13T22:29:16.276439Z"
+      },
+      {
+        "text": "third",
+        "source": "runtime",
+        "timestamp": "2026-05-13T22:29:16.302437Z"
+      }
+    ],
+    "counter_evidence": [],
+    "reason": "3 positive evidence items, 0 counter-evidence items",
+    "first_seen": "2026-05-13T22:29:16.247440Z",
+    "last_seen": "2026-05-13T22:29:16.302437Z",
+    "stability_score": 1.0,
+    "source": "runtime"
+  },
+  "unit taste 1778711379.640105": {
+    "topic": "unit taste 1778711379.640105",
+    "status": "stable",
+    "evidence": [
+      {
+        "text": "first",
+        "source": "unit",
+        "timestamp": "2026-05-13T22:29:39.668104Z"
+      },
+      {
+        "text": "second",
+        "source": "unit",
+        "timestamp": "2026-05-13T22:29:39.696107Z"
+      },
+      {
+        "text": "third",
+        "source": "unit",
+        "timestamp": "2026-05-13T22:29:39.724105Z"
+      }
+    ],
+    "counter_evidence": [],
+    "reason": "3 positive evidence items, 0 counter-evidence items",
+    "first_seen": "2026-05-13T22:29:39.668104Z",
+    "last_seen": "2026-05-13T22:29:39.724105Z",
+    "stability_score": 1.0,
+    "source": "unit"
+  },
+  "unit taste 1778711458.594617": {
+    "topic": "unit taste 1778711458.594617",
+    "status": "stable",
+    "evidence": [
+      {
+        "text": "first",
+        "source": "unit",
+        "timestamp": "2026-05-13T22:30:58.613616Z"
+      },
+      {
+        "text": "second",
+        "source": "unit",
+        "timestamp": "2026-05-13T22:30:58.641614Z"
+      },
+      {
+        "text": "third",
+        "source": "unit",
+        "timestamp": "2026-05-13T22:30:58.673616Z"
+      }
+    ],
+    "counter_evidence": [],
+    "reason": "3 positive evidence items, 0 counter-evidence items",
+    "first_seen": "2026-05-13T22:30:58.613616Z",
+    "last_seen": "2026-05-13T22:30:58.673616Z",
+    "stability_score": 1.0,
+    "source": "unit"
+  },
+  "unit taste 1778711532.892841": {
+    "topic": "unit taste 1778711532.892841",
+    "status": "stable",
+    "evidence": [
+      {
+        "text": "first",
+        "source": "unit",
+        "timestamp": "2026-05-13T22:32:12.912840Z"
+      },
+      {
+        "text": "second",
+        "source": "unit",
+        "timestamp": "2026-05-13T22:32:12.939840Z"
+      },
+      {
+        "text": "third",
+        "source": "unit",
+        "timestamp": "2026-05-13T22:32:12.966841Z"
+      }
+    ],
+    "counter_evidence": [],
+    "reason": "3 positive evidence items, 0 counter-evidence items",
+    "first_seen": "2026-05-13T22:32:12.912840Z",
+    "last_seen": "2026-05-13T22:32:12.966841Z",
+    "stability_score": 1.0,
+    "source": "unit"
+  },
+  "unit taste 1778711550.858073": {
+    "topic": "unit taste 1778711550.858073",
+    "status": "stable",
+    "evidence": [
+      {
+        "text": "first",
+        "source": "unit",
+        "timestamp": "2026-05-13T22:32:30.886074Z"
+      },
+      {
+        "text": "second",
+        "source": "unit",
+        "timestamp": "2026-05-13T22:32:30.916075Z"
+      },
+      {
+        "text": "third",
+        "source": "unit",
+        "timestamp": "2026-05-13T22:32:30.943074Z"
+      }
+    ],
+    "counter_evidence": [],
+    "reason": "3 positive evidence items, 0 counter-evidence items",
+    "first_seen": "2026-05-13T22:32:30.886074Z",
+    "last_seen": "2026-05-13T22:32:30.943074Z",
+    "stability_score": 1.0,
+    "source": "unit"
+  },
+  "unit taste 1778711621.213395": {
+    "topic": "unit taste 1778711621.213395",
+    "status": "stable",
+    "evidence": [
+      {
+        "text": "first",
+        "source": "unit",
+        "timestamp": "2026-05-13T22:33:41.232394Z"
+      },
+      {
+        "text": "second",
+        "source": "unit",
+        "timestamp": "2026-05-13T22:33:41.260394Z"
+      },
+      {
+        "text": "third",
+        "source": "unit",
+        "timestamp": "2026-05-13T22:33:41.288395Z"
+      }
+    ],
+    "counter_evidence": [],
+    "reason": "3 positive evidence items, 0 counter-evidence items",
+    "first_seen": "2026-05-13T22:33:41.232394Z",
+    "last_seen": "2026-05-13T22:33:41.288395Z",
+    "stability_score": 1.0,
+    "source": "unit"
+  }
+}

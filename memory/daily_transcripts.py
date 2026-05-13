@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import hashlib
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -46,13 +47,25 @@ def ensure_daily_transcript_files(day: datetime | None = None) -> dict[str, str]
 
 def append_transcript(kind: str, event: str, payload: dict[str, Any], *, day: datetime | None = None) -> dict[str, Any]:
     path = transcript_path(kind, day)
+    previous_hash = ""
+    if path.exists():
+        for line in reversed(path.read_text(encoding="utf-8", errors="replace").splitlines()):
+            if line.strip():
+                try:
+                    previous_hash = json.loads(line).get("hash", "")
+                except Exception:
+                    previous_hash = ""
+                break
     entry = {
         "timestamp": now_iso(),
         "date_key": transcript_date_key(day),
         "kind": kind,
         "event": event,
         "payload": payload,
+        "previous_hash": previous_hash,
     }
+    raw = json.dumps({"previous_hash": previous_hash, "entry": {key: value for key, value in entry.items() if key != "hash"}}, sort_keys=True, ensure_ascii=False)
+    entry["hash"] = hashlib.sha256(raw.encode("utf-8")).hexdigest()
     with path.open("a", encoding="utf-8") as handle:
         handle.write(json.dumps(entry, ensure_ascii=False) + "\n")
     return entry

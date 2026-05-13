@@ -13,7 +13,7 @@
     "admin_requires_approval": true,
     "self_modify_requires_approval": true,
     "emergency_lock_enabled": true,
-    "changed_at": "2026-05-06T13:20:00Z",
-    "reason": "entity-base-memory connected"
+    "changed_at": "2026-05-13T22:33:24.602401Z",
+    "reason": "test cleanup"
   }
 }

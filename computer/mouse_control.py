@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-import pyautogui
+try:
+    import pyautogui
+except Exception:  # pragma: no cover - optional GUI dependency fallback
+    pyautogui = None
 
 from computer.emergency_stop import assert_not_locked
 from computer.monitors import monitor_from_point, virtual_bounds
@@ -8,10 +11,13 @@ from computer.screen_capture import take_screenshot
 from computer.ui_action_log import log_ui_action
 
 
-pyautogui.FAILSAFE = True
+if pyautogui is not None:
+    pyautogui.FAILSAFE = True
 
 
 def mouse_position() -> dict:
+    if pyautogui is None:
+        return {"x": 0, "y": 0, "monitor": None, "virtual_bounds": virtual_bounds(), "gui_available": False}
     x, y = pyautogui.position()
     return {"x": x, "y": y, "monitor": monitor_from_point(x, y), "virtual_bounds": virtual_bounds()}
 
@@ -26,9 +32,10 @@ def move_mouse(x: int, y: int) -> dict:
     assert_not_locked()
     _validate_point(x, y)
     before = take_screenshot("before_move_mouse", scope="all")
-    pyautogui.moveTo(x, y, duration=0.15)
+    if pyautogui is not None:
+        pyautogui.moveTo(x, y, duration=0.15)
     after = take_screenshot("after_move_mouse", scope="all")
-    payload = {"x": x, "y": y, "monitor": monitor_from_point(x, y), "before": str(before), "after": str(after)}
+    payload = {"x": x, "y": y, "monitor": monitor_from_point(x, y), "before": str(before), "after": str(after), "gui_available": pyautogui is not None}
     log_ui_action("move_mouse", payload)
     return payload
 
@@ -37,9 +44,10 @@ def click(x: int, y: int, button: str = "left") -> dict:
     assert_not_locked()
     _validate_point(x, y)
     before = take_screenshot("before_click", scope="all")
-    pyautogui.click(x=x, y=y, button=button)
+    if pyautogui is not None:
+        pyautogui.click(x=x, y=y, button=button)
     after = take_screenshot("after_click", scope="all")
-    payload = {"x": x, "y": y, "button": button, "monitor": monitor_from_point(x, y), "before": str(before), "after": str(after)}
+    payload = {"x": x, "y": y, "button": button, "monitor": monitor_from_point(x, y), "before": str(before), "after": str(after), "gui_available": pyautogui is not None}
     log_ui_action("click", payload)
     return payload
 
@@ -48,9 +56,10 @@ def double_click(x: int, y: int) -> dict:
     assert_not_locked()
     _validate_point(x, y)
     before = take_screenshot("before_double_click", scope="all")
-    pyautogui.doubleClick(x=x, y=y)
+    if pyautogui is not None:
+        pyautogui.doubleClick(x=x, y=y)
     after = take_screenshot("after_double_click", scope="all")
-    payload = {"x": x, "y": y, "monitor": monitor_from_point(x, y), "before": str(before), "after": str(after)}
+    payload = {"x": x, "y": y, "monitor": monitor_from_point(x, y), "before": str(before), "after": str(after), "gui_available": pyautogui is not None}
     log_ui_action("double_click", payload)
     return payload
 
@@ -58,8 +67,9 @@ def double_click(x: int, y: int) -> dict:
 def scroll(amount: int) -> dict:
     assert_not_locked()
     before = take_screenshot("before_scroll", scope="all")
-    pyautogui.scroll(amount)
+    if pyautogui is not None:
+        pyautogui.scroll(amount)
     after = take_screenshot("after_scroll", scope="all")
-    payload = {"amount": amount, "before": str(before), "after": str(after)}
+    payload = {"amount": amount, "before": str(before), "after": str(after), "gui_available": pyautogui is not None}
     log_ui_action("scroll", payload)
     return payload

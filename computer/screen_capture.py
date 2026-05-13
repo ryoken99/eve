@@ -3,8 +3,14 @@ from __future__ import annotations
 from datetime import datetime
 from pathlib import Path
 
-import pyautogui
-from PIL import ImageGrab
+try:
+    import pyautogui
+except Exception:  # pragma: no cover - optional GUI dependency fallback
+    pyautogui = None
+try:
+    from PIL import ImageGrab
+except Exception:  # pragma: no cover - optional GUI dependency fallback
+    ImageGrab = None
 
 from computer.monitors import list_monitors, virtual_bounds
 from computer.ui_action_log import log_ui_action
@@ -31,6 +37,11 @@ def take_screenshot(name: str | None = None, *, scope: str = "primary", monitor_
     safe_name = _safe_name(name, scope)
     path = screenshot_dir() / safe_name
     metadata: dict = {"path": str(path), "scope": scope}
+    if pyautogui is None or ImageGrab is None:
+        path.write_bytes(b"")
+        metadata["screen_available"] = False
+        log_ui_action("screenshot_unavailable", metadata)
+        return path
     if scope == "all":
         image = ImageGrab.grab(all_screens=True)
         metadata["bounds"] = virtual_bounds()
@@ -52,6 +63,8 @@ def take_screenshot(name: str | None = None, *, scope: str = "primary", monitor_
 
 
 def screen_size() -> tuple[int, int]:
+    if pyautogui is None:
+        return (0, 0)
     return pyautogui.size()
 
 

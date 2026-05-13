@@ -5,7 +5,11 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-from pynput import keyboard, mouse
+try:
+    from pynput import keyboard, mouse
+except Exception:  # pragma: no cover - optional recorder dependency fallback
+    keyboard = None
+    mouse = None
 
 from computer.screen_capture import take_screenshot
 from core.paths import MEMORY_DIR, ensure_project_dirs
@@ -19,6 +23,22 @@ def record_user_demonstration(name: str, duration_seconds: int = 30, description
     events: list[dict] = []
     started = time.time()
     before = take_screenshot(f"demo_{name}_before", scope="all")
+    if keyboard is None or mouse is None:
+        after = take_screenshot(f"demo_{name}_after", scope="all")
+        payload = {
+            "name": name,
+            "description": description,
+            "mode": "event_recording_unavailable",
+            "created_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            "duration_seconds": 0,
+            "before_screenshot": str(before),
+            "after_screenshot": str(after),
+            "events": [],
+            "error": "pynput nao esta instalado",
+        }
+        path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+        log_event("demonstration_events_unavailable", {"path": str(path)})
+        return path
 
     def stamp() -> float:
         return round(time.time() - started, 3)

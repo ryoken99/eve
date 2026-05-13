@@ -177,8 +177,9 @@ def run_due_jobs(*, dry_run: bool = False) -> dict[str, Any]:
                     timeout=600,
                 )
             else:
+                command = str(job["command"]).replace("D:\\Eve", str(EVE_ROOT)).replace("D:/Eve", str(EVE_ROOT).replace("\\", "/"))
                 completed = subprocess.run(
-                    ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", job["command"]],
+                    ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", command],
                     capture_output=True,
                     text=True,
                     timeout=120,

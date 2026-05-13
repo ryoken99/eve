@@ -10,6 +10,7 @@ import subprocess
 from pathlib import Path
 from datetime import datetime, timezone
 from core.paths import EVE_ROOT, LOGS_DIR, ensure_project_dirs
+from security.admin_session import validate_admin_session
 
 
 def is_admin_process() -> bool:
@@ -52,10 +53,19 @@ def admin_status() -> dict:
     }
 
 
-def run_admin_command(command: str, reason: str, *, approved: bool = False) -> dict:
-    log_admin_action("admin_command_requested", {"reason": reason, "approved": approved, "command": command})
+def run_admin_command(command: str, reason: str, *, approved: bool = False, session_id: str | None = None, dry_run: bool = False) -> dict:
+    log_admin_action("admin_command_requested", {"reason": reason, "approved": approved, "command": command, "session_id": session_id, "dry_run": dry_run})
+    if dry_run:
+        validation = validate_admin_session(session_id, command) if session_id else {"allowed": True, "reason": "dry run without session"}
+        result = {"allowed": bool(validation.get("allowed")), "status": "dry_run", "command": command, "reason": reason, "session_validation": validation}
+        log_admin_action("admin_command_dry_run", result)
+        return result
     if not approved:
         return request_admin(reason, command)
+    validation = validate_admin_session(session_id, command)
+    if not validation.get("allowed"):
+        log_admin_action("admin_command_blocked_by_session", {"reason": reason, "command": command, "session_validation": validation})
+        return {"allowed": False, "reason": validation.get("reason"), "session_validation": validation}
     if not admin_allowed(True):
         return {"allowed": False, "reason": "admin nao permitido"}
     if not is_admin_process():

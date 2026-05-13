@@ -7,7 +7,7 @@ from datetime import datetime
 from pathlib import Path
 
 from autonomy.cron_manager import add_cron_job, list_cron_jobs
-from core.paths import LOGS_DIR, MEMORY_DIR, ensure_project_dirs
+from core.paths import EVE_ROOT, LOGS_DIR, MEMORY_DIR, ensure_project_dirs
 from memory.diary_manager import read_diary, today_key
 
 
@@ -104,5 +104,5 @@ def ensure_diary_consolidation_schedule(*, schedule: str = "6h") -> dict:
     existing = [job for job in list_cron_jobs() if job.get("name") == CONSOLIDATION_JOB_NAME]
     if existing:
         return {"status": "exists", "job": existing[0]}
-    job = add_cron_job(CONSOLIDATION_JOB_NAME, schedule, "Set-Location D:\\Eve; python scripts\\diary_consolidation.py", enabled=True)
+    job = add_cron_job(CONSOLIDATION_JOB_NAME, schedule, f"Set-Location {EVE_ROOT}; python scripts\\diary_consolidation.py", enabled=True)
     return {"status": "created", "job": job}

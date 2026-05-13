@@ -3,12 +3,25 @@ from __future__ import annotations
 import time
 from pathlib import Path
 
-import cv2
-import numpy as np
+try:
+    import cv2
+except Exception:  # pragma: no cover - optional vision dependency fallback
+    cv2 = None
+try:
+    import numpy as np
+except Exception:  # pragma: no cover - optional vision dependency fallback
+    np = None
 
 from computer.monitors import virtual_bounds
 from computer.mouse_control import click
-from computer.ocr import ocr_desktop_data, ocr_image
+try:
+    from computer.ocr import ocr_desktop_data, ocr_image
+except Exception:  # pragma: no cover - optional OCR dependency fallback
+    def ocr_desktop_data():
+        return {"entries": [], "screenshot": "", "bounds": {}, "ocr_available": False}
+
+    def ocr_image(path):
+        return ""
 from computer.screen_capture import take_screenshot
 from computer.ui_action_log import log_ui_action
 from core.paths import LOGS_DIR, ensure_project_dirs
@@ -138,6 +151,8 @@ def _find_light_button_on_composer(
     entries: list[dict],
     anchor_terms: list[str] | None = None,
 ) -> dict:
+    if cv2 is None or np is None:
+        return {"found": False, "reason": "cv2_or_numpy_unavailable"}
     image = cv2.imread(str(screenshot))
     if image is None:
         return {"found": False, "reason": "screenshot_load_failed"}

@@ -29,7 +29,7 @@ HARNESS_CONTROLS: dict[int, list[str]] = {
     13: ["world daily target exists", "technology daily target exists", "personality daily target exists", "daily learning separation is verifiable"],
     14: ["autonomy cycle exists", "deterministic improvement planner exists", "verified update path exists", "improvements require tests before core changes"],
     15: ["browser control exists", "keyboard/mouse control exists", "screenshots/OCR are available", "critical visual tools require explicit verification"],
-    16: ["recursive self-improvement policy exists", "backup path exists", "RSI cycle exposes gates", "verified update requires rollback/test discipline"],
+    16: ["ARSI policy exists", "backup path exists", "autonomous safe cycle exposes gates", "verified update requires rollback/test discipline"],
     17: ["daemon heartbeat exists or can be written", "cron jobs exist", "proactive decisions are logged", "autonomous executor is bounded and auditable"],
 }
 

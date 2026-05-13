@@ -6,10 +6,10 @@ import platform
 import subprocess
 from datetime import datetime
 from pathlib import Path
-from zoneinfo import ZoneInfo
 
 from computer.active_window import get_active_window_title
 from core.paths import EVE_ROOT, STATE_DIR, ensure_project_dirs
+from core.time_utils import now_lisbon
 
 
 STATE_PATH = STATE_DIR / "current_world_state.json"
@@ -46,7 +46,7 @@ def _top_process_names(limit: int = 12) -> list[str]:
 def collect_awareness() -> dict:
     ensure_project_dirs()
     status = _load_status()
-    now = datetime.now(ZoneInfo("Europe/Lisbon"))
+    now = now_lisbon()
     state = {
         "timestamp": now.isoformat(timespec="seconds"),
         "timezone": "Europe/Lisbon",

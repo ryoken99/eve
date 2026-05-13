@@ -4,9 +4,9 @@ import os
 import platform
 import uuid
 from datetime import datetime
-from zoneinfo import ZoneInfo
 
 from core.paths import EVE_ROOT, SKILLS_DIR, WORKSPACE_DIR, ensure_project_dirs
+from core.time_utils import now_lisbon
 from security.safety_modes import current_safety_mode, current_safety_profile
 from tools.admin_executor import admin_status
 
@@ -32,7 +32,7 @@ def collect_capability_self_test() -> dict:
     except Exception:
         tool_count = None
     return {
-        "timestamp": datetime.now(ZoneInfo("Europe/Lisbon")).isoformat(timespec="seconds"),
+        "timestamp": now_lisbon().isoformat(timespec="seconds"),
         "timezone": "Europe/Lisbon",
         "runtime": {
             "os": platform.system(),

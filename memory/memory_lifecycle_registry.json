@@ -1,0 +1,470 @@
+{
+  "mem-000001": {
+    "id": "mem-000001",
+    "text": "Sandro gosta de anime",
+    "layer": "medium_term",
+    "confidence": 0.8,
+    "source": "unit",
+    "created_at": "2026-05-13T21:11:02.521056Z",
+    "last_seen": "2026-05-13T21:11:02.619055Z",
+    "expiry": null,
+    "promotion_score": 1,
+    "contradicts": [
+      "mem-000002"
+    ],
+    "status": "conflicted"
+  },
+  "mem-000002": {
+    "id": "mem-000002",
+    "text": "Sandro nao gosta de anime",
+    "layer": "archive_only",
+    "confidence": 0.8,
+    "source": "unit",
+    "created_at": "2026-05-13T21:11:02.547057Z",
+    "last_seen": "2026-05-13T21:11:02.671058Z",
+    "expiry": null,
+    "promotion_score": 0,
+    "contradicts": [
+      "mem-000001"
+    ],
+    "status": "archived"
+  },
+  "mem-000003": {
+    "id": "mem-000003",
+    "text": "Sandro gosta de anime",
+    "layer": "medium_term",
+    "confidence": 0.8,
+    "source": "unit",
+    "created_at": "2026-05-13T21:11:17.290568Z",
+    "last_seen": "2026-05-13T21:11:17.362567Z",
+    "expiry": null,
+    "promotion_score": 1,
+    "contradicts": [
+      "mem-000004"
+    ],
+    "status": "conflicted"
+  },
+  "mem-000004": {
+    "id": "mem-000004",
+    "text": "Sandro nao gosta de anime",
+    "layer": "archive_only",
+    "confidence": 0.8,
+    "source": "unit",
+    "created_at": "2026-05-13T21:11:17.318567Z",
+    "last_seen": "2026-05-13T21:11:17.416565Z",
+    "expiry": null,
+    "promotion_score": 0,
+    "contradicts": [
+      "mem-000003"
+    ],
+    "status": "archived"
+  },
+  "mem-000005": {
+    "id": "mem-000005",
+    "text": "Sandro gosta de anime",
+    "layer": "medium_term",
+    "confidence": 0.8,
+    "source": "unit",
+    "created_at": "2026-05-13T21:14:44.198288Z",
+    "last_seen": "2026-05-13T21:14:44.312581Z",
+    "expiry": null,
+    "promotion_score": 1,
+    "contradicts": [
+      "mem-000006"
+    ],
+    "status": "conflicted"
+  },
+  "mem-000006": {
+    "id": "mem-000006",
+    "text": "Sandro nao gosta de anime",
+    "layer": "archive_only",
+    "confidence": 0.8,
+    "source": "unit",
+    "created_at": "2026-05-13T21:14:44.242010Z",
+    "last_seen": "2026-05-13T21:14:44.385716Z",
+    "expiry": null,
+    "promotion_score": 0,
+    "contradicts": [
+      "mem-000005"
+    ],
+    "status": "archived"
+  },
+  "mem-000007": {
+    "id": "mem-000007",
+    "text": "Sandro gosta de anime",
+    "layer": "medium_term",
+    "confidence": 0.8,
+    "source": "unit",
+    "created_at": "2026-05-13T21:15:40.276853Z",
+    "last_seen": "2026-05-13T21:15:40.349561Z",
+    "expiry": null,
+    "promotion_score": 1,
+    "contradicts": [
+      "mem-000008"
+    ],
+    "status": "conflicted"
+  },
+  "mem-000008": {
+    "id": "mem-000008",
+    "text": "Sandro nao gosta de anime",
+    "layer": "archive_only",
+    "confidence": 0.8,
+    "source": "unit",
+    "created_at": "2026-05-13T21:15:40.303916Z",
+    "last_seen": "2026-05-13T21:15:40.407341Z",
+    "expiry": null,
+    "promotion_score": 0,
+    "contradicts": [
+      "mem-000007"
+    ],
+    "status": "archived"
+  },
+  "mem-000009": {
+    "id": "mem-000009",
+    "text": "runtime audit memory",
+    "layer": "archive_only",
+    "confidence": 0.8,
+    "source": "runtime",
+    "created_at": "2026-05-13T21:43:22.388402Z",
+    "last_seen": "2026-05-13T21:43:22.503487Z",
+    "expiry": null,
+    "promotion_score": 1,
+    "contradicts": [],
+    "status": "archived"
+  },
+  "mem-000010": {
+    "id": "mem-000010",
+    "text": "runtime audit memory",
+    "layer": "archive_only",
+    "confidence": 0.8,
+    "source": "runtime",
+    "created_at": "2026-05-13T21:43:53.956210Z",
+    "last_seen": "2026-05-13T21:43:54.034455Z",
+    "expiry": null,
+    "promotion_score": 1,
+    "contradicts": [],
+    "status": "archived"
+  },
+  "mem-000011": {
+    "id": "mem-000011",
+    "text": "runtime audit memory",
+    "layer": "archive_only",
+    "confidence": 0.8,
+    "source": "runtime",
+    "created_at": "2026-05-13T21:45:00.417769Z",
+    "last_seen": "2026-05-13T21:45:00.499698Z",
+    "expiry": null,
+    "promotion_score": 1,
+    "contradicts": [],
+    "status": "archived"
+  },
+  "mem-000012": {
+    "id": "mem-000012",
+    "text": "Sandro gosta de anime",
+    "layer": "medium_term",
+    "confidence": 0.8,
+    "source": "unit",
+    "created_at": "2026-05-13T21:45:14.535119Z",
+    "last_seen": "2026-05-13T21:45:14.615118Z",
+    "expiry": null,
+    "promotion_score": 1,
+    "contradicts": [
+      "mem-000013"
+    ],
+    "status": "conflicted"
+  },
+  "mem-000013": {
+    "id": "mem-000013",
+    "text": "Sandro nao gosta de anime",
+    "layer": "archive_only",
+    "confidence": 0.8,
+    "source": "unit",
+    "created_at": "2026-05-13T21:45:14.568121Z",
+    "last_seen": "2026-05-13T21:45:14.672668Z",
+    "expiry": null,
+    "promotion_score": 0,
+    "contradicts": [
+      "mem-000012"
+    ],
+    "status": "archived"
+  },
+  "mem-000014": {
+    "id": "mem-000014",
+    "text": "Sandro gosta de anime",
+    "layer": "medium_term",
+    "confidence": 0.8,
+    "source": "unit",
+    "created_at": "2026-05-13T21:46:12.811797Z",
+    "last_seen": "2026-05-13T21:46:12.889962Z",
+    "expiry": null,
+    "promotion_score": 1,
+    "contradicts": [
+      "mem-000015"
+    ],
+    "status": "conflicted"
+  },
+  "mem-000015": {
+    "id": "mem-000015",
+    "text": "Sandro nao gosta de anime",
+    "layer": "archive_only",
+    "confidence": 0.8,
+    "source": "unit",
+    "created_at": "2026-05-13T21:46:12.842984Z",
+    "last_seen": "2026-05-13T21:46:12.944261Z",
+    "expiry": null,
+    "promotion_score": 0,
+    "contradicts": [
+      "mem-000014"
+    ],
+    "status": "archived"
+  },
+  "mem-000016": {
+    "id": "mem-000016",
+    "text": "Sandro gosta de anime",
+    "layer": "medium_term",
+    "confidence": 0.8,
+    "source": "unit",
+    "created_at": "2026-05-13T21:46:15.708216Z",
+    "last_seen": "2026-05-13T21:46:15.784268Z",
+    "expiry": null,
+    "promotion_score": 1,
+    "contradicts": [
+      "mem-000017"
+    ],
+    "status": "conflicted"
+  },
+  "mem-000017": {
+    "id": "mem-000017",
+    "text": "Sandro nao gosta de anime",
+    "layer": "archive_only",
+    "confidence": 0.8,
+    "source": "unit",
+    "created_at": "2026-05-13T21:46:15.738017Z",
+    "last_seen": "2026-05-13T21:46:15.840741Z",
+    "expiry": null,
+    "promotion_score": 0,
+    "contradicts": [
+      "mem-000016"
+    ],
+    "status": "archived"
+  },
+  "mem-000018": {
+    "id": "mem-000018",
+    "text": "Sandro gosta de anime",
+    "layer": "medium_term",
+    "confidence": 0.8,
+    "source": "unit",
+    "created_at": "2026-05-13T21:47:09.203484Z",
+    "last_seen": "2026-05-13T21:47:09.274484Z",
+    "expiry": null,
+    "promotion_score": 1,
+    "contradicts": [
+      "mem-000019"
+    ],
+    "status": "conflicted"
+  },
+  "mem-000019": {
+    "id": "mem-000019",
+    "text": "Sandro nao gosta de anime",
+    "layer": "archive_only",
+    "confidence": 0.8,
+    "source": "unit",
+    "created_at": "2026-05-13T21:47:09.229484Z",
+    "last_seen": "2026-05-13T21:47:09.328484Z",
+    "expiry": null,
+    "promotion_score": 0,
+    "contradicts": [
+      "mem-000018"
+    ],
+    "status": "archived"
+  },
+  "mem-000020": {
+    "id": "mem-000020",
+    "text": "runtime audit memory",
+    "layer": "archive_only",
+    "confidence": 0.8,
+    "source": "runtime",
+    "created_at": "2026-05-13T21:48:10.847630Z",
+    "last_seen": "2026-05-13T21:48:10.919155Z",
+    "expiry": null,
+    "promotion_score": 1,
+    "contradicts": [],
+    "status": "archived"
+  },
+  "mem-000021": {
+    "id": "mem-000021",
+    "text": "runtime audit memory",
+    "layer": "archive_only",
+    "confidence": 0.8,
+    "source": "runtime",
+    "created_at": "2026-05-13T22:28:11.132535Z",
+    "last_seen": "2026-05-13T22:28:11.210087Z",
+    "expiry": null,
+    "promotion_score": 1,
+    "contradicts": [],
+    "status": "archived"
+  },
+  "mem-000022": {
+    "id": "mem-000022",
+    "text": "runtime audit memory",
+    "layer": "archive_only",
+    "confidence": 0.8,
+    "source": "runtime",
+    "created_at": "2026-05-13T22:29:02.866875Z",
+    "last_seen": "2026-05-13T22:29:02.946711Z",
+    "expiry": null,
+    "promotion_score": 1,
+    "contradicts": [],
+    "status": "archived"
+  },
+  "mem-000023": {
+    "id": "mem-000023",
+    "text": "Sandro gosta de anime",
+    "layer": "medium_term",
+    "confidence": 0.8,
+    "source": "unit",
+    "created_at": "2026-05-13T22:29:27.465546Z",
+    "last_seen": "2026-05-13T22:29:27.546113Z",
+    "expiry": null,
+    "promotion_score": 1,
+    "contradicts": [
+      "mem-000024"
+    ],
+    "status": "conflicted"
+  },
+  "mem-000024": {
+    "id": "mem-000024",
+    "text": "Sandro nao gosta de anime",
+    "layer": "archive_only",
+    "confidence": 0.8,
+    "source": "unit",
+    "created_at": "2026-05-13T22:29:27.493594Z",
+    "last_seen": "2026-05-13T22:29:27.603114Z",
+    "expiry": null,
+    "promotion_score": 0,
+    "contradicts": [
+      "mem-000023"
+    ],
+    "status": "archived"
+  },
+  "mem-000025": {
+    "id": "mem-000025",
+    "text": "Sandro gosta de anime",
+    "layer": "medium_term",
+    "confidence": 0.8,
+    "source": "unit",
+    "created_at": "2026-05-13T22:30:46.305822Z",
+    "last_seen": "2026-05-13T22:30:46.383823Z",
+    "expiry": null,
+    "promotion_score": 1,
+    "contradicts": [
+      "mem-000026"
+    ],
+    "status": "conflicted"
+  },
+  "mem-000026": {
+    "id": "mem-000026",
+    "text": "Sandro nao gosta de anime",
+    "layer": "archive_only",
+    "confidence": 0.8,
+    "source": "unit",
+    "created_at": "2026-05-13T22:30:46.334828Z",
+    "last_seen": "2026-05-13T22:30:46.441826Z",
+    "expiry": null,
+    "promotion_score": 0,
+    "contradicts": [
+      "mem-000025"
+    ],
+    "status": "archived"
+  },
+  "mem-000027": {
+    "id": "mem-000027",
+    "text": "Sandro gosta de anime",
+    "layer": "medium_term",
+    "confidence": 0.8,
+    "source": "unit",
+    "created_at": "2026-05-13T22:31:59.070081Z",
+    "last_seen": "2026-05-13T22:31:59.147037Z",
+    "expiry": null,
+    "promotion_score": 1,
+    "contradicts": [
+      "mem-000028"
+    ],
+    "status": "conflicted"
+  },
+  "mem-000028": {
+    "id": "mem-000028",
+    "text": "Sandro nao gosta de anime",
+    "layer": "archive_only",
+    "confidence": 0.8,
+    "source": "unit",
+    "created_at": "2026-05-13T22:31:59.097189Z",
+    "last_seen": "2026-05-13T22:31:59.206308Z",
+    "expiry": null,
+    "promotion_score": 0,
+    "contradicts": [
+      "mem-000027"
+    ],
+    "status": "archived"
+  },
+  "mem-000029": {
+    "id": "mem-000029",
+    "text": "Sandro gosta de anime",
+    "layer": "medium_term",
+    "confidence": 0.8,
+    "source": "unit",
+    "created_at": "2026-05-13T22:32:18.572995Z",
+    "last_seen": "2026-05-13T22:32:18.647740Z",
+    "expiry": null,
+    "promotion_score": 1,
+    "contradicts": [
+      "mem-000030"
+    ],
+    "status": "conflicted"
+  },
+  "mem-000030": {
+    "id": "mem-000030",
+    "text": "Sandro nao gosta de anime",
+    "layer": "archive_only",
+    "confidence": 0.8,
+    "source": "unit",
+    "created_at": "2026-05-13T22:32:18.600581Z",
+    "last_seen": "2026-05-13T22:32:18.704279Z",
+    "expiry": null,
+    "promotion_score": 0,
+    "contradicts": [
+      "mem-000029"
+    ],
+    "status": "archived"
+  },
+  "mem-000031": {
+    "id": "mem-000031",
+    "text": "Sandro gosta de anime",
+    "layer": "medium_term",
+    "confidence": 0.8,
+    "source": "unit",
+    "created_at": "2026-05-13T22:33:27.561881Z",
+    "last_seen": "2026-05-13T22:33:27.638924Z",
+    "expiry": null,
+    "promotion_score": 1,
+    "contradicts": [
+      "mem-000032"
+    ],
+    "status": "conflicted"
+  },
+  "mem-000032": {
+    "id": "mem-000032",
+    "text": "Sandro nao gosta de anime",
+    "layer": "archive_only",
+    "confidence": 0.8,
+    "source": "unit",
+    "created_at": "2026-05-13T22:33:27.590704Z",
+    "last_seen": "2026-05-13T22:33:27.697156Z",
+    "expiry": null,
+    "promotion_score": 0,
+    "contradicts": [
+      "mem-000031"
+    ],
+    "status": "archived"
+  }
+}

@@ -1,0 +1,1137 @@
+[
+  {
+    "timestamp": "2026-05-13T21:11:02.839057Z",
+    "candidate": {
+      "files_changed": [
+        "docs/example.md"
+      ],
+      "tests_required": [
+        "test_docs"
+      ],
+      "baseline_metric": 0.5,
+      "new_metric": 0.6
+    },
+    "sandbox": {
+      "sandbox_ok": true,
+      "tests_required": [
+        "test_docs"
+      ],
+      "compile_ok": true
+    },
+    "evaluation": {
+      "accepted": true,
+      "policy": {
+        "allowed": true,
+        "risk": "safe"
+      },
+      "impact": {
+        "improved": true,
+        "baseline_metric": 0.5,
+        "new_metric": 0.6,
+        "delta": 0.1
+      }
+    },
+    "applied": true
+  },
+  {
+    "timestamp": "2026-05-13T21:11:02.869060Z",
+    "candidate": {
+      "files_changed": [
+        "security/admin_gate.py"
+      ],
+      "tests_required": [
+        "test_security"
+      ],
+      "baseline_metric": 0.5,
+      "new_metric": 0.6
+    },
+    "sandbox": {
+      "sandbox_ok": true,
+      "tests_required": [
+        "test_security"
+      ],
+      "compile_ok": true
+    },
+    "evaluation": {
+      "accepted": false,
+      "policy": {
+        "allowed": false,
+        "risk": "high",
+        "reason": "approval required"
+      },
+      "impact": {
+        "improved": true,
+        "baseline_metric": 0.5,
+        "new_metric": 0.6,
+        "delta": 0.1
+      }
+    },
+    "applied": false
+  },
+  {
+    "timestamp": "2026-05-13T21:11:17.549566Z",
+    "candidate": {
+      "files_changed": [
+        "docs/example.md"
+      ],
+      "tests_required": [
+        "test_docs"
+      ],
+      "baseline_metric": 0.5,
+      "new_metric": 0.6
+    },
+    "sandbox": {
+      "sandbox_ok": true,
+      "tests_required": [
+        "test_docs"
+      ],
+      "compile_ok": true
+    },
+    "evaluation": {
+      "accepted": true,
+      "policy": {
+        "allowed": true,
+        "risk": "safe"
+      },
+      "impact": {
+        "improved": true,
+        "baseline_metric": 0.5,
+        "new_metric": 0.6,
+        "delta": 0.1
+      }
+    },
+    "applied": true
+  },
+  {
+    "timestamp": "2026-05-13T21:11:17.577568Z",
+    "candidate": {
+      "files_changed": [
+        "security/admin_gate.py"
+      ],
+      "tests_required": [
+        "test_security"
+      ],
+      "baseline_metric": 0.5,
+      "new_metric": 0.6
+    },
+    "sandbox": {
+      "sandbox_ok": true,
+      "tests_required": [
+        "test_security"
+      ],
+      "compile_ok": true
+    },
+    "evaluation": {
+      "accepted": false,
+      "policy": {
+        "allowed": false,
+        "risk": "high",
+        "reason": "approval required"
+      },
+      "impact": {
+        "improved": true,
+        "baseline_metric": 0.5,
+        "new_metric": 0.6,
+        "delta": 0.1
+      }
+    },
+    "applied": false
+  },
+  {
+    "timestamp": "2026-05-13T21:14:44.517789Z",
+    "candidate": {
+      "files_changed": [
+        "docs/example.md"
+      ],
+      "tests_required": [
+        "test_docs"
+      ],
+      "baseline_metric": 0.5,
+      "new_metric": 0.6
+    },
+    "sandbox": {
+      "sandbox_ok": true,
+      "tests_required": [
+        "test_docs"
+      ],
+      "compile_ok": true
+    },
+    "evaluation": {
+      "accepted": true,
+      "policy": {
+        "allowed": true,
+        "risk": "safe"
+      },
+      "impact": {
+        "improved": true,
+        "baseline_metric": 0.5,
+        "new_metric": 0.6,
+        "delta": 0.1
+      }
+    },
+    "applied": true
+  },
+  {
+    "timestamp": "2026-05-13T21:14:44.547238Z",
+    "candidate": {
+      "files_changed": [
+        "security/admin_gate.py"
+      ],
+      "tests_required": [
+        "test_security"
+      ],
+      "baseline_metric": 0.5,
+      "new_metric": 0.6
+    },
+    "sandbox": {
+      "sandbox_ok": true,
+      "tests_required": [
+        "test_security"
+      ],
+      "compile_ok": true
+    },
+    "evaluation": {
+      "accepted": false,
+      "policy": {
+        "allowed": false,
+        "risk": "high",
+        "reason": "approval required"
+      },
+      "impact": {
+        "improved": true,
+        "baseline_metric": 0.5,
+        "new_metric": 0.6,
+        "delta": 0.1
+      }
+    },
+    "applied": false
+  },
+  {
+    "timestamp": "2026-05-13T21:15:40.536653Z",
+    "candidate": {
+      "files_changed": [
+        "docs/example.md"
+      ],
+      "tests_required": [
+        "test_docs"
+      ],
+      "baseline_metric": 0.5,
+      "new_metric": 0.6
+    },
+    "sandbox": {
+      "sandbox_ok": true,
+      "tests_required": [
+        "test_docs"
+      ],
+      "compile_ok": true
+    },
+    "evaluation": {
+      "accepted": true,
+      "policy": {
+        "allowed": true,
+        "risk": "safe"
+      },
+      "impact": {
+        "improved": true,
+        "baseline_metric": 0.5,
+        "new_metric": 0.6,
+        "delta": 0.1
+      }
+    },
+    "applied": true
+  },
+  {
+    "timestamp": "2026-05-13T21:15:40.566253Z",
+    "candidate": {
+      "files_changed": [
+        "security/admin_gate.py"
+      ],
+      "tests_required": [
+        "test_security"
+      ],
+      "baseline_metric": 0.5,
+      "new_metric": 0.6
+    },
+    "sandbox": {
+      "sandbox_ok": true,
+      "tests_required": [
+        "test_security"
+      ],
+      "compile_ok": true
+    },
+    "evaluation": {
+      "accepted": false,
+      "policy": {
+        "allowed": false,
+        "risk": "high",
+        "reason": "approval required"
+      },
+      "impact": {
+        "improved": true,
+        "baseline_metric": 0.5,
+        "new_metric": 0.6,
+        "delta": 0.1
+      }
+    },
+    "applied": false
+  },
+  {
+    "timestamp": "2026-05-13T21:45:14.825029Z",
+    "candidate": {
+      "files_changed": [
+        "docs/example.md"
+      ],
+      "tests_required": [
+        "test_docs"
+      ],
+      "baseline_metric": 0.5,
+      "new_metric": 0.6
+    },
+    "sandbox": {
+      "sandbox_ok": true,
+      "tests_required": [
+        "test_docs"
+      ],
+      "compile_ok": true
+    },
+    "evaluation": {
+      "accepted": true,
+      "policy": {
+        "allowed": true,
+        "risk": "safe"
+      },
+      "impact": {
+        "improved": true,
+        "baseline_metric": 0.5,
+        "new_metric": 0.6,
+        "delta": 0.1
+      }
+    },
+    "applied": true
+  },
+  {
+    "timestamp": "2026-05-13T21:45:14.853896Z",
+    "candidate": {
+      "files_changed": [
+        "security/admin_gate.py"
+      ],
+      "tests_required": [
+        "test_security"
+      ],
+      "baseline_metric": 0.5,
+      "new_metric": 0.6
+    },
+    "sandbox": {
+      "sandbox_ok": true,
+      "tests_required": [
+        "test_security"
+      ],
+      "compile_ok": true
+    },
+    "evaluation": {
+      "accepted": false,
+      "policy": {
+        "allowed": false,
+        "risk": "high",
+        "reason": "approval required"
+      },
+      "impact": {
+        "improved": true,
+        "baseline_metric": 0.5,
+        "new_metric": 0.6,
+        "delta": 0.1
+      }
+    },
+    "applied": false
+  },
+  {
+    "timestamp": "2026-05-13T21:46:13.093237Z",
+    "candidate": {
+      "files_changed": [
+        "docs/example.md"
+      ],
+      "tests_required": [
+        "test_docs"
+      ],
+      "baseline_metric": 0.5,
+      "new_metric": 0.6
+    },
+    "sandbox": {
+      "sandbox_ok": true,
+      "tests_required": [
+        "test_docs"
+      ],
+      "compile_ok": true
+    },
+    "evaluation": {
+      "accepted": true,
+      "policy": {
+        "allowed": true,
+        "risk": "safe"
+      },
+      "impact": {
+        "improved": true,
+        "baseline_metric": 0.5,
+        "new_metric": 0.6,
+        "delta": 0.1
+      }
+    },
+    "applied": true
+  },
+  {
+    "timestamp": "2026-05-13T21:46:13.121577Z",
+    "candidate": {
+      "files_changed": [
+        "security/admin_gate.py"
+      ],
+      "tests_required": [
+        "test_security"
+      ],
+      "baseline_metric": 0.5,
+      "new_metric": 0.6
+    },
+    "sandbox": {
+      "sandbox_ok": true,
+      "tests_required": [
+        "test_security"
+      ],
+      "compile_ok": true
+    },
+    "evaluation": {
+      "accepted": false,
+      "policy": {
+        "allowed": false,
+        "risk": "high",
+        "reason": "approval required"
+      },
+      "impact": {
+        "improved": true,
+        "baseline_metric": 0.5,
+        "new_metric": 0.6,
+        "delta": 0.1
+      }
+    },
+    "applied": false
+  },
+  {
+    "timestamp": "2026-05-13T21:46:16.017292Z",
+    "candidate": {
+      "files_changed": [
+        "docs/example.md"
+      ],
+      "tests_required": [
+        "test_docs"
+      ],
+      "baseline_metric": 0.5,
+      "new_metric": 0.6
+    },
+    "sandbox": {
+      "sandbox_ok": true,
+      "tests_required": [
+        "test_docs"
+      ],
+      "compile_ok": true
+    },
+    "evaluation": {
+      "accepted": true,
+      "policy": {
+        "allowed": true,
+        "risk": "safe"
+      },
+      "impact": {
+        "improved": true,
+        "baseline_metric": 0.5,
+        "new_metric": 0.6,
+        "delta": 0.1
+      }
+    },
+    "applied": true
+  },
+  {
+    "timestamp": "2026-05-13T21:46:16.049294Z",
+    "candidate": {
+      "files_changed": [
+        "security/admin_gate.py"
+      ],
+      "tests_required": [
+        "test_security"
+      ],
+      "baseline_metric": 0.5,
+      "new_metric": 0.6
+    },
+    "sandbox": {
+      "sandbox_ok": true,
+      "tests_required": [
+        "test_security"
+      ],
+      "compile_ok": true
+    },
+    "evaluation": {
+      "accepted": false,
+      "policy": {
+        "allowed": false,
+        "risk": "high",
+        "reason": "approval required"
+      },
+      "impact": {
+        "improved": true,
+        "baseline_metric": 0.5,
+        "new_metric": 0.6,
+        "delta": 0.1
+      }
+    },
+    "applied": false
+  },
+  {
+    "timestamp": "2026-05-13T21:47:09.482999Z",
+    "candidate": {
+      "files_changed": [
+        "docs/example.md"
+      ],
+      "tests_required": [
+        "test_docs"
+      ],
+      "baseline_metric": 0.5,
+      "new_metric": 0.6
+    },
+    "sandbox": {
+      "sandbox_ok": true,
+      "tests_required": [
+        "test_docs"
+      ],
+      "compile_ok": true
+    },
+    "evaluation": {
+      "accepted": true,
+      "policy": {
+        "allowed": true,
+        "risk": "safe"
+      },
+      "impact": {
+        "improved": true,
+        "baseline_metric": 0.5,
+        "new_metric": 0.6,
+        "delta": 0.1
+      }
+    },
+    "applied": true
+  },
+  {
+    "timestamp": "2026-05-13T21:47:09.514000Z",
+    "candidate": {
+      "files_changed": [
+        "security/admin_gate.py"
+      ],
+      "tests_required": [
+        "test_security"
+      ],
+      "baseline_metric": 0.5,
+      "new_metric": 0.6
+    },
+    "sandbox": {
+      "sandbox_ok": true,
+      "tests_required": [
+        "test_security"
+      ],
+      "compile_ok": true
+    },
+    "evaluation": {
+      "accepted": false,
+      "policy": {
+        "allowed": false,
+        "risk": "high",
+        "reason": "approval required"
+      },
+      "impact": {
+        "improved": true,
+        "baseline_metric": 0.5,
+        "new_metric": 0.6,
+        "delta": 0.1
+      }
+    },
+    "applied": false
+  },
+  {
+    "timestamp": "2026-05-13T22:28:25.024962Z",
+    "candidate": {
+      "files_changed": [
+        "docs/arsi_runtime_probe.md"
+      ],
+      "tests_required": [
+        "runtime_audit"
+      ],
+      "baseline_metric": 0.5,
+      "new_metric": 0.65
+    },
+    "sandbox": {
+      "sandbox_ok": true,
+      "tests_required": [
+        "runtime_audit"
+      ],
+      "compile_ok": true
+    },
+    "evaluation": {
+      "accepted": true,
+      "policy": {
+        "allowed": true,
+        "risk": "safe"
+      },
+      "impact": {
+        "improved": true,
+        "baseline_metric": 0.5,
+        "new_metric": 0.65,
+        "delta": 0.15
+      }
+    },
+    "applied": true
+  },
+  {
+    "timestamp": "2026-05-13T22:29:16.761427Z",
+    "candidate": {
+      "files_changed": [
+        "docs/arsi_runtime_probe.md"
+      ],
+      "tests_required": [
+        "runtime_audit"
+      ],
+      "baseline_metric": 0.5,
+      "new_metric": 0.65
+    },
+    "sandbox": {
+      "sandbox_ok": true,
+      "tests_required": [
+        "runtime_audit"
+      ],
+      "compile_ok": true
+    },
+    "evaluation": {
+      "accepted": true,
+      "policy": {
+        "allowed": true,
+        "risk": "safe"
+      },
+      "impact": {
+        "improved": true,
+        "baseline_metric": 0.5,
+        "new_metric": 0.65,
+        "delta": 0.15
+      }
+    },
+    "applied": true
+  },
+  {
+    "timestamp": "2026-05-13T22:29:39.760103Z",
+    "candidate": {
+      "files_changed": [
+        "docs/example.md"
+      ],
+      "tests_required": [
+        "test_docs"
+      ],
+      "baseline_metric": 0.5,
+      "new_metric": 0.6
+    },
+    "sandbox": {
+      "sandbox_ok": true,
+      "tests_required": [
+        "test_docs"
+      ],
+      "compile_ok": true
+    },
+    "evaluation": {
+      "accepted": true,
+      "policy": {
+        "allowed": true,
+        "risk": "safe"
+      },
+      "impact": {
+        "improved": true,
+        "baseline_metric": 0.5,
+        "new_metric": 0.6,
+        "delta": 0.1
+      }
+    },
+    "applied": true
+  },
+  {
+    "timestamp": "2026-05-13T22:29:39.792110Z",
+    "candidate": {
+      "files_changed": [
+        "security/admin_gate.py"
+      ],
+      "tests_required": [
+        "test_security"
+      ],
+      "baseline_metric": 0.5,
+      "new_metric": 0.6
+    },
+    "sandbox": {
+      "sandbox_ok": true,
+      "tests_required": [
+        "test_security"
+      ],
+      "compile_ok": true
+    },
+    "evaluation": {
+      "accepted": false,
+      "policy": {
+        "allowed": false,
+        "risk": "high",
+        "reason": "approval required"
+      },
+      "impact": {
+        "improved": true,
+        "baseline_metric": 0.5,
+        "new_metric": 0.6,
+        "delta": 0.1
+      }
+    },
+    "applied": false
+  },
+  {
+    "timestamp": "2026-05-13T22:29:39.953104Z",
+    "candidate": {
+      "files_changed": [
+        "docs/a.md"
+      ],
+      "tests_required": [
+        "runtime"
+      ],
+      "baseline_metric": 0.1,
+      "new_metric": 0.2
+    },
+    "sandbox": {
+      "sandbox_ok": true,
+      "tests_required": [
+        "runtime"
+      ],
+      "compile_ok": true
+    },
+    "evaluation": {
+      "accepted": true,
+      "policy": {
+        "allowed": true,
+        "risk": "safe"
+      },
+      "impact": {
+        "improved": true,
+        "baseline_metric": 0.1,
+        "new_metric": 0.2,
+        "delta": 0.1
+      }
+    },
+    "applied": true
+  },
+  {
+    "timestamp": "2026-05-13T22:30:58.715616Z",
+    "candidate": {
+      "files_changed": [
+        "docs/example.md"
+      ],
+      "tests_required": [
+        "test_docs"
+      ],
+      "baseline_metric": 0.5,
+      "new_metric": 0.6
+    },
+    "sandbox": {
+      "sandbox_ok": true,
+      "tests_required": [
+        "test_docs"
+      ],
+      "compile_ok": true
+    },
+    "evaluation": {
+      "accepted": true,
+      "policy": {
+        "allowed": true,
+        "risk": "safe"
+      },
+      "impact": {
+        "improved": true,
+        "baseline_metric": 0.5,
+        "new_metric": 0.6,
+        "delta": 0.1
+      }
+    },
+    "applied": true
+  },
+  {
+    "timestamp": "2026-05-13T22:30:58.746616Z",
+    "candidate": {
+      "files_changed": [
+        "security/admin_gate.py"
+      ],
+      "tests_required": [
+        "test_security"
+      ],
+      "baseline_metric": 0.5,
+      "new_metric": 0.6
+    },
+    "sandbox": {
+      "sandbox_ok": true,
+      "tests_required": [
+        "test_security"
+      ],
+      "compile_ok": true
+    },
+    "evaluation": {
+      "accepted": false,
+      "policy": {
+        "allowed": false,
+        "risk": "high",
+        "reason": "approval required"
+      },
+      "impact": {
+        "improved": true,
+        "baseline_metric": 0.5,
+        "new_metric": 0.6,
+        "delta": 0.1
+      }
+    },
+    "applied": false
+  },
+  {
+    "timestamp": "2026-05-13T22:30:58.912131Z",
+    "candidate": {
+      "files_changed": [
+        "docs/a.md"
+      ],
+      "tests_required": [
+        "runtime"
+      ],
+      "baseline_metric": 0.1,
+      "new_metric": 0.2
+    },
+    "sandbox": {
+      "sandbox_ok": true,
+      "tests_required": [
+        "runtime"
+      ],
+      "compile_ok": true
+    },
+    "evaluation": {
+      "accepted": true,
+      "policy": {
+        "allowed": true,
+        "risk": "safe"
+      },
+      "impact": {
+        "improved": true,
+        "baseline_metric": 0.1,
+        "new_metric": 0.2,
+        "delta": 0.1
+      }
+    },
+    "applied": true
+  },
+  {
+    "timestamp": "2026-05-13T22:32:13.004841Z",
+    "candidate": {
+      "files_changed": [
+        "docs/example.md"
+      ],
+      "tests_required": [
+        "test_docs"
+      ],
+      "baseline_metric": 0.5,
+      "new_metric": 0.6
+    },
+    "sandbox": {
+      "sandbox_ok": true,
+      "tests_required": [
+        "test_docs"
+      ],
+      "compile_ok": true
+    },
+    "evaluation": {
+      "accepted": true,
+      "policy": {
+        "allowed": true,
+        "risk": "safe"
+      },
+      "impact": {
+        "improved": true,
+        "baseline_metric": 0.5,
+        "new_metric": 0.6,
+        "delta": 0.1
+      }
+    },
+    "applied": true
+  },
+  {
+    "timestamp": "2026-05-13T22:32:13.032841Z",
+    "candidate": {
+      "files_changed": [
+        "security/admin_gate.py"
+      ],
+      "tests_required": [
+        "test_security"
+      ],
+      "baseline_metric": 0.5,
+      "new_metric": 0.6
+    },
+    "sandbox": {
+      "sandbox_ok": true,
+      "tests_required": [
+        "test_security"
+      ],
+      "compile_ok": true
+    },
+    "evaluation": {
+      "accepted": false,
+      "policy": {
+        "allowed": false,
+        "risk": "high",
+        "reason": "approval required"
+      },
+      "impact": {
+        "improved": true,
+        "baseline_metric": 0.5,
+        "new_metric": 0.6,
+        "delta": 0.1
+      }
+    },
+    "applied": false
+  },
+  {
+    "timestamp": "2026-05-13T22:32:13.177842Z",
+    "candidate": {
+      "files_changed": [
+        "docs/a.md"
+      ],
+      "tests_required": [
+        "runtime"
+      ],
+      "baseline_metric": 0.1,
+      "new_metric": 0.2
+    },
+    "sandbox": {
+      "sandbox_ok": true,
+      "tests_required": [
+        "runtime"
+      ],
+      "compile_ok": true
+    },
+    "evaluation": {
+      "accepted": true,
+      "policy": {
+        "allowed": true,
+        "risk": "safe"
+      },
+      "impact": {
+        "improved": true,
+        "baseline_metric": 0.1,
+        "new_metric": 0.2,
+        "delta": 0.1
+      }
+    },
+    "applied": true
+  },
+  {
+    "timestamp": "2026-05-13T22:32:30.979075Z",
+    "candidate": {
+      "files_changed": [
+        "docs/example.md"
+      ],
+      "tests_required": [
+        "test_docs"
+      ],
+      "baseline_metric": 0.5,
+      "new_metric": 0.6
+    },
+    "sandbox": {
+      "sandbox_ok": true,
+      "tests_required": [
+        "test_docs"
+      ],
+      "compile_ok": true
+    },
+    "evaluation": {
+      "accepted": true,
+      "policy": {
+        "allowed": true,
+        "risk": "safe"
+      },
+      "impact": {
+        "improved": true,
+        "baseline_metric": 0.5,
+        "new_metric": 0.6,
+        "delta": 0.1
+      }
+    },
+    "applied": true
+  },
+  {
+    "timestamp": "2026-05-13T22:32:31.009074Z",
+    "candidate": {
+      "files_changed": [
+        "security/admin_gate.py"
+      ],
+      "tests_required": [
+        "test_security"
+      ],
+      "baseline_metric": 0.5,
+      "new_metric": 0.6
+    },
+    "sandbox": {
+      "sandbox_ok": true,
+      "tests_required": [
+        "test_security"
+      ],
+      "compile_ok": true
+    },
+    "evaluation": {
+      "accepted": false,
+      "policy": {
+        "allowed": false,
+        "risk": "high",
+        "reason": "approval required"
+      },
+      "impact": {
+        "improved": true,
+        "baseline_metric": 0.5,
+        "new_metric": 0.6,
+        "delta": 0.1
+      }
+    },
+    "applied": false
+  },
+  {
+    "timestamp": "2026-05-13T22:32:31.164088Z",
+    "candidate": {
+      "files_changed": [
+        "docs/a.md"
+      ],
+      "tests_required": [
+        "runtime"
+      ],
+      "baseline_metric": 0.1,
+      "new_metric": 0.2
+    },
+    "sandbox": {
+      "sandbox_ok": true,
+      "tests_required": [
+        "runtime"
+      ],
+      "compile_ok": true
+    },
+    "evaluation": {
+      "accepted": true,
+      "policy": {
+        "allowed": true,
+        "risk": "safe"
+      },
+      "impact": {
+        "improved": true,
+        "baseline_metric": 0.1,
+        "new_metric": 0.2,
+        "delta": 0.1
+      }
+    },
+    "applied": true
+  },
+  {
+    "timestamp": "2026-05-13T22:33:41.324396Z",
+    "candidate": {
+      "files_changed": [
+        "docs/example.md"
+      ],
+      "tests_required": [
+        "test_docs"
+      ],
+      "baseline_metric": 0.5,
+      "new_metric": 0.6
+    },
+    "sandbox": {
+      "sandbox_ok": true,
+      "tests_required": [
+        "test_docs"
+      ],
+      "compile_ok": true
+    },
+    "evaluation": {
+      "accepted": true,
+      "policy": {
+        "allowed": true,
+        "risk": "safe"
+      },
+      "impact": {
+        "improved": true,
+        "baseline_metric": 0.5,
+        "new_metric": 0.6,
+        "delta": 0.1
+      }
+    },
+    "applied": true
+  },
+  {
+    "timestamp": "2026-05-13T22:33:41.353398Z",
+    "candidate": {
+      "files_changed": [
+        "security/admin_gate.py"
+      ],
+      "tests_required": [
+        "test_security"
+      ],
+      "baseline_metric": 0.5,
+      "new_metric": 0.6
+    },
+    "sandbox": {
+      "sandbox_ok": true,
+      "tests_required": [
+        "test_security"
+      ],
+      "compile_ok": true
+    },
+    "evaluation": {
+      "accepted": false,
+      "policy": {
+        "allowed": false,
+        "risk": "high",
+        "reason": "approval required"
+      },
+      "impact": {
+        "improved": true,
+        "baseline_metric": 0.5,
+        "new_metric": 0.6,
+        "delta": 0.1
+      }
+    },
+    "applied": false
+  },
+  {
+    "timestamp": "2026-05-13T22:33:41.498911Z",
+    "candidate": {
+      "files_changed": [
+        "docs/a.md"
+      ],
+      "tests_required": [
+        "runtime"
+      ],
+      "baseline_metric": 0.1,
+      "new_metric": 0.2
+    },
+    "sandbox": {
+      "sandbox_ok": true,
+      "tests_required": [
+        "runtime"
+      ],
+      "compile_ok": true
+    },
+    "evaluation": {
+      "accepted": true,
+      "policy": {
+        "allowed": true,
+        "risk": "safe"
+      },
+      "impact": {
+        "improved": true,
+        "baseline_metric": 0.1,
+        "new_metric": 0.2,
+        "delta": 0.1
+      }
+    },
+    "applied": true
+  }
+]

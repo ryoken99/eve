@@ -2,9 +2,19 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytesseract
-from PIL import Image
-from pytesseract import TesseractNotFoundError
+try:
+    import pytesseract
+    from pytesseract import TesseractNotFoundError
+except Exception:  # pragma: no cover - optional OCR dependency fallback
+    pytesseract = None
+
+    class TesseractNotFoundError(Exception):
+        pass
+
+try:
+    from PIL import Image
+except Exception:  # pragma: no cover - optional OCR dependency fallback
+    Image = None
 
 from computer.monitors import image_to_global_coords, virtual_bounds
 from computer.screen_capture import take_screenshot
@@ -18,6 +28,8 @@ COMMON_TESSERACT_PATHS = [
 
 
 def configure_tesseract() -> str | None:
+    if pytesseract is None:
+        return None
     for path in COMMON_TESSERACT_PATHS:
         if path.exists():
             pytesseract.pytesseract.tesseract_cmd = str(path)
@@ -26,6 +38,8 @@ def configure_tesseract() -> str | None:
 
 
 def ocr_status() -> dict:
+    if pytesseract is None:
+        return {"available": False, "version": None, "path": None, "error": "pytesseract nao esta instalado"}
     configured = configure_tesseract()
     try:
         version = str(pytesseract.get_tesseract_version())
@@ -42,6 +56,8 @@ def ocr_status() -> dict:
 
 
 def ocr_image(path: str | Path) -> str:
+    if pytesseract is None or Image is None:
+        return "OCR indisponivel: pytesseract/PIL nao esta instalado"
     configure_tesseract()
     image_path = Path(path)
     try:
@@ -61,6 +77,9 @@ def ocr_screen() -> dict:
 
 
 def ocr_image_data(path: str | Path, *, origin: dict | None = None) -> list[dict]:
+    if pytesseract is None or Image is None:
+        log_ui_action("ocr_image_data_failed", {"path": str(path), "error": "pytesseract_or_pil_unavailable"})
+        return []
     configure_tesseract()
     image_path = Path(path)
     origin = origin or {"left": 0, "top": 0}

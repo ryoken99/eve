@@ -1,0 +1,236 @@
+{
+  "items": {
+    "unit procedural narrative 1778706789.159527": {
+      "topic": "unit procedural narrative 1778706789.159527",
+      "status": "stable",
+      "evidence": [
+        {
+          "timestamp": "2026-05-13T21:13:09.178529Z",
+          "text": "seed from Sandro interest",
+          "sentiment": "positive"
+        },
+        {
+          "timestamp": "2026-05-13T21:13:09.204529Z",
+          "text": "appeared again in research",
+          "sentiment": "positive"
+        },
+        {
+          "timestamp": "2026-05-13T21:13:09.232535Z",
+          "text": "generated useful prototype idea",
+          "sentiment": "positive"
+        }
+      ],
+      "score": 3,
+      "created_at": "2026-05-13T21:13:09.178529Z"
+    },
+    "unit discarded taste": {
+      "topic": "unit discarded taste",
+      "status": "rejected",
+      "evidence": [
+        {
+          "timestamp": "2026-05-13T21:13:09.259528Z",
+          "text": "bad fit",
+          "sentiment": "negative"
+        },
+        {
+          "timestamp": "2026-05-13T21:14:12.742688Z",
+          "text": "bad fit",
+          "sentiment": "negative"
+        },
+        {
+          "timestamp": "2026-05-13T21:15:12.635559Z",
+          "text": "bad fit",
+          "sentiment": "negative"
+        },
+        {
+          "timestamp": "2026-05-13T21:45:39.397975Z",
+          "text": "bad fit",
+          "sentiment": "negative"
+        },
+        {
+          "timestamp": "2026-05-13T21:46:40.271327Z",
+          "text": "bad fit",
+          "sentiment": "negative"
+        },
+        {
+          "timestamp": "2026-05-13T22:30:04.000191Z",
+          "text": "bad fit",
+          "sentiment": "negative"
+        },
+        {
+          "timestamp": "2026-05-13T22:31:23.801703Z",
+          "text": "bad fit",
+          "sentiment": "negative"
+        },
+        {
+          "timestamp": "2026-05-13T22:32:56.363085Z",
+          "text": "bad fit",
+          "sentiment": "negative"
+        }
+      ],
+      "score": -8,
+      "created_at": "2026-05-13T21:13:09.258528Z"
+    },
+    "unit procedural narrative 1778706852.639032": {
+      "topic": "unit procedural narrative 1778706852.639032",
+      "status": "stable",
+      "evidence": [
+        {
+          "timestamp": "2026-05-13T21:14:12.658929Z",
+          "text": "seed from Sandro interest",
+          "sentiment": "positive"
+        },
+        {
+          "timestamp": "2026-05-13T21:14:12.688312Z",
+          "text": "appeared again in research",
+          "sentiment": "positive"
+        },
+        {
+          "timestamp": "2026-05-13T21:14:12.715313Z",
+          "text": "generated useful prototype idea",
+          "sentiment": "positive"
+        }
+      ],
+      "score": 3,
+      "created_at": "2026-05-13T21:14:12.658929Z"
+    },
+    "unit procedural narrative 1778706912.529939": {
+      "topic": "unit procedural narrative 1778706912.529939",
+      "status": "stable",
+      "evidence": [
+        {
+          "timestamp": "2026-05-13T21:15:12.549519Z",
+          "text": "seed from Sandro interest",
+          "sentiment": "positive"
+        },
+        {
+          "timestamp": "2026-05-13T21:15:12.578417Z",
+          "text": "appeared again in research",
+          "sentiment": "positive"
+        },
+        {
+          "timestamp": "2026-05-13T21:15:12.608124Z",
+          "text": "generated useful prototype idea",
+          "sentiment": "positive"
+        }
+      ],
+      "score": 3,
+      "created_at": "2026-05-13T21:15:12.549519Z"
+    },
+    "unit procedural narrative 1778708739.297977": {
+      "topic": "unit procedural narrative 1778708739.297977",
+      "status": "stable",
+      "evidence": [
+        {
+          "timestamp": "2026-05-13T21:45:39.317975Z",
+          "text": "seed from Sandro interest",
+          "sentiment": "positive"
+        },
+        {
+          "timestamp": "2026-05-13T21:45:39.343974Z",
+          "text": "appeared again in research",
+          "sentiment": "positive"
+        },
+        {
+          "timestamp": "2026-05-13T21:45:39.370977Z",
+          "text": "generated useful prototype idea",
+          "sentiment": "positive"
+        }
+      ],
+      "score": 3,
+      "created_at": "2026-05-13T21:45:39.317975Z"
+    },
+    "unit procedural narrative 1778708800.145674": {
+      "topic": "unit procedural narrative 1778708800.145674",
+      "status": "stable",
+      "evidence": [
+        {
+          "timestamp": "2026-05-13T21:46:40.167273Z",
+          "text": "seed from Sandro interest",
+          "sentiment": "positive"
+        },
+        {
+          "timestamp": "2026-05-13T21:46:40.206495Z",
+          "text": "appeared again in research",
+          "sentiment": "positive"
+        },
+        {
+          "timestamp": "2026-05-13T21:46:40.241649Z",
+          "text": "generated useful prototype idea",
+          "sentiment": "positive"
+        }
+      ],
+      "score": 3,
+      "created_at": "2026-05-13T21:46:40.167273Z"
+    },
+    "unit procedural narrative 1778711403.893193": {
+      "topic": "unit procedural narrative 1778711403.893193",
+      "status": "stable",
+      "evidence": [
+        {
+          "timestamp": "2026-05-13T22:30:03.914192Z",
+          "text": "seed from Sandro interest",
+          "sentiment": "positive"
+        },
+        {
+          "timestamp": "2026-05-13T22:30:03.941194Z",
+          "text": "appeared again in research",
+          "sentiment": "positive"
+        },
+        {
+          "timestamp": "2026-05-13T22:30:03.972192Z",
+          "text": "generated useful prototype idea",
+          "sentiment": "positive"
+        }
+      ],
+      "score": 3,
+      "created_at": "2026-05-13T22:30:03.914192Z"
+    },
+    "unit procedural narrative 1778711483.697703": {
+      "topic": "unit procedural narrative 1778711483.697703",
+      "status": "stable",
+      "evidence": [
+        {
+          "timestamp": "2026-05-13T22:31:23.716704Z",
+          "text": "seed from Sandro interest",
+          "sentiment": "positive"
+        },
+        {
+          "timestamp": "2026-05-13T22:31:23.746703Z",
+          "text": "appeared again in research",
+          "sentiment": "positive"
+        },
+        {
+          "timestamp": "2026-05-13T22:31:23.773707Z",
+          "text": "generated useful prototype idea",
+          "sentiment": "positive"
+        }
+      ],
+      "score": 3,
+      "created_at": "2026-05-13T22:31:23.716704Z"
+    },
+    "unit procedural narrative 1778711576.256747": {
+      "topic": "unit procedural narrative 1778711576.256747",
+      "status": "stable",
+      "evidence": [
+        {
+          "timestamp": "2026-05-13T22:32:56.276433Z",
+          "text": "seed from Sandro interest",
+          "sentiment": "positive"
+        },
+        {
+          "timestamp": "2026-05-13T22:32:56.305253Z",
+          "text": "appeared again in research",
+          "sentiment": "positive"
+        },
+        {
+          "timestamp": "2026-05-13T22:32:56.332066Z",
+          "text": "generated useful prototype idea",
+          "sentiment": "positive"
+        }
+      ],
+      "score": 3,
+      "created_at": "2026-05-13T22:32:56.276433Z"
+    }
+  }
+}

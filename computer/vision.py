@@ -2,8 +2,31 @@ from __future__ import annotations
 
 from computer.active_window import get_active_window_title
 from computer.monitors import list_monitors, virtual_bounds
-from computer.ocr import ocr_desktop_data, ocr_image
-from computer.screen_capture import capture_desktop, capture_monitor, screen_size, take_screenshot
+try:
+    from computer.ocr import ocr_desktop_data, ocr_image
+except Exception:  # pragma: no cover - optional OCR dependency fallback
+    def ocr_image(path):
+        return ""
+
+    def ocr_desktop_data():
+        capture = capture_desktop()
+        return {"entries": [], "screenshot": capture["screenshot"], "bounds": capture["bounds"], "ocr_available": False}
+try:
+    from computer.screen_capture import capture_desktop, capture_monitor, screen_size, take_screenshot
+except Exception:  # pragma: no cover - optional GUI dependency fallback
+    from pathlib import Path
+
+    def capture_desktop():
+        return {"screenshot": str(Path("unavailable.png")), "bounds": {"left": 0, "top": 0, "width": 0, "height": 0}, "screen_available": False}
+
+    def capture_monitor(index: int):
+        return {"index": index, "screenshot": str(Path("unavailable.png")), "screen_available": False}
+
+    def screen_size():
+        return (0, 0)
+
+    def take_screenshot():
+        return Path("unavailable.png")
 
 
 def describe_screen(use_ocr: bool = True, *, scope: str = "all") -> dict:

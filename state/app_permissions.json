@@ -1,0 +1,28 @@
+{
+  "chrome.exe": {
+    "can_click": true,
+    "can_type": true,
+    "requires_submit_confirmation": true
+  },
+  "msedge.exe": {
+    "can_click": true,
+    "can_type": true,
+    "requires_submit_confirmation": true
+  },
+  "notepad.exe": {
+    "can_click": true,
+    "can_type": true
+  },
+  "code.exe": {
+    "can_click": true,
+    "can_type": true
+  },
+  "powershell.exe": {
+    "can_click": false,
+    "can_type": false,
+    "blocked": true
+  },
+  "anydesk.exe": {
+    "blocked": true
+  }
+}

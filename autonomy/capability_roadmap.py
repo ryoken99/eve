@@ -24,7 +24,7 @@ CAPABILITY_POINTS: list[dict[str, Any]] = [
     {"id": 13, "title": "Aprendizagem do mundo e tecnologia separada", "paths": ["memory/world/world_learning.md", "memory/technology/technology_learning.md"], "desired": "ficheiros separados antes do lab"},
     {"id": 14, "title": "Melhoria autonoma do sistema", "paths": ["autonomy/autonomy_director.py", "self_improvement/verified_self_update.py"], "desired": "melhorias propostas e testadas sem pedido manual"},
     {"id": 15, "title": "Controlo browser/UI humano", "paths": ["tools/browser_human.py", "computer/mouse_control.py", "computer/keyboard_control.py", "computer/screen_capture.py"], "desired": "browser/teclado/rato/OCR com verificacao"},
-    {"id": 16, "title": "Recursive self-improvement", "paths": ["self_improvement/recursive_self_improvement.py", "self_improvement/verified_self_update.py"], "desired": "RSI controlado com sandbox, testes e rollback"},
+    {"id": 16, "title": "ARSI - Autonomous Recursive Self Improvement", "paths": ["self_improvement/recursive_self_improvement.py", "self_improvement/verified_self_update.py", "self_improvement/arsi_cycle.py"], "desired": "ARSI autonomo controlado com sandbox, testes, metricas e rollback"},
     {"id": 17, "title": "Autonomia/proatividade sem input", "paths": ["autonomy/daemon.py", "autonomy/proactive_decider.py", "autonomy/autonomous_executor.py"], "desired": "acoes autonomas, mensagens e melhorias com o tempo"},
 ]
 
@@ -47,7 +47,7 @@ EIGHT_THREE_CRITERIA: dict[int, list[str]] = {
     13: ["world daily file exists", "technology daily file exists", "personality daily file exists"],
     14: ["autonomy director exists", "verified self update exists", "improvement candidates are tested before core changes"],
     15: ["browser control exists", "keyboard/mouse control exists", "screenshot/OCR verification exists"],
-    16: ["RSI policy/module exists", "sandbox testing exists", "rollback/backup exists"],
+    16: ["ARSI policy/module exists", "sandbox testing exists", "rollback/backup exists", "safe autonomous improvement cycle exists"],
     17: ["daemon exists", "cron/jobs exist", "autonomous mission execution exists", "proactive messages are possible"],
 }
 
@@ -287,7 +287,7 @@ def append_capability_review_history() -> Path:
 
 
 def ensure_capability_review_schedule(*, schedule: str = "6h") -> dict[str, Any]:
-    command = "Set-Location D:\\Eve; python scripts\\capability_review.py"
+    command = f"Set-Location {EVE_ROOT}; python scripts\\capability_review.py"
     existing = [
         job
         for job in list_cron_jobs()
