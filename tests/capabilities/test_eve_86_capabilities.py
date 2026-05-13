@@ -4,6 +4,7 @@ import inspect
 import tempfile
 import unittest
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 from autonomy.action_verifier import verify_autonomous_action
 from autonomy.autonomy_budget import budget_allows
@@ -36,6 +37,7 @@ from research.research_quality import score_research_item
 from research.research_to_lab import research_to_lab_candidate
 from security.admin_session import create_admin_session, expire_admin_session, validate_admin_session
 from security.app_permissions import check_app_permission
+from security.local_account import _hash_code, _safe_name, DEFAULT_ITERATIONS
 from self_improvement.improvement_cycle import run_improvement_cycle
 from self_improvement.arsi_cycle import run_arsi_cycle
 from self_improvement.arsi_policy import arsi_change_allowed
@@ -179,6 +181,31 @@ def test_memory_quality_and_conflict_helpers_cover_capability_edges():
     assert conflict["conflict"]
     quality = memory_quality_score({"id": "x", "source": "unit", "confidence": 0.8, "created_at": "now", "layer": "long_term"})
     assert quality["score"] >= 0.8
+
+
+def test_portable_launch_files_do_not_pin_sandro_drive_letters():
+    root = Path(__file__).resolve().parents[2]
+    files = [
+        root / "eve.ps1",
+        root / "requirements.txt",
+        root / "config" / "browser.json",
+        *sorted((root / "scripts").glob("*.cmd")),
+        *sorted((root / "scripts").glob("*.ps1")),
+    ]
+    needles = ["D:\\Eve", "D:/Eve", "E:\\eve", "E:/eve"]
+    offenders = []
+    for path in files:
+        text = path.read_text(encoding="utf-8", errors="ignore")
+        offenders.extend(f"{path.relative_to(root)}:{needle}" for needle in needles if needle in text)
+    assert offenders == []
+
+
+def test_local_account_hashing_and_profile_names_are_portable():
+    salt = b"unit-test-salt-16"
+    assert _hash_code("172099", salt, DEFAULT_ITERATIONS) == _hash_code("172099", salt, DEFAULT_ITERATIONS)
+    assert _hash_code("172099", salt, DEFAULT_ITERATIONS) != _hash_code("bad", salt, DEFAULT_ITERATIONS)
+    assert _safe_name("PC 1") == "pc_1"
+    assert _safe_name("Eve Local") == "eve_local"
 
 
 def test_missing_turn_detector_has_clean_empty_result():

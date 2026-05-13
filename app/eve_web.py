@@ -19,15 +19,19 @@ if EVE_ROOT not in sys.path:
 
 from app.eve_codex import active_auth_profile, ask, list_auth_accounts, select_auth_account
 from memory.daily_transcripts import append_transcript, transcript_path
+from security.local_account import active_installation, list_installations, set_active_installation, verify_access_code
 
 
-ACCESS_CODE = "172099"
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8787
 
 
+def access_code_status(value: str) -> dict[str, Any]:
+    return verify_access_code(value)
+
+
 def check_access_code(value: str) -> bool:
-    return str(value or "").strip() == ACCESS_CODE
+    return bool(access_code_status(value).get("ok"))
 
 
 def recent_activity(limit: int = 8) -> list[dict[str, Any]]:
@@ -213,6 +217,11 @@ def render_index() -> str:
       <h1>Eve</h1>
       <label for="code">Código de entrada</label>
       <input id="code" type="password" autocomplete="current-password" inputmode="numeric" />
+      <div class="row" id="installChoice" style="display:none">
+        <label for="installations">Perfil deste PC</label>
+        <select id="installations"></select>
+        <button id="useInstallation" type="button">Usar perfil</button>
+      </div>
       <div style="height:12px"></div>
       <button id="enter">Entrar</button>
       <div class="err" id="loginErr"></div>
@@ -253,6 +262,8 @@ def render_index() -> str:
     const app = document.getElementById('app');
     const code = document.getElementById('code');
     const loginErr = document.getElementById('loginErr');
+    const installChoice = document.getElementById('installChoice');
+    const installations = document.getElementById('installations');
     const messages = document.getElementById('messages');
     const form = document.getElementById('form');
     const message = document.getElementById('message');
@@ -270,6 +281,19 @@ def render_index() -> str:
       loadAccounts();
       loadRecentChat();
       message.focus();
+    }
+    function renderInstallations(rows) {
+      installations.innerHTML = '';
+      (rows || []).forEach(item => {
+        const opt = document.createElement('option');
+        opt.value = item.name;
+        const flags = [];
+        if (item.current_root) flags.push('nesta pasta');
+        if (!item.exists) flags.push('pasta ausente');
+        opt.textContent = item.label + ' - ' + item.root + (flags.length ? ' (' + flags.join(', ') + ')' : '');
+        installations.appendChild(opt);
+      });
+      installChoice.style.display = installations.children.length ? 'grid' : 'none';
     }
     function addMsg(who, text) {
       const div = document.createElement('div');
@@ -332,11 +356,30 @@ def render_index() -> str:
     document.getElementById('enter').onclick = async () => {
       loginErr.textContent = '';
       try {
-        await api('/api/login', {code: code.value});
+        const data = await api('/api/login', {code: code.value});
+        if (data.requires_installation_choice) {
+          renderInstallations(data.installations);
+          loginErr.textContent = 'Escolhe se esta sessao e PC 1, PC 2 ou outro perfil local.';
+          return;
+        }
         localStorage.setItem('eve_access', '1');
         showApp();
       } catch (err) {
         loginErr.textContent = 'Código inválido.';
+      }
+    };
+    document.getElementById('useInstallation').onclick = async () => {
+      loginErr.textContent = '';
+      try {
+        const data = await api('/api/use-installation', {name: installations.value});
+        if (!data.matches_current_root) {
+          loginErr.textContent = 'Perfil ativo aponta para ' + data.root + '. Abre a Eve a partir dessa pasta para mudar de PC.';
+          return;
+        }
+        localStorage.setItem('eve_access', '1');
+        showApp();
+      } catch (err) {
+        loginErr.textContent = err.message;
       }
     };
     code.addEventListener('keydown', ev => { if (ev.key === 'Enter') document.getElementById('enter').click(); });
@@ -416,6 +459,9 @@ class EveWebHandler(BaseHTTPRequestHandler):
             accounts = list_auth_accounts()
             self._send_json({"ok": True, "active": active_auth_profile(), "accounts": accounts})
             return
+        if parsed.path == "/api/installations":
+            self._send_json({"ok": True, "active": active_installation(), "installations": list_installations()})
+            return
         if parsed.path == "/api/activity":
             query = urllib.parse.parse_qs(parsed.query)
             limit = int((query.get("limit") or ["8"])[0])
@@ -433,9 +479,22 @@ class EveWebHandler(BaseHTTPRequestHandler):
         data = self._read_json()
         try:
             if parsed.path == "/api/login":
-                ok = check_access_code(str(data.get("code") or ""))
-                append_transcript("actions", "web_login", {"ok": ok})
-                self._send_json({"ok": ok}, 200 if ok else 403)
+                result = access_code_status(str(data.get("code") or ""))
+                ok = bool(result.get("ok"))
+                installations = result.get("installations") or []
+                requires_choice = ok and len(installations) > 1
+                append_transcript("actions", "web_login", {"ok": ok, "requires_installation_choice": requires_choice})
+                self._send_json({
+                    "ok": ok,
+                    "requires_installation_choice": requires_choice,
+                    "installations": installations,
+                    "active_installation": result.get("active_installation"),
+                }, 200 if ok else 403)
+                return
+            if parsed.path == "/api/use-installation":
+                result = set_active_installation(str(data.get("name") or ""))
+                append_transcript("actions", "web_installation_switch", result)
+                self._send_json(result)
                 return
             if parsed.path == "/api/use-account":
                 profile = str(data.get("profile") or "")

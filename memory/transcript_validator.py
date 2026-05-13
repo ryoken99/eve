@@ -26,7 +26,10 @@ def read_transcript_jsonl(path: Path) -> list[dict]:
     rows = []
     for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
         if line.strip():
-            rows.append(json.loads(line))
+            try:
+                rows.append(json.loads(line))
+            except json.JSONDecodeError as exc:
+                rows.append({"kind": "malformed", "raw": line, "_malformed": True, "error": str(exc)})
     return rows
 
 

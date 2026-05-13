@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 
@@ -15,7 +16,7 @@ STATE_DIR = EVE_ROOT / "state"
 BACKUPS_DIR = EVE_ROOT / "backups"
 LAB_DIR = EVE_ROOT / "lab"
 SECURITY_DIR = EVE_ROOT / "security"
-ENTITIES_MEMORY_DIR = Path(r"D:\entities\memoria para  as entidades")
+ENTITIES_MEMORY_DIR = Path(os.environ.get("EVE_ENTITIES_MEMORY_DIR", EVE_ROOT / "external" / "entities_memory"))
 
 
 def _mkdir_project_dir(path: Path) -> None:

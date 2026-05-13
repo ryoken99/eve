@@ -1,6 +1,10 @@
+param(
+    [string]$EveRoot = $PSScriptRoot
+)
+
 $ErrorActionPreference = "Stop"
 
-$EveRoot = "D:\Eve"
+$EveRoot = (Resolve-Path -LiteralPath $EveRoot).Path
 $LogDir = Join-Path $EveRoot "logs"
 $ConfigDir = Join-Path $EveRoot "config"
 $DataDir = Join-Path $EveRoot "data"
@@ -24,7 +28,7 @@ function Write-EveHeader {
     Write-Host "========================================" -ForegroundColor DarkCyan
     Write-Host " Eve - Local Agent Console" -ForegroundColor Cyan
     Write-Host "========================================" -ForegroundColor DarkCyan
-    Write-Host " Eve:     D:\Eve" -ForegroundColor DarkGray
+    Write-Host " Eve:     $EveRoot" -ForegroundColor DarkGray
     Write-Host " Auth:    Eve Codex OAuth proprio" -ForegroundColor DarkGray
     Write-Host " Backend: Eve Python client" -ForegroundColor DarkGray
     Write-Host ""

@@ -5,5 +5,8 @@ pynput
 scikit-learn
 opencv-python
 tzdata
+pytest
+uiautomation
+playwright
+sentence-transformers
 # chromadb
-# playwright
