@@ -516,6 +516,11 @@ class EveWebHandler(BaseHTTPRequestHandler):
             append_transcript("errors", "web_error", {"path": parsed.path, "error": f"{type(exc).__name__}: {exc}"})
             self._send_json({"ok": False, "error": f"{type(exc).__name__}: {exc}"}, 500)
             return
+        except SystemExit as exc:
+            message = str(exc) or "A operacao foi interrompida."
+            append_transcript("errors", "web_system_exit", {"path": parsed.path, "error": message})
+            self._send_json({"ok": False, "error": message}, 500)
+            return
         self.send_error(HTTPStatus.NOT_FOUND)
 
     def log_message(self, format: str, *args: Any) -> None:
