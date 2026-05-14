@@ -45,17 +45,28 @@ def ensure_daily_transcript_files(day: datetime | None = None) -> dict[str, str]
     return paths
 
 
+def _last_transcript_hash(path: Path) -> str:
+    if not path.exists() or path.stat().st_size == 0:
+        return ""
+    chunk_size = 8192
+    with path.open("rb") as handle:
+        handle.seek(0, os.SEEK_END)
+        end = handle.tell()
+        offset = max(0, end - chunk_size)
+        handle.seek(offset)
+        data = handle.read().decode("utf-8", errors="replace")
+    for line in reversed(data.splitlines()):
+        if line.strip():
+            try:
+                return json.loads(line).get("hash", "")
+            except Exception:
+                return ""
+    return ""
+
+
 def append_transcript(kind: str, event: str, payload: dict[str, Any], *, day: datetime | None = None) -> dict[str, Any]:
     path = transcript_path(kind, day)
-    previous_hash = ""
-    if path.exists():
-        for line in reversed(path.read_text(encoding="utf-8", errors="replace").splitlines()):
-            if line.strip():
-                try:
-                    previous_hash = json.loads(line).get("hash", "")
-                except Exception:
-                    previous_hash = ""
-                break
+    previous_hash = _last_transcript_hash(path)
     entry = {
         "timestamp": now_iso(),
         "date_key": transcript_date_key(day),

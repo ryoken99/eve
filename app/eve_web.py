@@ -27,8 +27,12 @@ from security.local_account import active_installation, list_installations, set_
 
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8787
+UI_VERSION = "2026-05-14-image-upload-v1"
+UI_FEATURES = ["chat", "account_switch", "installation_profiles", "image_upload"]
 UPLOAD_DIR = Path(EVE_ROOT) / "logs" / "interface_uploads"
 MAX_IMAGE_BYTES = 12 * 1024 * 1024
+START_MONOTONIC = time.time()
+STARTED_AT = time.strftime("%Y-%m-%dT%H:%M:%S%z")
 ALLOWED_IMAGE_TYPES = {
     "image/png": ".png",
     "image/jpeg": ".jpg",
@@ -118,11 +122,28 @@ def recent_chat_messages(limit: int = 40) -> list[dict[str, str]]:
     return list(items)
 
 
+def web_health_payload(host: str = DEFAULT_HOST, port: int = DEFAULT_PORT) -> dict[str, Any]:
+    return {
+        "ok": True,
+        "service": "eve_web",
+        "ui_version": UI_VERSION,
+        "features": UI_FEATURES,
+        "root": EVE_ROOT,
+        "pid": os.getpid(),
+        "started_at": STARTED_AT,
+        "uptime_seconds": round(time.time() - START_MONOTONIC, 3),
+        "host": host,
+        "port": port,
+        "has_image_upload": True,
+    }
+
+
 def render_index() -> str:
     return r"""<!doctype html>
 <html lang="pt">
 <head>
   <meta charset="utf-8" />
+  <meta name="eve-ui-version" content="2026-05-14-image-upload-v1" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Eve</title>
   <style>
@@ -530,6 +551,9 @@ class EveWebHandler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(body)
             return
+        if parsed.path == "/api/health":
+            self._send_json(web_health_payload(self.server.server_address[0], self.server.server_address[1]))
+            return
         if parsed.path == "/api/accounts":
             accounts = list_auth_accounts()
             self._send_json({"ok": True, "active": active_auth_profile(), "accounts": accounts})
@@ -613,14 +637,22 @@ class EveWebHandler(BaseHTTPRequestHandler):
         self.send_error(HTTPStatus.NOT_FOUND)
 
     def log_message(self, format: str, *args: Any) -> None:
-        append_transcript("actions", "web_request", {"client": self.address_string(), "message": format % args})
+        message = format % args
+        if "/api/activity" in message:
+            return
+        append_transcript("actions", "web_request", {"client": self.address_string(), "message": message})
+
+
+class EveWebServer(ThreadingHTTPServer):
+    allow_reuse_address = True
+    daemon_threads = True
 
 
 def run_server(host: str = DEFAULT_HOST, port: int = DEFAULT_PORT, *, open_ui: bool = False) -> None:
     url = f"http://{host}:{port}/"
     if open_ui:
         threading.Thread(target=lambda: (time.sleep(1), webbrowser.open(url)), daemon=True).start()
-    server = ThreadingHTTPServer((host, port), EveWebHandler)
+    server = EveWebServer((host, port), EveWebHandler)
     print(f"Eve web interface: {url}")
     append_transcript("actions", "web_server_started", {"url": url})
     server.serve_forever()

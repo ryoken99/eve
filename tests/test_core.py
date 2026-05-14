@@ -16,6 +16,7 @@ os.environ.setdefault("EVE_AUDIT_DIR", str(TEST_LOG_ROOT / "audit"))
 from computer.monitors import virtual_bounds
 from tools.browser_human import browser_launch_args
 from core.self_report import functional_self_report
+from core.gateway_manager import gateway_state
 from core.capability_self_test import collect_capability_self_test, format_capability_self_test
 from core.paths import SKILLS_DIR, WORKSPACE_DIR
 from core.personality_engine import score_options, update_preference_candidate
@@ -849,6 +850,13 @@ class EveCoreTests(unittest.TestCase):
         self.assertTrue(Path(meta["path"]).exists())
         self.assertEqual(meta["content_type"], "image/png")
         self.assertGreater(meta["bytes"], 0)
+
+    def test_gateway_state_reports_self_awareness_shape(self):
+        state = gateway_state(port=65500)
+        self.assertEqual(state["root"], str(Path(__file__).resolve().parents[1]))
+        self.assertEqual(state["port"], 65500)
+        self.assertIn("listening", state)
+        self.assertIn("has_image_upload", state)
 
     def test_cron_manager_dry_run(self):
         cron_path = WORKSPACE_DIR / "unit_command_cron.json"
