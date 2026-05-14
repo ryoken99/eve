@@ -256,14 +256,26 @@ def _publish_x_post_now(args: dict) -> dict:
     publish_text = fitted["text"]
     encoded = urllib.parse.quote(publish_text)
     browser_closed = None
-    try:
-        skill_result = run_skill(
-            "trusted/x_publish_text_learning",
-            args={"url": f"https://x.com/intent/post?text={encoded}", "text": publish_text},
-            approved=True,
+    skill_result = run_skill(
+        "trusted/x_publish_text_learning",
+        args={"url": f"https://x.com/intent/post?text={encoded}", "text": publish_text},
+        approved=True,
+    )
+    skill_verified = False
+    if isinstance(skill_result, dict):
+        verification = skill_result.get("verification")
+        skill_verified = bool(
+            skill_result.get("status") in {"ok", "completed", "published"}
+            or (isinstance(verification, dict) and verification.get("ok"))
         )
-    finally:
+    if skill_verified:
         browser_closed = close_browser_page("x_publish_finished")
+    else:
+        browser_closed = {
+            "status": "skipped",
+            "reason": "x_publish_not_verified_keep_page_open_for_review",
+            "method": "none",
+        }
     if isinstance(skill_result, dict):
         skill_result["correction"] = {
             "status": fitted["status"],

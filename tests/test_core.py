@@ -1017,6 +1017,22 @@ class EveCoreTests(unittest.TestCase):
         self.assertEqual(result["result"]["correction"]["status"], "auto_shortened")
         self.assertTrue(result["verification"]["ok"])
 
+    def test_publish_x_post_now_keeps_browser_open_when_publish_not_verified(self):
+        from app.eve_codex import execute_eve_tool_call
+
+        set_safety_mode("unrestricted_mode", "unit publish")
+        failed_skill = {
+            "status": "failed",
+            "verification": {"ok": False, "rule": "composer_not_verified_before_publish"},
+            "results": [],
+        }
+        with patch("core.eve_tool_registry.run_skill", return_value=failed_skill):
+            with patch("core.eve_tool_registry.close_browser_page") as close_page:
+                result = execute_eve_tool_call({"tool": "publish_x_post_now", "args": {"text": "Not yet verified."}})
+        close_page.assert_not_called()
+        self.assertEqual(result["result"]["browser_closed"]["status"], "skipped")
+        self.assertEqual(result["result"]["browser_closed"]["reason"], "x_publish_not_verified_keep_page_open_for_review")
+
     def test_x_login_google_clicks_eve_account_from_login_modal(self):
         screenshots = iter(
             [
