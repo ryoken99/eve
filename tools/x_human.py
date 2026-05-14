@@ -57,6 +57,8 @@ def focus_window_by_title_terms(terms: list[str]) -> dict:
             score = 0
             if "chrome" in lowered:
                 score += 100
+            if "accounts.google" in lowered or "contas google" in lowered or "iniciar sessão" in lowered or "iniciar sessao" in lowered or "sign in" in lowered:
+                score += 140
             if "x -" in lowered or "x." in lowered or "x.com" in lowered or "twitter" in lowered:
                 score += 60
             if "codex" in lowered:
@@ -217,6 +219,71 @@ def _first_uia_login_click(email_hint: str, account_hint: str) -> tuple[list[dic
     return attempts, None
 
 
+def click_google_account_chooser(*, account_hint: str = "eve", email_hint: str = "takerryoken@gmail.com", approved: bool = False) -> dict:
+    decision = check_action("browser_login", approved=approved)
+    if not decision.allowed:
+        raise PermissionError(decision.reason)
+    ensure_project_dirs()
+    focus = focus_window_by_title_terms(["google", "chrome", "iniciar sessão", "accounts.google"])
+    before = ocr_desktop_data()
+    before_entries = before.get("entries") or []
+    before_text = _entries_text(before_entries)
+    looks_like_chooser = any(term in before_text.lower() for term in ("selecione uma conta", "selecionar uma conta", "choose an account", "continuar para x.com"))
+    uia_attempts, uia_success = _first_uia_login_click(email_hint, account_hint)
+    target = {"found": False, "reason": "uia_not_used_or_failed"}
+    action = None
+    engine = "uia"
+    if uia_success:
+        action = uia_success
+    else:
+        for terms in ([email_hint], [account_hint]):
+            target = _find_entry_row(before_entries, [term for term in terms if term], y_window=60)
+            if target.get("found"):
+                break
+        if target.get("found"):
+            engine = "ocr"
+            action = click(int(target["center"]["x"]), int(target["center"]["y"]))
+        else:
+            result = {
+                "status": "google_account_not_found",
+                "focus": focus,
+                "before_screenshot": before.get("screenshot"),
+                "looks_like_chooser": looks_like_chooser,
+                "target": target,
+                "uia_attempts": uia_attempts,
+                "verification": {"ok": False, "rule": "google_account_visible_before_click"},
+                "ocr_sample": before_text[:700],
+            }
+            log_ui_action("x_google_account_chooser", result)
+            return result
+    time.sleep(5)
+    after = ocr_desktop_data()
+    after_text = _entries_text(after.get("entries") or [])
+    still_chooser = any(term in after_text.lower() for term in ("selecione uma conta", "selecionar uma conta", "choose an account"))
+    advanced_signal = any(term in after_text.lower() for term in ("continuar", "autorizar", "for you", "para voce", "página inicial", "postar")) and not still_chooser
+    status = "account_selected_or_progressed" if not still_chooser or advanced_signal else "needs_review"
+    result = {
+        "status": status,
+        "focus": focus,
+        "engine": engine,
+        "target": target if engine == "ocr" else {"found": True, "engine": "uia", "terms": [email_hint, account_hint]},
+        "click": action,
+        "uia_attempts": uia_attempts,
+        "before_screenshot": before.get("screenshot"),
+        "after_screenshot": after.get("screenshot"),
+        "looks_like_chooser": looks_like_chooser,
+        "still_chooser": still_chooser,
+        "advanced_signal": advanced_signal,
+        "verification": {
+            "ok": status == "account_selected_or_progressed",
+            "rule": "google_account_clicked_and_state_changed",
+            "reason": "Google account chooser advanced" if status == "account_selected_or_progressed" else "account chooser still visible after click",
+        },
+    }
+    log_ui_action("x_google_account_chooser", result)
+    return result
+
+
 def login_x_with_google_account(*, account_hint: str = "eve", email_hint: str = "takerryoken@gmail.com", approved: bool = False) -> dict:
     decision = check_action("browser_login", approved=approved)
     if not decision.allowed:
@@ -231,7 +298,13 @@ def login_x_with_google_account(*, account_hint: str = "eve", email_hint: str = 
         mid_entries = mid.get("entries") or []
         mid_text = _entries_text(mid_entries)
         google_step = False
-        if email_hint and email_hint.lower() in mid_text.lower():
+        chooser_step = any(term in mid_text.lower() for term in ("selecione uma conta", "selecionar uma conta", "choose an account", "continuar para x.com"))
+        chooser_result = None
+        if chooser_step:
+            google_step = True
+            chooser_result = click_google_account_chooser(account_hint=account_hint, email_hint=email_hint, approved=approved)
+            time.sleep(3)
+        elif email_hint and email_hint.lower() in mid_text.lower():
             google_step = True
             account_target = _find_entry_row(mid_entries, [email_hint], y_window=55)
             if account_target.get("found"):
@@ -252,6 +325,7 @@ def login_x_with_google_account(*, account_hint: str = "eve", email_hint: str = 
             "engine": "uia",
             "click": action,
             "google_step_detected": google_step,
+            "google_account_chooser": chooser_result,
             "mid_screenshot": mid.get("screenshot"),
             "after_screenshot": after.get("screenshot"),
             "still_login_modal": still_login,

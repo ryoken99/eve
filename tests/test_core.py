@@ -111,7 +111,7 @@ from self_improvement.improvement_planner import plan_autonomous_system_improvem
 from self_improvement.recursive_self_improvement import run_controlled_rsi_cycle
 from memory.daily_transcripts import append_transcript, ensure_daily_transcript_files, transcript_date_key, transcript_path
 from app.eve_web import check_access_code, recent_chat_messages, render_index, save_chat_image
-from tools.x_human import fit_x_post_text, focus_window_by_title_terms, login_x_with_google_account, validate_x_post_text
+from tools.x_human import click_google_account_chooser, fit_x_post_text, focus_window_by_title_terms, login_x_with_google_account, validate_x_post_text
 from tools.git_sync import git_pull_updates
 from lab.lab_manager import create_candidate, record_candidate_result
 from memory.errors.error_memory import record_error
@@ -1109,6 +1109,68 @@ class EveCoreTests(unittest.TestCase):
             result = focus_window_by_title_terms(["x", "chrome"])
         self.assertTrue(result["ok"])
         self.assertEqual(callbacks["focused"], 2)
+
+    def test_x_focus_prefers_google_account_chooser_over_x_window(self):
+        callbacks = {}
+
+        class FakeUser32:
+            titles = {
+                1: "X. O que esta acontecendo / X - Google Chrome",
+                2: "Iniciar sessao - Contas Google - Google Chrome",
+            }
+
+            def IsWindowVisible(self, hwnd):
+                return True
+
+            def GetWindowTextLengthW(self, hwnd):
+                return len(self.titles[int(hwnd)])
+
+            def GetWindowTextW(self, hwnd, buffer, length):
+                buffer.value = self.titles[int(hwnd)]
+
+            def EnumWindows(self, callback, _lparam):
+                callbacks["callback"] = callback
+                callback(1, 0)
+                callback(2, 0)
+
+            def ShowWindow(self, hwnd, flag):
+                callbacks["shown"] = int(hwnd)
+
+            def SetForegroundWindow(self, hwnd):
+                callbacks["focused"] = int(hwnd)
+
+        fake_windll = type("FakeWindll", (), {"user32": FakeUser32()})()
+        with patch("tools.x_human.ctypes.windll", fake_windll, create=True), patch("tools.x_human.time.sleep"):
+            result = focus_window_by_title_terms(["google", "chrome", "iniciar sessao", "accounts.google"])
+        self.assertTrue(result["ok"])
+        self.assertEqual(callbacks["focused"], 2)
+
+    def test_x_google_account_chooser_clicks_eve_account(self):
+        screenshots = iter(
+            [
+                {
+                    "screenshot": "chooser_before.png",
+                    "entries": [
+                        {"text": "Selecione", "global_box": {"left": 95, "top": 160, "width": 95, "height": 28, "center_x": 142, "center_y": 174}},
+                        {"text": "uma", "global_box": {"left": 195, "top": 160, "width": 48, "height": 28, "center_x": 219, "center_y": 174}},
+                        {"text": "conta", "global_box": {"left": 250, "top": 160, "width": 60, "height": 28, "center_x": 280, "center_y": 174}},
+                        {"text": "eve", "global_box": {"left": 138, "top": 286, "width": 34, "height": 20, "center_x": 155, "center_y": 296}},
+                        {"text": "takerryoken@gmail.com", "global_box": {"left": 138, "top": 312, "width": 190, "height": 20, "center_x": 233, "center_y": 322}},
+                    ],
+                },
+                {"screenshot": "chooser_after.png", "entries": [{"text": "Continuar", "global_box": {"left": 100, "top": 200, "width": 80, "height": 20, "center_x": 140, "center_y": 210}}]},
+            ]
+        )
+        with patch("tools.x_human.focus_window_by_title_terms", return_value={"ok": True, "match": {"title": "Iniciar sessão - Contas Google - Google Chrome"}}):
+            with patch("tools.x_human._first_uia_login_click", return_value=([{"ok": False}], None)):
+                with patch("tools.x_human.ocr_desktop_data", side_effect=lambda: next(screenshots)):
+                    with patch("tools.x_human.click", return_value={"status": "clicked"}) as clicked:
+                        with patch("tools.x_human.time.sleep"):
+                            result = click_google_account_chooser(approved=True)
+        self.assertEqual(result["status"], "account_selected_or_progressed")
+        self.assertEqual(result["engine"], "ocr")
+        self.assertTrue(result["verification"]["ok"])
+        clicked.assert_called()
 
     def test_fit_x_post_text_keeps_text_within_x_limit(self):
         fitted = fit_x_post_text("Eve " + ("learning " * 60))
