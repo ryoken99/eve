@@ -38,6 +38,7 @@ from memory.daily_transcripts import ensure_daily_transcript_files
 from security.secrets_vault import get_secret, list_secrets, mask_secret, store_secret
 from security.safety_modes import current_safety_mode, describe_safety, set_safety_mode
 from security.tool_policy import classify_tool, decide_tool_execution
+from self_improvement.arsi_cycle import arsi_core_update
 from self_improvement.verified_self_update import verified_core_update
 from self_improvement.improvement_planner import plan_autonomous_system_improvements
 from tools.admin_executor import admin_status, launch_elevated_powershell, run_admin_command
@@ -875,6 +876,20 @@ def _verified_self_update(args: dict) -> dict:
     }
 
 
+def _arsi_core_update(args: dict) -> dict:
+    return {
+        "ok": True,
+        "tool": "arsi_core_update",
+        "result": arsi_core_update(
+            str(args.get("path") or ""),
+            str(args.get("content") or ""),
+            tests=args.get("tests") or ["py_compile_candidate"],
+            max_attempts=int(args.get("max_attempts") or 1),
+            approved=bool(args.get("approved") or args.get("sandro_approved")),
+        ),
+    }
+
+
 TOOLS: dict[str, EveTool] = {
     "capability_self_test": EveTool("capability_self_test", "Verifica capacidades locais atuais da Eve.", {}, _capability_self_test),
     "capability_roadmap": EveTool("capability_roadmap", "Audita os 17 pontos de evolucao da Eve, classifica proximidade/melhoria e garante revisao algumas vezes por dia.", {"write": True, "history": True, "ensure_schedule": True}, _capability_roadmap),
@@ -989,6 +1004,7 @@ TOOLS: dict[str, EveTool] = {
     "session_rotate": EveTool("session_rotate", "Cria checkpoint e muda para nova sessao ativa.", {"reason": "contexto grande", "new_session_id": ""}, _session_rotate),
     "internal_plan": EveTool("internal_plan", "Planeia que ferramentas internas usar para um pedido natural.", {"prompt": "trabalha em loop nesta tarefa", "limit": 5}, _internal_plan),
     "verified_self_update": EveTool("verified_self_update", "Auto-melhoria verificada: testa candidato em sandbox e so aplica se os testes passarem.", {"path": "core/example.py", "content": "codigo", "tests": ["py_compile_candidate"], "max_attempts": 1, "approved": True}, _verified_self_update),
+    "arsi_core_update": EveTool("arsi_core_update", "ARSI aplicado ao core: classifica risco, exige aprovacao para core, testa candidato, cria backup/rollback e so depois aplica.", {"path": "core/example.py", "content": "codigo", "tests": ["py_compile_candidate"], "max_attempts": 1, "approved": True}, _arsi_core_update),
 }
 
 

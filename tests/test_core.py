@@ -107,6 +107,7 @@ from memory.vector_provider import LocalVectorMemoryProvider
 from learning.skill_curator import record_skill_usage, curate_skills
 from security.secrets_vault import mask_secret
 from self_improvement.verified_self_update import verified_core_update
+from self_improvement.arsi_cycle import arsi_core_update
 from self_improvement.improvement_planner import plan_autonomous_system_improvements
 from self_improvement.recursive_self_improvement import run_controlled_rsi_cycle
 from memory.daily_transcripts import append_transcript, ensure_daily_transcript_files, transcript_date_key, transcript_path
@@ -724,6 +725,7 @@ class EveCoreTests(unittest.TestCase):
         self.assertEqual(classify_tool("run_terminal").approval_class, "exec_capable")
         self.assertEqual(classify_tool("publish_x_post_now").approval_class, "public_or_external")
         self.assertEqual(classify_tool("schedule_repeated_x_posts").approval_class, "public_or_external")
+        self.assertEqual(classify_tool("arsi_core_update").approval_class, "self_modify")
         self.assertEqual(classify_tool("browser_close").approval_class, "cleanup")
         self.assertTrue(classify_tool("browser_close").auto_approve)
         set_safety_mode("safe_mode", "unit policy")
@@ -835,6 +837,38 @@ class EveCoreTests(unittest.TestCase):
         self.assertFalse(result["verification"]["ok"])
         self.assertEqual(target.read_text(encoding="utf-8"), "VALUE = 1\n")
         target.unlink(missing_ok=True)
+
+    def test_arsi_core_update_can_apply_approved_core_change_with_tests_and_backup(self):
+        target = Path("core") / "unit_arsi_temp.py"
+        absolute = Path(__file__).resolve().parents[1] / target
+        absolute.write_text("VALUE = 1\n", encoding="utf-8")
+        try:
+            result = arsi_core_update(
+                str(target),
+                "VALUE = 2\n",
+                tests=["py_compile_candidate"],
+                approved=True,
+            )
+            self.assertTrue(result["applied"])
+            self.assertEqual(result["policy"]["framework"], "ARSI")
+            self.assertEqual(result["policy"]["risk"], "high")
+            self.assertTrue(result["tests_passed"])
+            self.assertTrue(result["rollback_ready"])
+            self.assertIn("VALUE = 2", absolute.read_text(encoding="utf-8"))
+        finally:
+            absolute.unlink(missing_ok=True)
+
+    def test_arsi_core_update_blocks_core_change_without_approval(self):
+        result = arsi_core_update(
+            "core/unit_arsi_blocked.py",
+            "VALUE = 1\n",
+            tests=["py_compile_candidate"],
+            approved=False,
+        )
+        self.assertFalse(result["applied"])
+        self.assertEqual(result["status"], "blocked")
+        self.assertEqual(result["policy"]["framework"], "ARSI")
+        self.assertEqual(result["policy"]["risk"], "high")
 
     def test_daily_transcripts_use_dd_mm_yy_date_key(self):
         day = datetime(2026, 5, 10, 0, 1)
