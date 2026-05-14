@@ -25,6 +25,7 @@ from app.eve_codex import (
     _format_interface_message,
     _extract_eve_tool_call,
     _extract_eve_tool_calls,
+    _finalize_assistant_text,
     _review_tool_delivery_before_final,
     _safe_profile_name,
     active_loop_mode,
@@ -88,6 +89,7 @@ from autonomy.autonomy_reporter import run_autonomy_report_cycle
 from autonomy.proactive_decider import decide_proactive_actions
 from tools.x_scheduler import build_x_post_task_command, schedule_repeated_x_posts, schedule_x_post
 from tools.research_scheduler import build_web_research_task_command, schedule_web_research_report
+from tools import telegram_bridge
 from tools.windows_scheduler import build_task_wrapper_command, create_daily_task, write_task_wrapper
 from tools.admin_executor import admin_status, launch_elevated_powershell
 from autonomy.cron_manager import add_prompt_job, run_due_jobs
@@ -581,6 +583,50 @@ class EveCoreTests(unittest.TestCase):
             batch_results,
         )
         self.assertEqual(reviewed, "Feito, Sandro. Pasta criada.")
+
+    def test_finalize_blocks_raw_eve_tool_delivery(self):
+        with patch("app.eve_codex.safe_print"), patch("app.eve_codex.publish_interface_message"), patch("app.eve_codex._record_session_message"), patch("app.eve_codex._sync_vector_message"):
+            text = _finalize_assistant_text(
+                'EVE_TOOL {"tool":"run_terminal","args":{"command":"Get-ChildItem"}}',
+                "Sandro",
+                publish_to_interface=False,
+            )
+        self.assertIn("Bloqueei uma resposta interna", text)
+        self.assertNotIn('{"tool":"run_terminal"', text)
+
+    def test_telegram_poll_once_answers_and_advances_offset(self):
+        tmp = TEST_LOG_ROOT / "telegram"
+        tmp.mkdir(parents=True, exist_ok=True)
+        fake_state = tmp / "state.json"
+        fake_pid = tmp / "bridge.pid"
+        fake_log = tmp / "bridge.jsonl"
+
+        def fake_api(method, params=None, *, token=None, timeout=30):
+            if method == "getUpdates":
+                return {
+                    "ok": True,
+                    "result": [
+                        {
+                            "update_id": 10,
+                            "message": {
+                                "message_id": 7,
+                                "chat": {"id": 123},
+                                "from": {"first_name": "Sandro"},
+                                "text": "ola eve",
+                            },
+                        }
+                    ],
+                }
+            if method == "sendMessage":
+                return {"ok": True, "result": {"message_id": 8, "text": params["text"]}}
+            raise AssertionError(method)
+
+        with patch.object(telegram_bridge, "STATE_PATH", fake_state), patch.object(telegram_bridge, "PID_PATH", fake_pid), patch.object(telegram_bridge, "LOG_PATH", fake_log):
+            with patch.object(telegram_bridge, "telegram_api", side_effect=fake_api), patch("app.eve_codex.ask", return_value="ola Sandro"):
+                result = telegram_bridge.poll_once(respond=True, token="unit-token")
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["count"], 1)
+        self.assertEqual(json.loads(fake_state.read_text(encoding="utf-8"))["offset"], 11)
 
     def test_task_ledger_marks_unverified_tool_as_failed(self):
         task_id = start_tool_task("unit_tool", {"unit": True}, source="unit")

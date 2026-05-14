@@ -1112,6 +1112,12 @@ def ask(prompt: str, *, speaker: str = "sandro", publish_to_interface: bool = Tr
         if final_text is not None:
             return final_text
     if text:
+        if _extract_eve_tool_calls(text):
+            append_chat("error", text, tags=["blocked_raw_eve_tool_delivery"])
+            text = (
+                "Bloqueei uma resposta interna que ainda continha uma chamada EVE_TOOL por executar. "
+                "Nesta etapa as ferramentas nao estavam disponiveis ou a chamada nao foi executada; por isso nao vou fingir que a acao ficou feita."
+            )
         safe_print(text)
         append_chat("assistant", text)
         _record_session_message("assistant", text, {"reply_to": display_name})
@@ -1240,6 +1246,12 @@ def _review_tool_delivery_before_final(original_prompt: str, draft_text: str, ba
 
 
 def _finalize_assistant_text(text: str, display_name: str, publish_to_interface: bool, tags: list[str] | None = None) -> str:
+    if _extract_eve_tool_calls(text):
+        append_chat("error", text, tags=["blocked_raw_eve_tool_delivery"])
+        text = (
+            "Bloqueei uma resposta interna que ainda continha uma chamada EVE_TOOL por executar. "
+            "Isto quer dizer que a tarefa ainda nao ficou concluida com verificacao real; preciso continuar a executar as ferramentas necessarias ou reportar a falha concreta."
+        )
     safe_print(text)
     append_chat("assistant", text, tags=tags)
     _record_session_message("assistant", text, {"reply_to": display_name, "tags": tags or []})

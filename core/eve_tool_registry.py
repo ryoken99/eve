@@ -50,6 +50,11 @@ from tools.git_sync import git_pull_updates
 from tools.notification import notify
 from tools.process_manager import list_processes, poll_process, start_process, stop_process
 from tools.terminal import run_command
+from tools.telegram_bridge import poll_once as telegram_poll_once
+from tools.telegram_bridge import public_status as telegram_status
+from tools.telegram_bridge import send_message as telegram_send_message
+from tools.telegram_bridge import start_bridge as telegram_start_bridge
+from tools.telegram_bridge import stop_bridge as telegram_stop_bridge
 from tools.web_research import run_web_research_report
 from tools.windows_scheduler import create_daily_task, list_eve_tasks
 from tools.x_human import fit_x_post_text
@@ -730,6 +735,37 @@ def _secrets_mask(args: dict) -> dict:
     return {"ok": True, "tool": "secrets_mask", "result": {"masked": mask_secret(value)}}
 
 
+def _telegram_status(args: dict) -> dict:
+    return {"ok": True, "tool": "telegram_status", "result": telegram_status()}
+
+
+def _telegram_start_bridge(args: dict) -> dict:
+    return {
+        "ok": True,
+        "tool": "telegram_start_bridge",
+        "result": telegram_start_bridge(interval=int(args.get("interval") or 5)),
+    }
+
+
+def _telegram_stop_bridge(args: dict) -> dict:
+    return {"ok": True, "tool": "telegram_stop_bridge", "result": telegram_stop_bridge()}
+
+
+def _telegram_poll_once(args: dict) -> dict:
+    return {"ok": True, "tool": "telegram_poll_once", "result": telegram_poll_once(respond=bool(args.get("respond", True)))}
+
+
+def _telegram_send_message(args: dict) -> dict:
+    chat_id = args.get("chat_id")
+    if not chat_id:
+        chat_id = (telegram_status().get("last_chat_id") or "")
+    return {
+        "ok": True,
+        "tool": "telegram_send_message",
+        "result": telegram_send_message(chat_id, str(args.get("text") or "Eve Telegram test")),
+    }
+
+
 def _diagnostics_export(args: dict) -> dict:
     return {"ok": True, "tool": "diagnostics_export", "result": build_diagnostics_bundle(str(args.get("note") or ""))}
 
@@ -899,6 +935,11 @@ TOOLS: dict[str, EveTool] = {
     "secrets_get": EveTool("secrets_get", "Le segredo mascarado por defeito.", {"name": "api_key", "reveal": False}, _secrets_get),
     "secrets_list": EveTool("secrets_list", "Lista nomes de segredos mascarados.", {}, _secrets_list),
     "secrets_mask": EveTool("secrets_mask", "Mascara texto sensivel para logs/respostas.", {"value": "secret"}, _secrets_mask),
+    "telegram_status": EveTool("telegram_status", "Mostra estado da ponte Telegram da Eve sem expor token.", {}, _telegram_status),
+    "telegram_start_bridge": EveTool("telegram_start_bridge", "Liga a ponte Telegram: mensagens recebidas no bot entram na Eve e recebem resposta no Telegram.", {"interval": 5, "approved": True}, _telegram_start_bridge),
+    "telegram_stop_bridge": EveTool("telegram_stop_bridge", "Para a ponte Telegram da Eve.", {"approved": True}, _telegram_stop_bridge),
+    "telegram_poll_once": EveTool("telegram_poll_once", "Lê uma vez as mensagens novas do Telegram e responde se respond=true.", {"respond": True, "approved": True}, _telegram_poll_once),
+    "telegram_send_message": EveTool("telegram_send_message", "Envia mensagem pelo Telegram para chat_id conhecido ou indicado.", {"chat_id": "", "text": "ola"}, _telegram_send_message),
     "diagnostics_export": EveTool("diagnostics_export", "Exporta diagnostico/trajectory basica da Eve.", {"note": "debug"}, _diagnostics_export),
     "install_startup_daemon": EveTool("install_startup_daemon", "Instala tarefa Windows para tick autonomo recorrente, por defeito com RunLevel Highest.", {"time": "09:00", "highest": True}, _install_startup_daemon),
     "install_startup_console": EveTool("install_startup_console", "Instala tarefa Windows para abrir consola Eve.", {"time": "09:01"}, _install_startup_console),

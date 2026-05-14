@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import socket
 import subprocess
 import sys
@@ -114,6 +115,19 @@ def _web_gateway_processes() -> list[dict[str, Any]]:
     ]
 
 
+def _process_gateway_ports(processes: list[dict[str, Any]]) -> list[int]:
+    ports: list[int] = []
+    for process in processes:
+        match = re.search(r"--port\s+(\d+)", str(process.get("command_line") or ""))
+        if not match:
+            continue
+        try:
+            ports.append(int(match.group(1)))
+        except ValueError:
+            pass
+    return ports
+
+
 def _tail_file(path: Path, max_chars: int = 4000) -> str:
     try:
         if not path.exists():
@@ -151,6 +165,18 @@ def gateway_state(*, host: str = DEFAULT_HOST, port: int = DEFAULT_PORT, include
     ensure_project_dirs()
     listening = _tcp_listening(host, port)
     pid = _port_owner(port) if listening else None
+    web_processes = _web_gateway_processes() if include_processes else []
+    if not listening and port == DEFAULT_PORT and include_processes:
+        for active_port in _process_gateway_ports(web_processes):
+            if active_port == port:
+                continue
+            active = gateway_state(host=host, port=active_port, include_processes=False)
+            if active.get("ok"):
+                active["requested_port"] = port
+                active["fallback_used"] = True
+                active["web_processes"] = web_processes
+                STATE_PATH.write_text(json.dumps(active, indent=2, ensure_ascii=False), encoding="utf-8")
+                return active
     health = http_json("/api/health", host=host, port=port, timeout=2.0) if listening else {"ok": False, "error": "not listening"}
     page = http_text("/", host=host, port=port, timeout=2.0) if listening else {"ok": False, "error": "not listening"}
     text = page.get("text") or ""
@@ -165,7 +191,7 @@ def gateway_state(*, host: str = DEFAULT_HOST, port: int = DEFAULT_PORT, include
         "listening": listening,
         "pid": state_pid,
         "process": _process_info(state_pid),
-        "web_processes": _web_gateway_processes() if include_processes else [],
+        "web_processes": web_processes,
         "health": health,
         "served_html_ok": bool(page.get("ok")),
         "ui_version": (health_data.get("ui_version") if health.get("ok") else None),

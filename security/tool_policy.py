@@ -36,6 +36,7 @@ READONLY_TOOLS = {
     "secrets_list",
     "secrets_get",
     "secrets_mask",
+    "telegram_status",
     "diagnostics_export",
     "triggers_discover",
     "context_status",
@@ -45,8 +46,8 @@ READONLY_TOOLS = {
 }
 SEARCH_TOOLS = {"search_web", "web_research_report", "browser_fetch_url"}
 CLEANUP_TOOLS = {"browser_close"}
-EXEC_TOOLS = {"run_terminal", "start_process", "stop_process", "poll_process", "spawn_subagent"}
-PUBLIC_TOOLS = {"schedule_x_post", "schedule_repeated_x_posts", "publish_x_post_now", "create_gmail_draft", "gmail_search"}
+EXEC_TOOLS = {"run_terminal", "start_process", "stop_process", "poll_process", "spawn_subagent", "telegram_start_bridge", "telegram_stop_bridge"}
+PUBLIC_TOOLS = {"schedule_x_post", "schedule_repeated_x_posts", "publish_x_post_now", "create_gmail_draft", "gmail_search", "telegram_send_message", "telegram_poll_once"}
 MUTATING_TOOLS = {
     "create_desktop_file",
     "create_desktop_folder",
