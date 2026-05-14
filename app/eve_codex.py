@@ -147,8 +147,8 @@ CHAT_SPEAKERS = {
 
 
 PERSONAL_MEMORY_EXPANSIONS = {
-    "idade": ["24-year-old", "24 anos", "idade", "nascimento", "birth", "year-old"],
-    "anos": ["24-year-old", "24 anos", "idade", "nascimento", "birth", "year-old"],
+    "idade": ["26 anos", "1999", "17 de junho de 1999", "idade", "nascimento", "birth", "year-old"],
+    "anos": ["26 anos", "1999", "17 de junho de 1999", "idade", "nascimento", "birth", "year-old"],
     "karate": ["karate", "karaté", "faixa branca", "cinto", "belt", "jiu-jitsu"],
     "karaté": ["karate", "karaté", "faixa branca", "cinto", "belt", "jiu-jitsu"],
     "faixa": ["faixa branca", "karate", "karaté", "cinto", "belt", "jiu-jitsu"],
@@ -929,7 +929,14 @@ def relevant_entity_memory(prompt: str, limit: int = 8) -> list[dict]:
 
     def add_local_memory_matches(terms: list[str]) -> None:
         memory_root = EVE_ROOT / "memory" / "long_term"
-        for path in sorted(memory_root.glob("*.md")):
+        priority = {
+            "sandro_core_memory.md": 0,
+            "sandro_profile.md": 1,
+            "stable_memories.md": 2,
+            "sandro_profile_from_entity_base.md": 3,
+        }
+        paths = sorted(memory_root.glob("*.md"), key=lambda item: (priority.get(item.name, 99), item.name))
+        for path in paths:
             try:
                 lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
             except OSError:
@@ -957,10 +964,10 @@ def relevant_entity_memory(prompt: str, limit: int = 8) -> list[dict]:
     for trigger, terms in PERSONAL_MEMORY_EXPANSIONS.items():
         if trigger in lowered:
             expanded_terms.extend(terms)
-    for term in expanded_terms:
-        add_rows(search_entities(term, limit=3), f"literal:{term}")
     if expanded_terms and len(results) < limit:
         add_local_memory_matches(expanded_terms)
+    for term in expanded_terms:
+        add_rows(search_entities(term, limit=3), f"literal:{term}")
     add_rows(search_tfidf(prompt, limit=limit), "tfidf_prompt")
     return results[:limit]
 

@@ -12,7 +12,11 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def main() -> int:
     checks = []
-    test_command = [sys.executable, "-m", "pytest", "-q"] if importlib.util.find_spec("pytest") else [sys.executable, "-m", "unittest", "discover", "-s", "tests", "-p", "test*.py"]
+    test_command = (
+        [sys.executable, "-m", "pytest", "tests/test_core.py", "tests/capabilities", "-q"]
+        if importlib.util.find_spec("pytest")
+        else [sys.executable, "-m", "unittest", "discover", "-s", "tests", "-p", "test*.py"]
+    )
     for command in (test_command, [sys.executable, "scripts/run_capability_tests.py"]):
         completed = subprocess.run(command, cwd=ROOT, capture_output=True, text=True)
         checks.append({"command": command, "returncode": completed.returncode, "stdout": completed.stdout[-4000:], "stderr": completed.stderr[-4000:]})

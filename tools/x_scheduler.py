@@ -5,6 +5,7 @@ import re
 import sys
 import urllib.parse
 from datetime import datetime, timedelta
+from json import JSONDecodeError
 from pathlib import Path
 
 from core.paths import EVE_ROOT, LOGS_DIR, STATE_DIR, ensure_project_dirs
@@ -92,7 +93,13 @@ def write_x_post_job(text: str, scheduled_for: datetime, *, approved_by: str = "
 
 def update_x_post_job(path: str | Path, **updates) -> dict:
     job_path = Path(path)
-    payload = json.loads(job_path.read_text(encoding="utf-8"))
+    try:
+        raw = job_path.read_text(encoding="utf-8")
+        payload = json.loads(raw) if raw.strip() else {}
+    except (OSError, JSONDecodeError):
+        payload = {}
+    payload.setdefault("id", job_path.stem)
+    payload.setdefault("status", "unknown")
     payload.update(updates)
     payload["updated_at"] = datetime.now().isoformat(timespec="seconds")
     job_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")

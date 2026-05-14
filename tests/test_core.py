@@ -224,7 +224,7 @@ class EveCoreTests(unittest.TestCase):
 
     def test_personal_memory_expands_age_and_karate_queries(self):
         age_rows = relevant_entity_memory("qual e a minha idade?", limit=8)
-        self.assertTrue(any("24-year-old" in row.get("excerpt", "") or "24 anos" in row.get("excerpt", "") for row in age_rows))
+        self.assertTrue(any("26 anos" in row.get("excerpt", "") or "17 de junho de 1999" in row.get("excerpt", "") for row in age_rows))
         karate_rows = relevant_entity_memory("que faixa sou no karate?", limit=8)
         self.assertTrue(any("karate" in row.get("excerpt", "").lower() or "faixa branca" in row.get("excerpt", "").lower() for row in karate_rows))
 
