@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import time
+import ctypes
 from pathlib import Path
 
 try:
@@ -30,6 +31,54 @@ from security.permission_manager import check_action
 
 
 X_POST_CHAR_LIMIT = 280
+
+
+def focus_window_by_title_terms(terms: list[str]) -> dict:
+    wanted = [term.lower() for term in terms if term]
+    if not wanted:
+        return {"ok": False, "reason": "no_terms"}
+    try:
+        user32 = ctypes.windll.user32
+    except Exception as exc:
+        return {"ok": False, "reason": f"ctypes_unavailable: {exc}"}
+    matches: list[dict] = []
+
+    def callback(hwnd, _lparam):
+        if not user32.IsWindowVisible(hwnd):
+            return True
+        length = user32.GetWindowTextLengthW(hwnd)
+        if length <= 0:
+            return True
+        buffer = ctypes.create_unicode_buffer(length + 1)
+        user32.GetWindowTextW(hwnd, buffer, length + 1)
+        title = buffer.value or ""
+        lowered = title.lower()
+        if any(term in lowered for term in wanted):
+            score = 0
+            if "chrome" in lowered:
+                score += 100
+            if "x -" in lowered or "x." in lowered or "x.com" in lowered or "twitter" in lowered:
+                score += 60
+            if "codex" in lowered:
+                score -= 80
+            if "text input" in lowered:
+                score -= 80
+            matches.append({"hwnd": int(hwnd), "title": title, "score": score})
+        return True
+
+    enum_proc = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p)(callback)
+    user32.EnumWindows(enum_proc, 0)
+    if not matches:
+        return {"ok": False, "reason": "window_not_found", "terms": terms}
+    chosen = sorted(matches, key=lambda item: item.get("score", 0), reverse=True)[0]
+    hwnd = chosen["hwnd"]
+    try:
+        user32.ShowWindow(hwnd, 9)
+        user32.SetForegroundWindow(hwnd)
+    except Exception as exc:
+        return {"ok": False, "reason": f"focus_failed: {exc}", "match": chosen}
+    time.sleep(0.8)
+    return {"ok": True, "match": chosen, "matches": matches[:5]}
 
 
 def validate_x_post_text(post_text: str) -> dict:
@@ -77,6 +126,221 @@ def fit_x_post_text(post_text: str, *, limit: int = X_POST_CHAR_LIMIT) -> dict:
 
 def _ocr_contains(text: str, needle: str) -> bool:
     return needle.lower() in text.lower()
+
+
+def _entries_text(entries: list[dict]) -> str:
+    return " ".join(str(entry.get("text") or "") for entry in entries)
+
+
+def _find_entry_row(entries: list[dict], terms: list[str], *, y_window: int = 42) -> dict:
+    wanted = [term.lower() for term in terms if term]
+    matches = [
+        entry
+        for entry in entries
+        if any(term in str(entry.get("text") or "").lower() for term in wanted)
+    ]
+    if not matches:
+        return {"found": False, "reason": "terms_not_found", "terms": terms}
+    seed = sorted(matches, key=lambda item: int((item.get("global_box") or {}).get("top") or 0))[0]
+    seed_box = seed.get("global_box") or {}
+    seed_y = int(seed_box.get("center_y") or seed_box.get("top") or 0)
+    row = []
+    for entry in entries:
+        box = entry.get("global_box") or {}
+        center_y = int(box.get("center_y") or box.get("top") or 0)
+        if abs(center_y - seed_y) <= y_window:
+            row.append(entry)
+    boxes = [entry.get("global_box") or {} for entry in row if entry.get("global_box")]
+    if not boxes:
+        return {"found": False, "reason": "row_boxes_missing", "terms": terms}
+    left = min(int(box.get("left") or box.get("center_x") or 0) for box in boxes)
+    top = min(int(box.get("top") or box.get("center_y") or 0) for box in boxes)
+    right = max(int(box.get("left") or 0) + int(box.get("width") or 0) for box in boxes)
+    bottom = max(int(box.get("top") or 0) + int(box.get("height") or 0) for box in boxes)
+    width = max(220, right - left + 80)
+    center_x = left + width // 2
+    center_y = (top + bottom) // 2
+    return {
+        "found": True,
+        "terms": terms,
+        "row_text": _entries_text(row),
+        "row_box": {"left": left, "top": top, "right": right, "bottom": bottom},
+        "center": {"x": center_x, "y": center_y},
+    }
+
+
+def _screen_has_x_login_modal(entries: list[dict]) -> bool:
+    text = _entries_text(entries).lower()
+    return ("entrar" in text and "x" in text and "senha" in text) or "fazer login como" in text
+
+
+def _uia_click_by_name_terms(terms: list[str]) -> dict:
+    wanted = [term.lower() for term in terms if term]
+    if not wanted:
+        return {"ok": False, "engine": "uia", "reason": "no_terms"}
+    try:
+        import uiautomation as auto  # type: ignore
+    except Exception as exc:
+        return {"ok": False, "engine": "uia", "reason": f"uia_unavailable: {exc}"}
+    try:
+        root = auto.GetForegroundControl()
+        stack = [root]
+        seen = 0
+        while stack and seen < 900:
+            control = stack.pop(0)
+            seen += 1
+            name = str(getattr(control, "Name", "") or "")
+            lowered = name.lower()
+            if name and any(term in lowered for term in wanted):
+                rect = getattr(control, "BoundingRectangle", None)
+                if rect:
+                    x = int((rect.left + rect.right) / 2)
+                    y = int((rect.top + rect.bottom) / 2)
+                    action = click(x, y)
+                    return {"ok": True, "engine": "uia", "name": name, "coordinates": {"x": x, "y": y}, "click": action}
+            try:
+                stack.extend(control.GetChildren())
+            except Exception:
+                pass
+    except Exception as exc:
+        return {"ok": False, "engine": "uia", "reason": f"uia_scan_failed: {exc}"}
+    return {"ok": False, "engine": "uia", "reason": "element_not_found", "terms": terms}
+
+
+def _first_uia_login_click(email_hint: str, account_hint: str) -> tuple[list[dict], dict | None]:
+    attempts: list[dict] = []
+    for terms in ([email_hint], [account_hint], ["fazer login como"], ["google"]):
+        attempt = _uia_click_by_name_terms([term for term in terms if term])
+        attempts.append(attempt)
+        if attempt.get("ok"):
+            return attempts, attempt
+    return attempts, None
+
+
+def login_x_with_google_account(*, account_hint: str = "eve", email_hint: str = "takerryoken@gmail.com", approved: bool = False) -> dict:
+    decision = check_action("browser_login", approved=approved)
+    if not decision.allowed:
+        raise PermissionError(decision.reason)
+    ensure_project_dirs()
+    focus = focus_window_by_title_terms(["x", "chrome"])
+    uia_attempts, uia_success = _first_uia_login_click(email_hint, account_hint)
+    if uia_success:
+        action = uia_success
+        time.sleep(5)
+        mid = ocr_desktop_data()
+        mid_entries = mid.get("entries") or []
+        mid_text = _entries_text(mid_entries)
+        google_step = False
+        if email_hint and email_hint.lower() in mid_text.lower():
+            google_step = True
+            account_target = _find_entry_row(mid_entries, [email_hint], y_window=55)
+            if account_target.get("found"):
+                click(int(account_target["center"]["x"]), int(account_target["center"]["y"]))
+                time.sleep(5)
+        after = ocr_desktop_data()
+        after_entries = after.get("entries") or []
+        after_text = _entries_text(after_entries)
+        still_login = _screen_has_x_login_modal(after_entries)
+        success_terms = ("para voce", "for you", "pagina inicial", "página inicial", "postar", "what is happening")
+        success_signal = any(term in after_text.lower() for term in success_terms)
+        status = "logged_in_or_progressed" if (not still_login or success_signal or google_step) else "needs_review"
+        result = {
+            "status": status,
+            "focus": focus,
+            "target": {"found": True, "engine": "uia", "terms": [email_hint, account_hint, "fazer login como", "google"]},
+            "uia_attempts": uia_attempts,
+            "engine": "uia",
+            "click": action,
+            "google_step_detected": google_step,
+            "mid_screenshot": mid.get("screenshot"),
+            "after_screenshot": after.get("screenshot"),
+            "still_login_modal": still_login,
+            "success_signal": success_signal,
+            "verification": {
+                "ok": status == "logged_in_or_progressed",
+                "rule": "x_google_login_clicked_and_state_changed",
+                "reason": "UIA clicked login/account and state changed or progressed" if status == "logged_in_or_progressed" else "login modal still visible after UIA click",
+            },
+        }
+        log_ui_action("x_login_google_account", result)
+        return result
+    before = ocr_desktop_data()
+    before_entries = before.get("entries") or []
+    before_text = _entries_text(before_entries)
+    if not _screen_has_x_login_modal(before_entries):
+        result = {
+            "status": "login_modal_not_found",
+            "focus": focus,
+            "before_screenshot": before.get("screenshot"),
+            "verification": {"ok": False, "rule": "x_login_modal_visible_before_click"},
+            "ocr_sample": before_text[:500],
+        }
+        log_ui_action("x_login_google_account", result)
+        return result
+
+    candidates = [
+        [email_hint],
+        [account_hint],
+        ["Fazer", "login", "eve"],
+        ["Google"],
+    ]
+    target = {"found": False, "reason": "no_candidate_tried"}
+    for terms in candidates:
+        target = _find_entry_row(before_entries, [term for term in terms if term])
+        if target.get("found"):
+            break
+    if not target.get("found"):
+        result = {
+            "status": "google_login_button_not_found",
+            "focus": focus,
+            "before_screenshot": before.get("screenshot"),
+            "target": target,
+            "uia_attempts": uia_attempts,
+            "verification": {"ok": False, "rule": "google_login_button_found"},
+        }
+        log_ui_action("x_login_google_account", result)
+        return result
+
+    action = click(int(target["center"]["x"]), int(target["center"]["y"]))
+    time.sleep(5)
+    mid = ocr_desktop_data()
+    mid_entries = mid.get("entries") or []
+    mid_text = _entries_text(mid_entries)
+    google_step = False
+    if email_hint and email_hint.lower() in mid_text.lower():
+        google_step = True
+        account_target = _find_entry_row(mid_entries, [email_hint], y_window=55)
+        if account_target.get("found"):
+            click(int(account_target["center"]["x"]), int(account_target["center"]["y"]))
+            time.sleep(5)
+    after = ocr_desktop_data()
+    after_entries = after.get("entries") or []
+    after_text = _entries_text(after_entries)
+    still_login = _screen_has_x_login_modal(after_entries)
+    success_terms = ("para voce", "for you", "pagina inicial", "página inicial", "postar", "what is happening")
+    success_signal = any(term in after_text.lower() for term in success_terms)
+    status = "logged_in_or_progressed" if (not still_login or success_signal or google_step) else "needs_review"
+    result = {
+        "status": status,
+        "focus": focus,
+        "target": target,
+        "uia_attempts": uia_attempts,
+        "engine": "ocr",
+        "click": action,
+        "google_step_detected": google_step,
+        "before_screenshot": before.get("screenshot"),
+        "mid_screenshot": mid.get("screenshot"),
+        "after_screenshot": after.get("screenshot"),
+        "still_login_modal": still_login,
+        "success_signal": success_signal,
+        "verification": {
+            "ok": status == "logged_in_or_progressed",
+            "rule": "x_google_login_clicked_and_state_changed",
+            "reason": "login modal changed or account flow progressed" if status == "logged_in_or_progressed" else "login modal still visible after click",
+        },
+    }
+    log_ui_action("x_login_google_account", result)
+    return result
 
 
 def _composer_evidence(post_text: str) -> dict:

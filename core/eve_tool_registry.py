@@ -57,7 +57,7 @@ from tools.telegram_bridge import start_bridge as telegram_start_bridge
 from tools.telegram_bridge import stop_bridge as telegram_stop_bridge
 from tools.web_research import run_web_research_report
 from tools.windows_scheduler import create_daily_task, list_eve_tasks
-from tools.x_human import fit_x_post_text
+from tools.x_human import fit_x_post_text, login_x_with_google_account
 from tools.x_scheduler import schedule_repeated_x_posts, schedule_x_post
 from tools.research_scheduler import schedule_web_research_report
 from research.interest_evolution import (
@@ -276,6 +276,18 @@ def _publish_x_post_now(args: dict) -> dict:
         "ok": True,
         "tool": "publish_x_post_now",
         "result": skill_result,
+    }
+
+
+def _x_login_google(args: dict) -> dict:
+    return {
+        "ok": True,
+        "tool": "x_login_google",
+        "result": login_x_with_google_account(
+            account_hint=str(args.get("account_hint") or "eve"),
+            email_hint=str(args.get("email_hint") or "takerryoken@gmail.com"),
+            approved=bool(args.get("approved")),
+        ),
     }
 
 
@@ -857,6 +869,7 @@ TOOLS: dict[str, EveTool] = {
     "schedule_desktop_folder": EveTool("schedule_desktop_folder", "Agenda criacao de pasta no Ambiente de Trabalho.", {"name": "pasta", "time": "22:43"}, _schedule_desktop_folder),
     "schedule_x_post": EveTool("schedule_x_post", "Agenda post no X.", {"time": "22:21", "text": "texto em ingles"}, _schedule_x_post),
     "schedule_repeated_x_posts": EveTool("schedule_repeated_x_posts", "Agenda varios posts no X com intervalo, verifica a contagem e tenta corrigir falhas automaticamente.", {"count": 3, "interval_minutes": 2, "topic": "how Eve feels", "texts": [], "approved": True}, _schedule_repeated_x_posts),
+    "x_login_google": EveTool("x_login_google", "No modal Entrar no X, clica em Fazer login como Eve/Google e verifica que a sessao avancou.", {"account_hint": "eve", "email_hint": "takerryoken@gmail.com", "approved": True}, _x_login_google),
     "publish_x_post_now": EveTool("publish_x_post_now", "Publica imediatamente texto no X usando a skill visual trusted.", {"text": "texto em ingles"}, _publish_x_post_now),
     "run_terminal": EveTool("run_terminal", "Executa comando PowerShell local; com background=true arranca processo gerido.", {"command": "Get-ChildItem", "cwd": "D:\\Eve", "timeout": 60, "background": False, "approved": False}, _run_terminal),
     "run_skill": EveTool("run_skill", "Executa skill da Eve.", {"skill": "trusted/x_publish_text_learning", "args": {}}, _run_skill),

@@ -111,7 +111,7 @@ from self_improvement.improvement_planner import plan_autonomous_system_improvem
 from self_improvement.recursive_self_improvement import run_controlled_rsi_cycle
 from memory.daily_transcripts import append_transcript, ensure_daily_transcript_files, transcript_date_key, transcript_path
 from app.eve_web import check_access_code, recent_chat_messages, render_index, save_chat_image
-from tools.x_human import fit_x_post_text, validate_x_post_text
+from tools.x_human import fit_x_post_text, focus_window_by_title_terms, login_x_with_google_account, validate_x_post_text
 from tools.git_sync import git_pull_updates
 from lab.lab_manager import create_candidate, record_candidate_result
 from memory.errors.error_memory import record_error
@@ -1016,6 +1016,99 @@ class EveCoreTests(unittest.TestCase):
         self.assertTrue(validate_x_post_text(used_text)["ok"])
         self.assertEqual(result["result"]["correction"]["status"], "auto_shortened")
         self.assertTrue(result["verification"]["ok"])
+
+    def test_x_login_google_clicks_eve_account_from_login_modal(self):
+        screenshots = iter(
+            [
+                {
+                    "screenshot": "before.png",
+                    "entries": [
+                        {"text": "Entrar", "global_box": {"left": 250, "top": 80, "width": 80, "height": 22, "center_x": 290, "center_y": 91}},
+                        {"text": "no", "global_box": {"left": 335, "top": 80, "width": 24, "height": 22, "center_x": 347, "center_y": 91}},
+                        {"text": "X", "global_box": {"left": 365, "top": 80, "width": 20, "height": 22, "center_x": 375, "center_y": 91}},
+                        {"text": "Fazer", "global_box": {"left": 220, "top": 150, "width": 55, "height": 20, "center_x": 247, "center_y": 160}},
+                        {"text": "login", "global_box": {"left": 280, "top": 150, "width": 45, "height": 20, "center_x": 302, "center_y": 160}},
+                        {"text": "como", "global_box": {"left": 330, "top": 150, "width": 45, "height": 20, "center_x": 352, "center_y": 160}},
+                        {"text": "eve", "global_box": {"left": 380, "top": 150, "width": 34, "height": 20, "center_x": 397, "center_y": 160}},
+                        {"text": "Esqueceu", "global_box": {"left": 250, "top": 450, "width": 80, "height": 20, "center_x": 290, "center_y": 460}},
+                        {"text": "senha", "global_box": {"left": 335, "top": 450, "width": 55, "height": 20, "center_x": 362, "center_y": 460}},
+                    ],
+                },
+                {"screenshot": "mid.png", "entries": [{"text": "Para", "global_box": {"left": 10, "top": 10, "width": 40, "height": 20, "center_x": 30, "center_y": 20}}, {"text": "voce", "global_box": {"left": 55, "top": 10, "width": 40, "height": 20, "center_x": 75, "center_y": 20}}]},
+                {"screenshot": "after.png", "entries": [{"text": "Para", "global_box": {"left": 10, "top": 10, "width": 40, "height": 20, "center_x": 30, "center_y": 20}}, {"text": "voce", "global_box": {"left": 55, "top": 10, "width": 40, "height": 20, "center_x": 75, "center_y": 20}}]},
+            ]
+        )
+        with patch("tools.x_human.focus_window_by_title_terms", return_value={"ok": True, "match": {"title": "X - Google Chrome"}}):
+            with patch("tools.x_human._uia_click_by_name_terms", return_value={"ok": False, "engine": "uia"}):
+                with patch("tools.x_human.ocr_desktop_data", side_effect=lambda: next(screenshots)):
+                    with patch("tools.x_human.click", return_value={"status": "clicked"}) as clicked:
+                        with patch("tools.x_human.time.sleep"):
+                            result = login_x_with_google_account(approved=True)
+        self.assertEqual(result["status"], "logged_in_or_progressed")
+        self.assertEqual(result["engine"], "ocr")
+        self.assertTrue(result["verification"]["ok"])
+        clicked.assert_called()
+
+    def test_x_login_google_prefers_uia_when_available(self):
+        screenshots = iter(
+            [
+                {
+                    "screenshot": "before.png",
+                    "entries": [
+                        {"text": "Entrar", "global_box": {"left": 250, "top": 80, "width": 80, "height": 22, "center_x": 290, "center_y": 91}},
+                        {"text": "X", "global_box": {"left": 365, "top": 80, "width": 20, "height": 22, "center_x": 375, "center_y": 91}},
+                        {"text": "Fazer", "global_box": {"left": 220, "top": 150, "width": 55, "height": 20, "center_x": 247, "center_y": 160}},
+                        {"text": "eve", "global_box": {"left": 380, "top": 150, "width": 34, "height": 20, "center_x": 397, "center_y": 160}},
+                        {"text": "senha", "global_box": {"left": 335, "top": 450, "width": 55, "height": 20, "center_x": 362, "center_y": 460}},
+                    ],
+                },
+                {"screenshot": "mid.png", "entries": [{"text": "Para", "global_box": {"left": 10, "top": 10, "width": 40, "height": 20, "center_x": 30, "center_y": 20}}, {"text": "voce", "global_box": {"left": 55, "top": 10, "width": 40, "height": 20, "center_x": 75, "center_y": 20}}]},
+                {"screenshot": "after.png", "entries": [{"text": "Para", "global_box": {"left": 10, "top": 10, "width": 40, "height": 20, "center_x": 30, "center_y": 20}}, {"text": "voce", "global_box": {"left": 55, "top": 10, "width": 40, "height": 20, "center_x": 75, "center_y": 20}}]},
+            ]
+        )
+        with patch("tools.x_human.focus_window_by_title_terms", return_value={"ok": True, "match": {"title": "X - Google Chrome"}}):
+            with patch("tools.x_human._uia_click_by_name_terms", return_value={"ok": True, "engine": "uia", "coordinates": {"x": 330, "y": 160}}) as uia_click:
+                with patch("tools.x_human.ocr_desktop_data", side_effect=lambda: next(screenshots)):
+                    with patch("tools.x_human.click") as clicked:
+                        with patch("tools.x_human.time.sleep"):
+                            result = login_x_with_google_account(approved=True)
+        self.assertEqual(result["status"], "logged_in_or_progressed")
+        self.assertEqual(result["engine"], "uia")
+        self.assertTrue(result["verification"]["ok"])
+        clicked.assert_not_called()
+        self.assertEqual(uia_click.call_count, 1)
+
+    def test_x_focus_prefers_chrome_over_codex(self):
+        callbacks = {}
+
+        class FakeUser32:
+            titles = {1: "Codex", 2: "X. O que está acontecendo / X - Google Chrome"}
+
+            def IsWindowVisible(self, hwnd):
+                return True
+
+            def GetWindowTextLengthW(self, hwnd):
+                return len(self.titles[int(hwnd)])
+
+            def GetWindowTextW(self, hwnd, buffer, length):
+                buffer.value = self.titles[int(hwnd)]
+
+            def EnumWindows(self, callback, _lparam):
+                callbacks["callback"] = callback
+                callback(1, 0)
+                callback(2, 0)
+
+            def ShowWindow(self, hwnd, flag):
+                callbacks["shown"] = int(hwnd)
+
+            def SetForegroundWindow(self, hwnd):
+                callbacks["focused"] = int(hwnd)
+
+        fake_windll = type("FakeWindll", (), {"user32": FakeUser32()})()
+        with patch("tools.x_human.ctypes.windll", fake_windll, create=True), patch("tools.x_human.time.sleep"):
+            result = focus_window_by_title_terms(["x", "chrome"])
+        self.assertTrue(result["ok"])
+        self.assertEqual(callbacks["focused"], 2)
 
     def test_fit_x_post_text_keeps_text_within_x_limit(self):
         fitted = fit_x_post_text("Eve " + ("learning " * 60))
