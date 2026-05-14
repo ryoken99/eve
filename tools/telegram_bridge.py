@@ -136,9 +136,23 @@ def poll_once(*, respond: bool = True, token: str | None = None) -> dict[str, An
         if respond:
             from app.eve_codex import ask
 
-            # The bridge owns Telegram delivery. Keep this pass text-only to
-            # avoid duplicate sends caused by the LLM calling telegram tools.
-            reply = ask(_build_prompt(message), speaker="sandro", publish_to_interface=True, allow_tools=False)
+            # The bridge owns Telegram delivery, but Eve should still have the
+            # same local tool loop as the web UI for files, memory, diagnostics,
+            # and other guarded actions. Hide/block Telegram transport tools so
+            # the response is sent exactly once by this bridge.
+            reply = ask(
+                _build_prompt(message),
+                speaker="sandro",
+                publish_to_interface=True,
+                allow_tools=True,
+                excluded_tools={
+                    "telegram_status",
+                    "telegram_start_bridge",
+                    "telegram_stop_bridge",
+                    "telegram_poll_once",
+                    "telegram_send_message",
+                },
+            )
             send_message(message["chat_id"], reply, token=token)
             append_transcript("chat", "telegram_eve_reply", {"content": reply, "chat_id": message["chat_id"]})
         processed.append({"update_id": update_id, "chat_id": message["chat_id"], "responded": bool(reply)})

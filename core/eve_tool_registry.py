@@ -954,7 +954,8 @@ TOOLS: dict[str, EveTool] = {
 }
 
 
-def tool_catalog_prompt() -> str:
+def tool_catalog_prompt(excluded_tools: set[str] | None = None) -> str:
+    excluded_tools = excluded_tools or set()
     rows = [
         "Ferramentas locais disponiveis para ti (Eve). Quando quiseres usar uma ferramenta, responde apenas numa linha com:",
         'EVE_TOOL {"tool":"nome_da_ferramenta","args":{...}}',
@@ -962,6 +963,8 @@ def tool_catalog_prompt() -> str:
         "Ferramentas:",
     ]
     for tool in TOOLS.values():
+        if tool.name in excluded_tools:
+            continue
         rows.append(f"- {tool.name}: {tool.description} args {json.dumps(tool.args_schema, ensure_ascii=False)}")
     rows.extend(
         [

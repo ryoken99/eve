@@ -622,11 +622,14 @@ class EveCoreTests(unittest.TestCase):
             raise AssertionError(method)
 
         with patch.object(telegram_bridge, "STATE_PATH", fake_state), patch.object(telegram_bridge, "PID_PATH", fake_pid), patch.object(telegram_bridge, "LOG_PATH", fake_log):
-            with patch.object(telegram_bridge, "telegram_api", side_effect=fake_api), patch("app.eve_codex.ask", return_value="ola Sandro"):
+            with patch.object(telegram_bridge, "telegram_api", side_effect=fake_api), patch("app.eve_codex.ask", return_value="ola Sandro") as ask_mock:
                 result = telegram_bridge.poll_once(respond=True, token="unit-token")
         self.assertTrue(result["ok"])
         self.assertEqual(result["count"], 1)
         self.assertEqual(json.loads(fake_state.read_text(encoding="utf-8"))["offset"], 11)
+        kwargs = ask_mock.call_args.kwargs
+        self.assertTrue(kwargs["allow_tools"])
+        self.assertIn("telegram_send_message", kwargs["excluded_tools"])
 
     def test_task_ledger_marks_unverified_tool_as_failed(self):
         task_id = start_tool_task("unit_tool", {"unit": True}, source="unit")
@@ -760,6 +763,14 @@ class EveCoreTests(unittest.TestCase):
         tools = {item["tool"] for item in actions}
         self.assertIn("autonomy_cycle", tools)
         self.assertIn("run_terminal", tools)
+
+    def test_tool_catalog_can_hide_telegram_transport_tools(self):
+        from core.eve_tool_registry import tool_catalog_prompt
+
+        catalog = tool_catalog_prompt(excluded_tools={"telegram_send_message", "telegram_poll_once"})
+        self.assertNotIn("telegram_send_message", catalog)
+        self.assertNotIn("telegram_poll_once", catalog)
+        self.assertIn("workspace_read_file", catalog)
         formatted = format_internal_plan("trocar de sessao sem perder o fio")
         self.assertIn("session_checkpoint", formatted)
         self.assertIn("verified_self_update", format_internal_plan("auto melhorar e corrigir o meu core com testes"))
