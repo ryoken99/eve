@@ -119,6 +119,8 @@ powershell -ExecutionPolicy Bypass -File .\scripts\install_eve_admin_shortcut.ps
 - Mission control, autonomy cycles, Token Gate and autonomy reports.
 - Safety modes, permission profiles and admin elevation helper.
 - Computer Use v2 foundations: Playwright/DOM, Windows UI Automation, OCR fallback, app permissions and action verification.
+- Web chat image upload: images are stored locally and passed to Eve as auditable file paths for vision/OCR tools.
+- Chrome browser tasks default to the visible Chrome profile named `Eve` when present, falling back to the configured profile directory.
 - 17-point capability audit, runtime audit and ARSI hardening.
 
 ## Chat Commands

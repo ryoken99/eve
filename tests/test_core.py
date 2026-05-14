@@ -107,7 +107,7 @@ from self_improvement.verified_self_update import verified_core_update
 from self_improvement.improvement_planner import plan_autonomous_system_improvements
 from self_improvement.recursive_self_improvement import run_controlled_rsi_cycle
 from memory.daily_transcripts import append_transcript, ensure_daily_transcript_files, transcript_date_key, transcript_path
-from app.eve_web import check_access_code, recent_chat_messages, render_index
+from app.eve_web import check_access_code, recent_chat_messages, render_index, save_chat_image
 from tools.x_human import fit_x_post_text, validate_x_post_text
 from tools.git_sync import git_pull_updates
 from lab.lab_manager import create_candidate, record_candidate_result
@@ -837,6 +837,18 @@ class EveCoreTests(unittest.TestCase):
         self.assertIn("Código de entrada", html)
         self.assertIn("Conta Codex", html)
         self.assertIn("/api/chat", html)
+        self.assertIn("imageInput", html)
+
+    def test_web_interface_can_save_image_upload(self):
+        payload = {
+            "name": "unit.png",
+            "type": "image/png",
+            "data": "iVBORw0KGgo=",
+        }
+        meta = save_chat_image(payload)
+        self.assertTrue(Path(meta["path"]).exists())
+        self.assertEqual(meta["content_type"], "image/png")
+        self.assertGreater(meta["bytes"], 0)
 
     def test_cron_manager_dry_run(self):
         cron_path = WORKSPACE_DIR / "unit_command_cron.json"
