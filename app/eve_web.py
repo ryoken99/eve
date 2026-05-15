@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import json
 import os
+import re
 import sys
 import threading
 import time
@@ -11,6 +13,7 @@ import webbrowser
 from collections import deque
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
 from typing import Any
 
 EVE_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -24,6 +27,18 @@ from security.local_account import active_installation, list_installations, set_
 
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8787
+UI_VERSION = "2026-05-14-image-upload-v1"
+UI_FEATURES = ["chat", "account_switch", "installation_profiles", "image_upload"]
+UPLOAD_DIR = Path(EVE_ROOT) / "logs" / "interface_uploads"
+MAX_IMAGE_BYTES = 12 * 1024 * 1024
+START_MONOTONIC = time.time()
+STARTED_AT = time.strftime("%Y-%m-%dT%H:%M:%S%z")
+ALLOWED_IMAGE_TYPES = {
+    "image/png": ".png",
+    "image/jpeg": ".jpg",
+    "image/webp": ".webp",
+    "image/gif": ".gif",
+}
 
 
 def access_code_status(value: str) -> dict[str, Any]:
@@ -32,6 +47,40 @@ def access_code_status(value: str) -> dict[str, Any]:
 
 def check_access_code(value: str) -> bool:
     return bool(access_code_status(value).get("ok"))
+
+
+def _safe_upload_name(value: str) -> str:
+    name = Path(str(value or "image")).stem
+    name = re.sub(r"[^A-Za-z0-9._-]+", "_", name).strip("._-")
+    return name[:60] or "image"
+
+
+def save_chat_image(image: dict[str, Any]) -> dict[str, Any]:
+    content_type = str(image.get("type") or "").split(";")[0].strip().lower()
+    if content_type not in ALLOWED_IMAGE_TYPES:
+        raise ValueError("Formato de imagem nao suportado. Usa PNG, JPG, WEBP ou GIF.")
+    data_url = str(image.get("data") or "")
+    if "," in data_url:
+        data_url = data_url.split(",", 1)[1]
+    try:
+        raw = base64.b64decode(data_url, validate=True)
+    except Exception as exc:
+        raise ValueError("Imagem invalida ou corrompida.") from exc
+    if not raw:
+        raise ValueError("Imagem vazia.")
+    if len(raw) > MAX_IMAGE_BYTES:
+        raise ValueError("Imagem demasiado grande. Limite: 12 MB.")
+    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    stamp = time.strftime("%Y%m%d_%H%M%S")
+    suffix = ALLOWED_IMAGE_TYPES[content_type]
+    target = UPLOAD_DIR / f"{stamp}_{_safe_upload_name(str(image.get('name') or 'image'))}{suffix}"
+    target.write_bytes(raw)
+    return {
+        "path": str(target),
+        "name": str(image.get("name") or target.name),
+        "content_type": content_type,
+        "bytes": len(raw),
+    }
 
 
 def recent_activity(limit: int = 8) -> list[dict[str, Any]]:
@@ -73,11 +122,28 @@ def recent_chat_messages(limit: int = 40) -> list[dict[str, str]]:
     return list(items)
 
 
+def web_health_payload(host: str = DEFAULT_HOST, port: int = DEFAULT_PORT) -> dict[str, Any]:
+    return {
+        "ok": True,
+        "service": "eve_web",
+        "ui_version": UI_VERSION,
+        "features": UI_FEATURES,
+        "root": EVE_ROOT,
+        "pid": os.getpid(),
+        "started_at": STARTED_AT,
+        "uptime_seconds": round(time.time() - START_MONOTONIC, 3),
+        "host": host,
+        "port": port,
+        "has_image_upload": True,
+    }
+
+
 def render_index() -> str:
     return r"""<!doctype html>
 <html lang="pt">
 <head>
   <meta charset="utf-8" />
+  <meta name="eve-ui-version" content="2026-05-14-image-upload-v1" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Eve</title>
   <style>
@@ -177,12 +243,16 @@ def render_index() -> str:
     .composer {
       border-top: 1px solid var(--line);
       display: grid;
-      grid-template-columns: 1fr auto;
+      grid-template-columns: auto 1fr auto;
       gap: 10px;
       padding: 14px;
       background: #11151b;
       min-height: 80px;
+      align-items: end;
     }
+    .attach-wrap { display: grid; gap: 6px; align-content: end; }
+    .attach-wrap input { display: none; }
+    .attach-name { color: var(--muted); font-size: 12px; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .activity {
       min-height: 22px;
       max-height: 68px;
@@ -242,6 +312,11 @@ def render_index() -> str:
     <main id="messages"></main>
     <div class="activity" id="activity">Ações da Eve aparecem aqui.</div>
     <form class="composer" id="form">
+      <div class="attach-wrap">
+        <button class="secondary" id="pickImage" type="button">Imagem</button>
+        <input id="imageInput" type="file" accept="image/*" />
+        <div class="attach-name" id="imageName"></div>
+      </div>
       <textarea id="message" placeholder="Escreve para a Eve..."></textarea>
       <button id="send" type="submit">Enviar</button>
     </form>
@@ -267,6 +342,8 @@ def render_index() -> str:
     const messages = document.getElementById('messages');
     const form = document.getElementById('form');
     const message = document.getElementById('message');
+    const imageInput = document.getElementById('imageInput');
+    const imageName = document.getElementById('imageName');
     const send = document.getElementById('send');
     const statusEl = document.getElementById('status');
     const activity = document.getElementById('activity');
@@ -302,6 +379,16 @@ def render_index() -> str:
       messages.appendChild(div);
       messages.scrollTop = messages.scrollHeight;
     }
+    function readImageFile(file) {
+      return new Promise((resolve, reject) => {
+        if (!file) return resolve(null);
+        if (!file.type || !file.type.startsWith('image/')) return reject(new Error('Escolhe uma imagem.'));
+        const reader = new FileReader();
+        reader.onload = () => resolve({name: file.name, type: file.type, size: file.size, data: reader.result});
+        reader.onerror = () => reject(new Error('Nao consegui ler a imagem.'));
+        reader.readAsDataURL(file);
+      });
+    }
     function renderActivity(rows) {
       if (!rows || !rows.length) return;
       activity.textContent = rows.map(row => {
@@ -323,6 +410,11 @@ def render_index() -> str:
       } catch (_) {}
     }
     setInterval(pollActivity, 1500);
+    document.getElementById('pickImage').onclick = () => imageInput.click();
+    imageInput.onchange = () => {
+      const file = imageInput.files && imageInput.files[0];
+      imageName.textContent = file ? file.name : '';
+    };
     async function api(path, payload) {
       const res = await fetch(path, {
         method: 'POST',
@@ -386,13 +478,17 @@ def render_index() -> str:
     form.onsubmit = async ev => {
       ev.preventDefault();
       const text = message.value.trim();
-      if (!text) return;
+      const file = imageInput.files && imageInput.files[0];
+      if (!text && !file) return;
       message.value = '';
-      addMsg('user', text);
+      imageName.textContent = '';
+      addMsg('user', text || '[imagem]');
       send.disabled = true;
       statusEl.textContent = 'Eve está a trabalhar...';
       try {
-        const data = await api('/api/chat', {message: text});
+        const image = await readImageFile(file);
+        imageInput.value = '';
+        const data = await api('/api/chat', {message: text, image});
         addMsg('eve', data.reply || '');
       } catch (err) {
         addMsg('eve', 'Erro: ' + err.message);
@@ -455,6 +551,9 @@ class EveWebHandler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(body)
             return
+        if parsed.path == "/api/health":
+            self._send_json(web_health_payload(self.server.server_address[0], self.server.server_address[1]))
+            return
         if parsed.path == "/api/accounts":
             accounts = list_auth_accounts()
             self._send_json({"ok": True, "active": active_auth_profile(), "accounts": accounts})
@@ -504,29 +603,56 @@ class EveWebHandler(BaseHTTPRequestHandler):
                 return
             if parsed.path == "/api/chat":
                 text = str(data.get("message") or "").strip()
-                if not text:
+                image_meta = None
+                if data.get("image"):
+                    image_meta = save_chat_image(data.get("image") or {})
+                if not text and not image_meta:
                     self._send_json({"ok": False, "error": "Mensagem vazia."}, 400)
                     return
-                append_transcript("chat", "web_user_message", {"content": text})
-                reply = ask(text, speaker="sandro", publish_to_interface=False)
+                prompt = text
+                if image_meta:
+                    image_note = (
+                        "\n\n[Imagem enviada pelo Sandro]\n"
+                        f"- Ficheiro local: {image_meta['path']}\n"
+                        f"- Nome original: {image_meta['name']}\n"
+                        f"- Tipo: {image_meta['content_type']}\n"
+                        f"- Bytes: {image_meta['bytes']}\n"
+                        "Usa este caminho local para analisar a imagem com as tuas ferramentas de visao/OCR quando necessario."
+                    )
+                    prompt = (prompt or "Analisa esta imagem.") + image_note
+                append_transcript("chat", "web_user_message", {"content": text or "[imagem]", "image": image_meta})
+                reply = ask(prompt, speaker="sandro", publish_to_interface=False)
                 append_transcript("chat", "web_eve_reply", {"content": reply})
-                self._send_json({"ok": True, "reply": reply})
+                self._send_json({"ok": True, "reply": reply, "image": image_meta})
                 return
         except Exception as exc:
             append_transcript("errors", "web_error", {"path": parsed.path, "error": f"{type(exc).__name__}: {exc}"})
             self._send_json({"ok": False, "error": f"{type(exc).__name__}: {exc}"}, 500)
             return
+        except SystemExit as exc:
+            message = str(exc) or "A operacao foi interrompida."
+            append_transcript("errors", "web_system_exit", {"path": parsed.path, "error": message})
+            self._send_json({"ok": False, "error": message}, 500)
+            return
         self.send_error(HTTPStatus.NOT_FOUND)
 
     def log_message(self, format: str, *args: Any) -> None:
-        append_transcript("actions", "web_request", {"client": self.address_string(), "message": format % args})
+        message = format % args
+        if "/api/activity" in message:
+            return
+        append_transcript("actions", "web_request", {"client": self.address_string(), "message": message})
+
+
+class EveWebServer(ThreadingHTTPServer):
+    allow_reuse_address = True
+    daemon_threads = True
 
 
 def run_server(host: str = DEFAULT_HOST, port: int = DEFAULT_PORT, *, open_ui: bool = False) -> None:
     url = f"http://{host}:{port}/"
     if open_ui:
         threading.Thread(target=lambda: (time.sleep(1), webbrowser.open(url)), daemon=True).start()
-    server = ThreadingHTTPServer((host, port), EveWebHandler)
+    server = EveWebServer((host, port), EveWebHandler)
     print(f"Eve web interface: {url}")
     append_transcript("actions", "web_server_started", {"url": url})
     server.serve_forever()

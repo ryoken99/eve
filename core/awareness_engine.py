@@ -11,6 +11,7 @@ from computer.active_window import get_active_window_title
 from computer.computer_use_observation import ComputerUseObservation
 from computer.interface_tree_provider import provider_priority
 from core.admin_capability import admin_capability_status
+from core.gateway_manager import gateway_state
 from core.paths import EVE_ROOT, STATE_DIR, ensure_project_dirs
 from core.time_utils import now_lisbon
 from core.world_state_schema import WorldState
@@ -85,6 +86,7 @@ def collect_awareness() -> dict:
             "active_window": get_active_window_title(),
             "top_processes": _top_process_names(),
         },
+        "gateway": gateway_state(),
         "user": {
             "name": status.get("user", "Sandro"),
         },
@@ -130,6 +132,7 @@ def describe_awareness() -> str:
             f"Projeto ativo: {eve['active_project']}",
             f"Tarefa ativa: {eve['active_task']}",
             f"Pasta Eve: {eve['root']}",
+            f"Gateway web: porta {state['gateway'].get('port')} listening={state['gateway'].get('listening')} ui={state['gateway'].get('ui_version')} uptime={state['gateway'].get('uptime_seconds')}",
             f"Janela ativa: {desktop['active_window']}",
             "Processos principais: " + (", ".join(desktop["top_processes"]) if desktop["top_processes"] else "indisponivel"),
         ]

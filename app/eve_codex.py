@@ -1036,9 +1036,26 @@ def _call_codex_text(token: str, model: str, instructions: str, visible_prompt: 
     return request_sse("POST", url, headers=codex_headers(token), data=body, timeout=120)
 
 
-def ask(prompt: str, *, speaker: str = "sandro", publish_to_interface: bool = True, allow_tools: bool = True) -> str:
+TELEGRAM_CHANNEL_TOOLS = {
+    "telegram_status",
+    "telegram_start_bridge",
+    "telegram_stop_bridge",
+    "telegram_poll_once",
+    "telegram_send_message",
+}
+
+
+def ask(
+    prompt: str,
+    *,
+    speaker: str = "sandro",
+    publish_to_interface: bool = True,
+    allow_tools: bool = True,
+    excluded_tools: set[str] | None = None,
+) -> str:
     role = speaker_role(speaker)
     display_name = speaker_display_name(speaker)
+    excluded_tools = excluded_tools or set()
     if allow_tools and role == "user" and _is_interest_register_request(prompt):
         return _answer_interest_register_request(prompt, role=role, display_name=display_name, publish_to_interface=publish_to_interface)
 
@@ -1072,7 +1089,7 @@ def ask(prompt: str, *, speaker: str = "sandro", publish_to_interface: bool = Tr
         "For long tasks, use missions, checkpoints, autonomous cycles, background processes, and session handoffs to preserve continuity. "
         "When answering personal facts, use RELEVANT ENTITY MEMORY. Distinguish stable real-profile facts from fictional, roleplay, or simulated-story sources. "
         "If the memory only suggests a fact from roleplay/simulation, say it is uncertain instead of presenting it as confirmed.\n\n"
-        f"{tool_catalog_prompt() if allow_tools else 'Ferramentas locais ja executadas ou indisponiveis nesta etapa; responde em texto normal.'}\n\n"
+        f"{tool_catalog_prompt(excluded_tools=excluded_tools) if allow_tools else 'Ferramentas locais ja executadas ou indisponiveis nesta etapa; responde em texto normal.'}\n\n"
         f"INTERNAL COMMAND PLANNER:\n{internal_plan_context}\n\n"
         f"SESSION HANDOFF / CONTEXT ROTATION:\n{handoff_context}\n\n"
         f"INTENCAO PENDENTE:\n{pending_context}\n\n"
@@ -1108,10 +1125,17 @@ def ask(prompt: str, *, speaker: str = "sandro", publish_to_interface: bool = Tr
             first_text=text,
             display_name=display_name,
             publish_to_interface=publish_to_interface,
+            excluded_tools=excluded_tools,
         )
         if final_text is not None:
             return final_text
     if text:
+        if _extract_eve_tool_calls(text):
+            append_chat("error", text, tags=["blocked_raw_eve_tool_delivery"])
+            text = (
+                "Bloqueei uma resposta interna que ainda continha uma chamada EVE_TOOL por executar. "
+                "Nesta etapa as ferramentas nao estavam disponiveis ou a chamada nao foi executada; por isso nao vou fingir que a acao ficou feita."
+            )
         safe_print(text)
         append_chat("assistant", text)
         _record_session_message("assistant", text, {"reply_to": display_name})
@@ -1141,10 +1165,12 @@ def _run_tool_loop(
     first_text: str,
     display_name: str,
     publish_to_interface: bool,
+    excluded_tools: set[str] | None = None,
     max_tool_iterations: int = 3,
 ) -> str | None:
     text = first_text
     delivery_results = []
+    excluded_tools = excluded_tools or set()
     for _ in range(max_tool_iterations):
         tool_calls = _extract_eve_tool_calls(text)
         if not tool_calls:
@@ -1158,7 +1184,19 @@ def _run_tool_loop(
         batch_results = []
         for index, tool_call in enumerate(tool_calls, start=1):
             task_id = start_tool_task(tool_call["tool"], tool_call.get("args") or {})
-            tool_result = execute_eve_tool(tool_call)
+            if tool_call["tool"] in excluded_tools:
+                tool_result = {
+                    "ok": False,
+                    "tool": tool_call["tool"],
+                    "error": "Ferramenta indisponivel neste canal; a ponte de transporte e responsavel por essa entrega.",
+                    "verification": {
+                        "ok": False,
+                        "status": "blocked_in_channel",
+                        "reason": "transport tool blocked for this channel",
+                    },
+                }
+            else:
+                tool_result = execute_eve_tool(tool_call)
             finish_tool_task(task_id, tool_result)
             append_chat("tool", json.dumps(tool_result, ensure_ascii=False), tags=["tool_result", tool_call["tool"], f"batch:{index}/{len(tool_calls)}"])
             _record_session_message("tool", json.dumps(tool_result, ensure_ascii=False), {"tool": tool_call["tool"], "batch_index": index, "batch_total": len(tool_calls)})
@@ -1240,6 +1278,12 @@ def _review_tool_delivery_before_final(original_prompt: str, draft_text: str, ba
 
 
 def _finalize_assistant_text(text: str, display_name: str, publish_to_interface: bool, tags: list[str] | None = None) -> str:
+    if _extract_eve_tool_calls(text):
+        append_chat("error", text, tags=["blocked_raw_eve_tool_delivery"])
+        text = (
+            "Bloqueei uma resposta interna que ainda continha uma chamada EVE_TOOL por executar. "
+            "Isto quer dizer que a tarefa ainda nao ficou concluida com verificacao real; preciso continuar a executar as ferramentas necessarias ou reportar a falha concreta."
+        )
     safe_print(text)
     append_chat("assistant", text, tags=tags)
     _record_session_message("assistant", text, {"reply_to": display_name, "tags": tags or []})

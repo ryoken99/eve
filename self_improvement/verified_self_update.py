@@ -31,7 +31,7 @@ def _resolve_target(path: str) -> Path:
     target = (EVE_ROOT / path).resolve()
     root = EVE_ROOT.resolve()
     if target != root and root not in target.parents:
-        raise PermissionError("Verified self-update so pode alterar ficheiros dentro de D:\\Eve")
+        raise PermissionError(f"Verified self-update so pode alterar ficheiros dentro de {EVE_ROOT}")
     return target
 
 

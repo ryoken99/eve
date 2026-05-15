@@ -16,6 +16,7 @@ os.environ.setdefault("EVE_AUDIT_DIR", str(TEST_LOG_ROOT / "audit"))
 from computer.monitors import virtual_bounds
 from tools.browser_human import browser_launch_args
 from core.self_report import functional_self_report
+from core.gateway_manager import gateway_state
 from core.capability_self_test import collect_capability_self_test, format_capability_self_test
 from core.paths import SKILLS_DIR, WORKSPACE_DIR
 from core.personality_engine import score_options, update_preference_candidate
@@ -24,6 +25,7 @@ from app.eve_codex import (
     _format_interface_message,
     _extract_eve_tool_call,
     _extract_eve_tool_calls,
+    _finalize_assistant_text,
     _review_tool_delivery_before_final,
     _safe_profile_name,
     active_loop_mode,
@@ -87,6 +89,7 @@ from autonomy.autonomy_reporter import run_autonomy_report_cycle
 from autonomy.proactive_decider import decide_proactive_actions
 from tools.x_scheduler import build_x_post_task_command, schedule_repeated_x_posts, schedule_x_post
 from tools.research_scheduler import build_web_research_task_command, schedule_web_research_report
+from tools import telegram_bridge
 from tools.windows_scheduler import build_task_wrapper_command, create_daily_task, write_task_wrapper
 from tools.admin_executor import admin_status, launch_elevated_powershell
 from autonomy.cron_manager import add_prompt_job, run_due_jobs
@@ -104,11 +107,12 @@ from memory.vector_provider import LocalVectorMemoryProvider
 from learning.skill_curator import record_skill_usage, curate_skills
 from security.secrets_vault import mask_secret
 from self_improvement.verified_self_update import verified_core_update
+from self_improvement.arsi_cycle import arsi_core_update
 from self_improvement.improvement_planner import plan_autonomous_system_improvements
 from self_improvement.recursive_self_improvement import run_controlled_rsi_cycle
 from memory.daily_transcripts import append_transcript, ensure_daily_transcript_files, transcript_date_key, transcript_path
-from app.eve_web import check_access_code, recent_chat_messages, render_index
-from tools.x_human import fit_x_post_text, validate_x_post_text
+from app.eve_web import check_access_code, recent_chat_messages, render_index, save_chat_image
+from tools.x_human import click_google_account_chooser, fit_x_post_text, focus_window_by_title_terms, login_x_with_google_account, validate_x_post_text
 from tools.git_sync import git_pull_updates
 from lab.lab_manager import create_candidate, record_candidate_result
 from memory.errors.error_memory import record_error
@@ -581,6 +585,53 @@ class EveCoreTests(unittest.TestCase):
         )
         self.assertEqual(reviewed, "Feito, Sandro. Pasta criada.")
 
+    def test_finalize_blocks_raw_eve_tool_delivery(self):
+        with patch("app.eve_codex.safe_print"), patch("app.eve_codex.publish_interface_message"), patch("app.eve_codex._record_session_message"), patch("app.eve_codex._sync_vector_message"):
+            text = _finalize_assistant_text(
+                'EVE_TOOL {"tool":"run_terminal","args":{"command":"Get-ChildItem"}}',
+                "Sandro",
+                publish_to_interface=False,
+            )
+        self.assertIn("Bloqueei uma resposta interna", text)
+        self.assertNotIn('{"tool":"run_terminal"', text)
+
+    def test_telegram_poll_once_answers_and_advances_offset(self):
+        tmp = TEST_LOG_ROOT / "telegram"
+        tmp.mkdir(parents=True, exist_ok=True)
+        fake_state = tmp / "state.json"
+        fake_pid = tmp / "bridge.pid"
+        fake_log = tmp / "bridge.jsonl"
+
+        def fake_api(method, params=None, *, token=None, timeout=30):
+            if method == "getUpdates":
+                return {
+                    "ok": True,
+                    "result": [
+                        {
+                            "update_id": 10,
+                            "message": {
+                                "message_id": 7,
+                                "chat": {"id": 123},
+                                "from": {"first_name": "Sandro"},
+                                "text": "ola eve",
+                            },
+                        }
+                    ],
+                }
+            if method == "sendMessage":
+                return {"ok": True, "result": {"message_id": 8, "text": params["text"]}}
+            raise AssertionError(method)
+
+        with patch.object(telegram_bridge, "STATE_PATH", fake_state), patch.object(telegram_bridge, "PID_PATH", fake_pid), patch.object(telegram_bridge, "LOG_PATH", fake_log):
+            with patch.object(telegram_bridge, "telegram_api", side_effect=fake_api), patch("app.eve_codex.ask", return_value="ola Sandro") as ask_mock:
+                result = telegram_bridge.poll_once(respond=True, token="unit-token")
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["count"], 1)
+        self.assertEqual(json.loads(fake_state.read_text(encoding="utf-8"))["offset"], 11)
+        kwargs = ask_mock.call_args.kwargs
+        self.assertTrue(kwargs["allow_tools"])
+        self.assertIn("telegram_send_message", kwargs["excluded_tools"])
+
     def test_task_ledger_marks_unverified_tool_as_failed(self):
         task_id = start_tool_task("unit_tool", {"unit": True}, source="unit")
         finish_tool_task(
@@ -674,6 +725,7 @@ class EveCoreTests(unittest.TestCase):
         self.assertEqual(classify_tool("run_terminal").approval_class, "exec_capable")
         self.assertEqual(classify_tool("publish_x_post_now").approval_class, "public_or_external")
         self.assertEqual(classify_tool("schedule_repeated_x_posts").approval_class, "public_or_external")
+        self.assertEqual(classify_tool("arsi_core_update").approval_class, "self_modify")
         self.assertEqual(classify_tool("browser_close").approval_class, "cleanup")
         self.assertTrue(classify_tool("browser_close").auto_approve)
         set_safety_mode("safe_mode", "unit policy")
@@ -713,6 +765,14 @@ class EveCoreTests(unittest.TestCase):
         tools = {item["tool"] for item in actions}
         self.assertIn("autonomy_cycle", tools)
         self.assertIn("run_terminal", tools)
+
+    def test_tool_catalog_can_hide_telegram_transport_tools(self):
+        from core.eve_tool_registry import tool_catalog_prompt
+
+        catalog = tool_catalog_prompt(excluded_tools={"telegram_send_message", "telegram_poll_once"})
+        self.assertNotIn("telegram_send_message", catalog)
+        self.assertNotIn("telegram_poll_once", catalog)
+        self.assertIn("workspace_read_file", catalog)
         formatted = format_internal_plan("trocar de sessao sem perder o fio")
         self.assertIn("session_checkpoint", formatted)
         self.assertIn("verified_self_update", format_internal_plan("auto melhorar e corrigir o meu core com testes"))
@@ -778,6 +838,38 @@ class EveCoreTests(unittest.TestCase):
         self.assertEqual(target.read_text(encoding="utf-8"), "VALUE = 1\n")
         target.unlink(missing_ok=True)
 
+    def test_arsi_core_update_can_apply_approved_core_change_with_tests_and_backup(self):
+        target = Path("core") / "unit_arsi_temp.py"
+        absolute = Path(__file__).resolve().parents[1] / target
+        absolute.write_text("VALUE = 1\n", encoding="utf-8")
+        try:
+            result = arsi_core_update(
+                str(target),
+                "VALUE = 2\n",
+                tests=["py_compile_candidate"],
+                approved=True,
+            )
+            self.assertTrue(result["applied"])
+            self.assertEqual(result["policy"]["framework"], "ARSI")
+            self.assertEqual(result["policy"]["risk"], "high")
+            self.assertTrue(result["tests_passed"])
+            self.assertTrue(result["rollback_ready"])
+            self.assertIn("VALUE = 2", absolute.read_text(encoding="utf-8"))
+        finally:
+            absolute.unlink(missing_ok=True)
+
+    def test_arsi_core_update_blocks_core_change_without_approval(self):
+        result = arsi_core_update(
+            "core/unit_arsi_blocked.py",
+            "VALUE = 1\n",
+            tests=["py_compile_candidate"],
+            approved=False,
+        )
+        self.assertFalse(result["applied"])
+        self.assertEqual(result["status"], "blocked")
+        self.assertEqual(result["policy"]["framework"], "ARSI")
+        self.assertEqual(result["policy"]["risk"], "high")
+
     def test_daily_transcripts_use_dd_mm_yy_date_key(self):
         day = datetime(2026, 5, 10, 0, 1)
         paths = ensure_daily_transcript_files(day)
@@ -837,6 +929,25 @@ class EveCoreTests(unittest.TestCase):
         self.assertIn("Código de entrada", html)
         self.assertIn("Conta Codex", html)
         self.assertIn("/api/chat", html)
+        self.assertIn("imageInput", html)
+
+    def test_web_interface_can_save_image_upload(self):
+        payload = {
+            "name": "unit.png",
+            "type": "image/png",
+            "data": "iVBORw0KGgo=",
+        }
+        meta = save_chat_image(payload)
+        self.assertTrue(Path(meta["path"]).exists())
+        self.assertEqual(meta["content_type"], "image/png")
+        self.assertGreater(meta["bytes"], 0)
+
+    def test_gateway_state_reports_self_awareness_shape(self):
+        state = gateway_state(port=65500)
+        self.assertEqual(state["root"], str(Path(__file__).resolve().parents[1]))
+        self.assertEqual(state["port"], 65500)
+        self.assertIn("listening", state)
+        self.assertIn("has_image_upload", state)
 
     def test_cron_manager_dry_run(self):
         cron_path = WORKSPACE_DIR / "unit_command_cron.json"
@@ -939,6 +1050,177 @@ class EveCoreTests(unittest.TestCase):
         self.assertTrue(validate_x_post_text(used_text)["ok"])
         self.assertEqual(result["result"]["correction"]["status"], "auto_shortened")
         self.assertTrue(result["verification"]["ok"])
+
+    def test_publish_x_post_now_keeps_browser_open_when_publish_not_verified(self):
+        from app.eve_codex import execute_eve_tool_call
+
+        set_safety_mode("unrestricted_mode", "unit publish")
+        failed_skill = {
+            "status": "failed",
+            "verification": {"ok": False, "rule": "composer_not_verified_before_publish"},
+            "results": [],
+        }
+        with patch("core.eve_tool_registry.run_skill", return_value=failed_skill):
+            with patch("core.eve_tool_registry.close_browser_page") as close_page:
+                result = execute_eve_tool_call({"tool": "publish_x_post_now", "args": {"text": "Not yet verified."}})
+        close_page.assert_not_called()
+        self.assertEqual(result["result"]["browser_closed"]["status"], "skipped")
+        self.assertEqual(result["result"]["browser_closed"]["reason"], "x_publish_not_verified_keep_page_open_for_review")
+
+    def test_x_login_google_clicks_eve_account_from_login_modal(self):
+        screenshots = iter(
+            [
+                {
+                    "screenshot": "before.png",
+                    "entries": [
+                        {"text": "Entrar", "global_box": {"left": 250, "top": 80, "width": 80, "height": 22, "center_x": 290, "center_y": 91}},
+                        {"text": "no", "global_box": {"left": 335, "top": 80, "width": 24, "height": 22, "center_x": 347, "center_y": 91}},
+                        {"text": "X", "global_box": {"left": 365, "top": 80, "width": 20, "height": 22, "center_x": 375, "center_y": 91}},
+                        {"text": "Fazer", "global_box": {"left": 220, "top": 150, "width": 55, "height": 20, "center_x": 247, "center_y": 160}},
+                        {"text": "login", "global_box": {"left": 280, "top": 150, "width": 45, "height": 20, "center_x": 302, "center_y": 160}},
+                        {"text": "como", "global_box": {"left": 330, "top": 150, "width": 45, "height": 20, "center_x": 352, "center_y": 160}},
+                        {"text": "eve", "global_box": {"left": 380, "top": 150, "width": 34, "height": 20, "center_x": 397, "center_y": 160}},
+                        {"text": "Esqueceu", "global_box": {"left": 250, "top": 450, "width": 80, "height": 20, "center_x": 290, "center_y": 460}},
+                        {"text": "senha", "global_box": {"left": 335, "top": 450, "width": 55, "height": 20, "center_x": 362, "center_y": 460}},
+                    ],
+                },
+                {"screenshot": "mid.png", "entries": [{"text": "Para", "global_box": {"left": 10, "top": 10, "width": 40, "height": 20, "center_x": 30, "center_y": 20}}, {"text": "voce", "global_box": {"left": 55, "top": 10, "width": 40, "height": 20, "center_x": 75, "center_y": 20}}]},
+                {"screenshot": "after.png", "entries": [{"text": "Para", "global_box": {"left": 10, "top": 10, "width": 40, "height": 20, "center_x": 30, "center_y": 20}}, {"text": "voce", "global_box": {"left": 55, "top": 10, "width": 40, "height": 20, "center_x": 75, "center_y": 20}}]},
+            ]
+        )
+        with patch("tools.x_human.focus_window_by_title_terms", return_value={"ok": True, "match": {"title": "X - Google Chrome"}}):
+            with patch("tools.x_human._uia_click_by_name_terms", return_value={"ok": False, "engine": "uia"}):
+                with patch("tools.x_human.ocr_desktop_data", side_effect=lambda: next(screenshots)):
+                    with patch("tools.x_human.click", return_value={"status": "clicked"}) as clicked:
+                        with patch("tools.x_human.time.sleep"):
+                            result = login_x_with_google_account(approved=True)
+        self.assertEqual(result["status"], "logged_in_or_progressed")
+        self.assertEqual(result["engine"], "ocr")
+        self.assertTrue(result["verification"]["ok"])
+        clicked.assert_called()
+
+    def test_x_login_google_prefers_uia_when_available(self):
+        screenshots = iter(
+            [
+                {
+                    "screenshot": "before.png",
+                    "entries": [
+                        {"text": "Entrar", "global_box": {"left": 250, "top": 80, "width": 80, "height": 22, "center_x": 290, "center_y": 91}},
+                        {"text": "X", "global_box": {"left": 365, "top": 80, "width": 20, "height": 22, "center_x": 375, "center_y": 91}},
+                        {"text": "Fazer", "global_box": {"left": 220, "top": 150, "width": 55, "height": 20, "center_x": 247, "center_y": 160}},
+                        {"text": "eve", "global_box": {"left": 380, "top": 150, "width": 34, "height": 20, "center_x": 397, "center_y": 160}},
+                        {"text": "senha", "global_box": {"left": 335, "top": 450, "width": 55, "height": 20, "center_x": 362, "center_y": 460}},
+                    ],
+                },
+                {"screenshot": "mid.png", "entries": [{"text": "Para", "global_box": {"left": 10, "top": 10, "width": 40, "height": 20, "center_x": 30, "center_y": 20}}, {"text": "voce", "global_box": {"left": 55, "top": 10, "width": 40, "height": 20, "center_x": 75, "center_y": 20}}]},
+                {"screenshot": "after.png", "entries": [{"text": "Para", "global_box": {"left": 10, "top": 10, "width": 40, "height": 20, "center_x": 30, "center_y": 20}}, {"text": "voce", "global_box": {"left": 55, "top": 10, "width": 40, "height": 20, "center_x": 75, "center_y": 20}}]},
+            ]
+        )
+        with patch("tools.x_human.focus_window_by_title_terms", return_value={"ok": True, "match": {"title": "X - Google Chrome"}}):
+            with patch("tools.x_human._uia_click_by_name_terms", return_value={"ok": True, "engine": "uia", "coordinates": {"x": 330, "y": 160}}) as uia_click:
+                with patch("tools.x_human.ocr_desktop_data", side_effect=lambda: next(screenshots)):
+                    with patch("tools.x_human.click") as clicked:
+                        with patch("tools.x_human.time.sleep"):
+                            result = login_x_with_google_account(approved=True)
+        self.assertEqual(result["status"], "logged_in_or_progressed")
+        self.assertEqual(result["engine"], "uia")
+        self.assertTrue(result["verification"]["ok"])
+        clicked.assert_not_called()
+        self.assertEqual(uia_click.call_count, 1)
+
+    def test_x_focus_prefers_chrome_over_codex(self):
+        callbacks = {}
+
+        class FakeUser32:
+            titles = {1: "Codex", 2: "X. O que está acontecendo / X - Google Chrome"}
+
+            def IsWindowVisible(self, hwnd):
+                return True
+
+            def GetWindowTextLengthW(self, hwnd):
+                return len(self.titles[int(hwnd)])
+
+            def GetWindowTextW(self, hwnd, buffer, length):
+                buffer.value = self.titles[int(hwnd)]
+
+            def EnumWindows(self, callback, _lparam):
+                callbacks["callback"] = callback
+                callback(1, 0)
+                callback(2, 0)
+
+            def ShowWindow(self, hwnd, flag):
+                callbacks["shown"] = int(hwnd)
+
+            def SetForegroundWindow(self, hwnd):
+                callbacks["focused"] = int(hwnd)
+
+        fake_windll = type("FakeWindll", (), {"user32": FakeUser32()})()
+        with patch("tools.x_human.ctypes.windll", fake_windll, create=True), patch("tools.x_human.time.sleep"):
+            result = focus_window_by_title_terms(["x", "chrome"])
+        self.assertTrue(result["ok"])
+        self.assertEqual(callbacks["focused"], 2)
+
+    def test_x_focus_prefers_google_account_chooser_over_x_window(self):
+        callbacks = {}
+
+        class FakeUser32:
+            titles = {
+                1: "X. O que esta acontecendo / X - Google Chrome",
+                2: "Iniciar sessao - Contas Google - Google Chrome",
+            }
+
+            def IsWindowVisible(self, hwnd):
+                return True
+
+            def GetWindowTextLengthW(self, hwnd):
+                return len(self.titles[int(hwnd)])
+
+            def GetWindowTextW(self, hwnd, buffer, length):
+                buffer.value = self.titles[int(hwnd)]
+
+            def EnumWindows(self, callback, _lparam):
+                callbacks["callback"] = callback
+                callback(1, 0)
+                callback(2, 0)
+
+            def ShowWindow(self, hwnd, flag):
+                callbacks["shown"] = int(hwnd)
+
+            def SetForegroundWindow(self, hwnd):
+                callbacks["focused"] = int(hwnd)
+
+        fake_windll = type("FakeWindll", (), {"user32": FakeUser32()})()
+        with patch("tools.x_human.ctypes.windll", fake_windll, create=True), patch("tools.x_human.time.sleep"):
+            result = focus_window_by_title_terms(["google", "chrome", "iniciar sessao", "accounts.google"])
+        self.assertTrue(result["ok"])
+        self.assertEqual(callbacks["focused"], 2)
+
+    def test_x_google_account_chooser_clicks_eve_account(self):
+        screenshots = iter(
+            [
+                {
+                    "screenshot": "chooser_before.png",
+                    "entries": [
+                        {"text": "Selecione", "global_box": {"left": 95, "top": 160, "width": 95, "height": 28, "center_x": 142, "center_y": 174}},
+                        {"text": "uma", "global_box": {"left": 195, "top": 160, "width": 48, "height": 28, "center_x": 219, "center_y": 174}},
+                        {"text": "conta", "global_box": {"left": 250, "top": 160, "width": 60, "height": 28, "center_x": 280, "center_y": 174}},
+                        {"text": "eve", "global_box": {"left": 138, "top": 286, "width": 34, "height": 20, "center_x": 155, "center_y": 296}},
+                        {"text": "takerryoken@gmail.com", "global_box": {"left": 138, "top": 312, "width": 190, "height": 20, "center_x": 233, "center_y": 322}},
+                    ],
+                },
+                {"screenshot": "chooser_after.png", "entries": [{"text": "Continuar", "global_box": {"left": 100, "top": 200, "width": 80, "height": 20, "center_x": 140, "center_y": 210}}]},
+            ]
+        )
+        with patch("tools.x_human.focus_window_by_title_terms", return_value={"ok": True, "match": {"title": "Iniciar sessão - Contas Google - Google Chrome"}}):
+            with patch("tools.x_human._first_uia_login_click", return_value=([{"ok": False}], None)):
+                with patch("tools.x_human.ocr_desktop_data", side_effect=lambda: next(screenshots)):
+                    with patch("tools.x_human.click", return_value={"status": "clicked"}) as clicked:
+                        with patch("tools.x_human.time.sleep"):
+                            result = click_google_account_chooser(approved=True)
+        self.assertEqual(result["status"], "account_selected_or_progressed")
+        self.assertEqual(result["engine"], "ocr")
+        self.assertTrue(result["verification"]["ok"])
+        clicked.assert_called()
 
     def test_fit_x_post_text_keeps_text_within_x_limit(self):
         fitted = fit_x_post_text("Eve " + ("learning " * 60))

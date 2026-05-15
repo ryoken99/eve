@@ -22,14 +22,42 @@ DEFAULT_CHROME_PATHS = [
 ]
 
 
+def _chrome_user_data_dir() -> Path:
+    return Path.home() / "AppData" / "Local" / "Google" / "Chrome" / "User Data"
+
+
+def _find_chrome_profile_directory_by_name(profile_name: str, user_data_dir: Path | None = None) -> str | None:
+    user_data_dir = user_data_dir or _chrome_user_data_dir()
+    local_state = user_data_dir / "Local State"
+    if not local_state.exists():
+        return None
+    try:
+        data = json.loads(local_state.read_text(encoding="utf-8", errors="replace"))
+    except json.JSONDecodeError:
+        return None
+    info_cache = ((data.get("profile") or {}).get("info_cache") or {})
+    wanted = str(profile_name or "").strip().lower()
+    for directory, info in info_cache.items():
+        names = {
+            str(info.get("name") or "").strip().lower(),
+            str(info.get("shortcut_name") or "").strip().lower(),
+            str(info.get("gaia_name") or "").strip().lower(),
+        }
+        if wanted in names:
+            return str(directory)
+    return None
+
+
 def _default_browser_config() -> dict:
     chrome_path = next((str(path) for path in DEFAULT_CHROME_PATHS if path.exists()), "chrome.exe")
+    profile_name = "Eve"
+    user_data_dir = _chrome_user_data_dir()
     return {
         "browser": "google_chrome",
-        "profile_name": "eve",
-        "profile_directory": "Profile 2",
+        "profile_name": profile_name,
+        "profile_directory": _find_chrome_profile_directory_by_name(profile_name, user_data_dir) or "Profile 2",
         "chrome_path": chrome_path,
-        "user_data_dir": str(Path.home() / "AppData" / "Local" / "Google" / "Chrome" / "User Data"),
+        "user_data_dir": str(user_data_dir),
         "new_window": True,
         "target_monitor_index": 2,
         "window_margin": 40,
@@ -42,6 +70,11 @@ def browser_config() -> dict:
         BROWSER_CONFIG.write_text(json.dumps(_default_browser_config(), indent=2, ensure_ascii=False), encoding="utf-8")
     config = _default_browser_config()
     config.update(json.loads(BROWSER_CONFIG.read_text(encoding="utf-8")))
+    profile_name = str(config.get("profile_name") or "Eve")
+    if profile_name.lower() == "eve":
+        resolved = _find_chrome_profile_directory_by_name(profile_name, Path(str(config.get("user_data_dir") or _chrome_user_data_dir())))
+        if resolved:
+            config["profile_directory"] = resolved
     return config
 
 

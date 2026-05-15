@@ -1,7 +1,9 @@
 {
   "browser": "google_chrome",
-  "profile_name": "eve",
+  "profile_name": "Eve",
   "profile_directory": "Profile 2",
+  "required_profile_display_name": "Eve",
+  "use_for_all_browser_tasks": true,
   "new_window": true,
   "target_monitor_index": 2,
   "window_margin": 40

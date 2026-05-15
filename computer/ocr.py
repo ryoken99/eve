@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 try:
@@ -24,12 +25,16 @@ from computer.ui_action_log import log_ui_action
 COMMON_TESSERACT_PATHS = [
     Path(r"C:\Program Files\Tesseract-OCR\tesseract.exe"),
     Path(r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe"),
+    Path(__file__).resolve().parents[1] / ".local" / "Tesseract-OCR" / "tesseract.exe",
 ]
+LOCAL_TESSDATA_DIR = Path(__file__).resolve().parents[1] / ".local" / "tessdata"
 
 
 def configure_tesseract() -> str | None:
     if pytesseract is None:
         return None
+    if LOCAL_TESSDATA_DIR.exists():
+        os.environ["TESSDATA_PREFIX"] = str(LOCAL_TESSDATA_DIR)
     for path in COMMON_TESSERACT_PATHS:
         if path.exists():
             pytesseract.pytesseract.tesseract_cmd = str(path)

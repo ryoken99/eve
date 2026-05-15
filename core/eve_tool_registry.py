@@ -38,6 +38,7 @@ from memory.daily_transcripts import ensure_daily_transcript_files
 from security.secrets_vault import get_secret, list_secrets, mask_secret, store_secret
 from security.safety_modes import current_safety_mode, describe_safety, set_safety_mode
 from security.tool_policy import classify_tool, decide_tool_execution
+from self_improvement.arsi_cycle import arsi_core_update
 from self_improvement.verified_self_update import verified_core_update
 from self_improvement.improvement_planner import plan_autonomous_system_improvements
 from tools.admin_executor import admin_status, launch_elevated_powershell, run_admin_command
@@ -50,9 +51,14 @@ from tools.git_sync import git_pull_updates
 from tools.notification import notify
 from tools.process_manager import list_processes, poll_process, start_process, stop_process
 from tools.terminal import run_command
+from tools.telegram_bridge import poll_once as telegram_poll_once
+from tools.telegram_bridge import public_status as telegram_status
+from tools.telegram_bridge import send_message as telegram_send_message
+from tools.telegram_bridge import start_bridge as telegram_start_bridge
+from tools.telegram_bridge import stop_bridge as telegram_stop_bridge
 from tools.web_research import run_web_research_report
 from tools.windows_scheduler import create_daily_task, list_eve_tasks
-from tools.x_human import fit_x_post_text
+from tools.x_human import click_google_account_chooser, fit_x_post_text, login_x_with_google_account
 from tools.x_scheduler import schedule_repeated_x_posts, schedule_x_post
 from tools.research_scheduler import schedule_web_research_report
 from research.interest_evolution import (
@@ -251,14 +257,26 @@ def _publish_x_post_now(args: dict) -> dict:
     publish_text = fitted["text"]
     encoded = urllib.parse.quote(publish_text)
     browser_closed = None
-    try:
-        skill_result = run_skill(
-            "trusted/x_publish_text_learning",
-            args={"url": f"https://x.com/intent/post?text={encoded}", "text": publish_text},
-            approved=True,
+    skill_result = run_skill(
+        "trusted/x_publish_text_learning",
+        args={"url": f"https://x.com/intent/post?text={encoded}", "text": publish_text},
+        approved=True,
+    )
+    skill_verified = False
+    if isinstance(skill_result, dict):
+        verification = skill_result.get("verification")
+        skill_verified = bool(
+            skill_result.get("status") in {"ok", "completed", "published"}
+            or (isinstance(verification, dict) and verification.get("ok"))
         )
-    finally:
+    if skill_verified:
         browser_closed = close_browser_page("x_publish_finished")
+    else:
+        browser_closed = {
+            "status": "skipped",
+            "reason": "x_publish_not_verified_keep_page_open_for_review",
+            "method": "none",
+        }
     if isinstance(skill_result, dict):
         skill_result["correction"] = {
             "status": fitted["status"],
@@ -271,6 +289,30 @@ def _publish_x_post_now(args: dict) -> dict:
         "ok": True,
         "tool": "publish_x_post_now",
         "result": skill_result,
+    }
+
+
+def _x_login_google(args: dict) -> dict:
+    return {
+        "ok": True,
+        "tool": "x_login_google",
+        "result": login_x_with_google_account(
+            account_hint=str(args.get("account_hint") or "eve"),
+            email_hint=str(args.get("email_hint") or "takerryoken@gmail.com"),
+            approved=bool(args.get("approved")),
+        ),
+    }
+
+
+def _x_google_account_chooser(args: dict) -> dict:
+    return {
+        "ok": True,
+        "tool": "x_google_account_chooser",
+        "result": click_google_account_chooser(
+            account_hint=str(args.get("account_hint") or "eve"),
+            email_hint=str(args.get("email_hint") or "takerryoken@gmail.com"),
+            approved=bool(args.get("approved")),
+        ),
     }
 
 
@@ -730,6 +772,37 @@ def _secrets_mask(args: dict) -> dict:
     return {"ok": True, "tool": "secrets_mask", "result": {"masked": mask_secret(value)}}
 
 
+def _telegram_status(args: dict) -> dict:
+    return {"ok": True, "tool": "telegram_status", "result": telegram_status()}
+
+
+def _telegram_start_bridge(args: dict) -> dict:
+    return {
+        "ok": True,
+        "tool": "telegram_start_bridge",
+        "result": telegram_start_bridge(interval=int(args.get("interval") or 5)),
+    }
+
+
+def _telegram_stop_bridge(args: dict) -> dict:
+    return {"ok": True, "tool": "telegram_stop_bridge", "result": telegram_stop_bridge()}
+
+
+def _telegram_poll_once(args: dict) -> dict:
+    return {"ok": True, "tool": "telegram_poll_once", "result": telegram_poll_once(respond=bool(args.get("respond", True)))}
+
+
+def _telegram_send_message(args: dict) -> dict:
+    chat_id = args.get("chat_id")
+    if not chat_id:
+        chat_id = (telegram_status().get("last_chat_id") or "")
+    return {
+        "ok": True,
+        "tool": "telegram_send_message",
+        "result": telegram_send_message(chat_id, str(args.get("text") or "Eve Telegram test")),
+    }
+
+
 def _diagnostics_export(args: dict) -> dict:
     return {"ok": True, "tool": "diagnostics_export", "result": build_diagnostics_bundle(str(args.get("note") or ""))}
 
@@ -803,6 +876,20 @@ def _verified_self_update(args: dict) -> dict:
     }
 
 
+def _arsi_core_update(args: dict) -> dict:
+    return {
+        "ok": True,
+        "tool": "arsi_core_update",
+        "result": arsi_core_update(
+            str(args.get("path") or ""),
+            str(args.get("content") or ""),
+            tests=args.get("tests") or ["py_compile_candidate"],
+            max_attempts=int(args.get("max_attempts") or 1),
+            approved=bool(args.get("approved") or args.get("sandro_approved")),
+        ),
+    }
+
+
 TOOLS: dict[str, EveTool] = {
     "capability_self_test": EveTool("capability_self_test", "Verifica capacidades locais atuais da Eve.", {}, _capability_self_test),
     "capability_roadmap": EveTool("capability_roadmap", "Audita os 17 pontos de evolucao da Eve, classifica proximidade/melhoria e garante revisao algumas vezes por dia.", {"write": True, "history": True, "ensure_schedule": True}, _capability_roadmap),
@@ -821,6 +908,8 @@ TOOLS: dict[str, EveTool] = {
     "schedule_desktop_folder": EveTool("schedule_desktop_folder", "Agenda criacao de pasta no Ambiente de Trabalho.", {"name": "pasta", "time": "22:43"}, _schedule_desktop_folder),
     "schedule_x_post": EveTool("schedule_x_post", "Agenda post no X.", {"time": "22:21", "text": "texto em ingles"}, _schedule_x_post),
     "schedule_repeated_x_posts": EveTool("schedule_repeated_x_posts", "Agenda varios posts no X com intervalo, verifica a contagem e tenta corrigir falhas automaticamente.", {"count": 3, "interval_minutes": 2, "topic": "how Eve feels", "texts": [], "approved": True}, _schedule_repeated_x_posts),
+    "x_login_google": EveTool("x_login_google", "No modal Entrar no X, clica em Fazer login como Eve/Google e verifica que a sessao avancou.", {"account_hint": "eve", "email_hint": "takerryoken@gmail.com", "approved": True}, _x_login_google),
+    "x_google_account_chooser": EveTool("x_google_account_chooser", "No popup Selecione uma conta do Google, clica na conta Eve e verifica que avancou.", {"account_hint": "eve", "email_hint": "takerryoken@gmail.com", "approved": True}, _x_google_account_chooser),
     "publish_x_post_now": EveTool("publish_x_post_now", "Publica imediatamente texto no X usando a skill visual trusted.", {"text": "texto em ingles"}, _publish_x_post_now),
     "run_terminal": EveTool("run_terminal", "Executa comando PowerShell local; com background=true arranca processo gerido.", {"command": "Get-ChildItem", "cwd": "D:\\Eve", "timeout": 60, "background": False, "approved": False}, _run_terminal),
     "run_skill": EveTool("run_skill", "Executa skill da Eve.", {"skill": "trusted/x_publish_text_learning", "args": {}}, _run_skill),
@@ -899,6 +988,11 @@ TOOLS: dict[str, EveTool] = {
     "secrets_get": EveTool("secrets_get", "Le segredo mascarado por defeito.", {"name": "api_key", "reveal": False}, _secrets_get),
     "secrets_list": EveTool("secrets_list", "Lista nomes de segredos mascarados.", {}, _secrets_list),
     "secrets_mask": EveTool("secrets_mask", "Mascara texto sensivel para logs/respostas.", {"value": "secret"}, _secrets_mask),
+    "telegram_status": EveTool("telegram_status", "Mostra estado da ponte Telegram da Eve sem expor token.", {}, _telegram_status),
+    "telegram_start_bridge": EveTool("telegram_start_bridge", "Liga a ponte Telegram: mensagens recebidas no bot entram na Eve e recebem resposta no Telegram.", {"interval": 5, "approved": True}, _telegram_start_bridge),
+    "telegram_stop_bridge": EveTool("telegram_stop_bridge", "Para a ponte Telegram da Eve.", {"approved": True}, _telegram_stop_bridge),
+    "telegram_poll_once": EveTool("telegram_poll_once", "Lê uma vez as mensagens novas do Telegram e responde se respond=true.", {"respond": True, "approved": True}, _telegram_poll_once),
+    "telegram_send_message": EveTool("telegram_send_message", "Envia mensagem pelo Telegram para chat_id conhecido ou indicado.", {"chat_id": "", "text": "ola"}, _telegram_send_message),
     "diagnostics_export": EveTool("diagnostics_export", "Exporta diagnostico/trajectory basica da Eve.", {"note": "debug"}, _diagnostics_export),
     "install_startup_daemon": EveTool("install_startup_daemon", "Instala tarefa Windows para tick autonomo recorrente, por defeito com RunLevel Highest.", {"time": "09:00", "highest": True}, _install_startup_daemon),
     "install_startup_console": EveTool("install_startup_console", "Instala tarefa Windows para abrir consola Eve.", {"time": "09:01"}, _install_startup_console),
@@ -910,10 +1004,12 @@ TOOLS: dict[str, EveTool] = {
     "session_rotate": EveTool("session_rotate", "Cria checkpoint e muda para nova sessao ativa.", {"reason": "contexto grande", "new_session_id": ""}, _session_rotate),
     "internal_plan": EveTool("internal_plan", "Planeia que ferramentas internas usar para um pedido natural.", {"prompt": "trabalha em loop nesta tarefa", "limit": 5}, _internal_plan),
     "verified_self_update": EveTool("verified_self_update", "Auto-melhoria verificada: testa candidato em sandbox e so aplica se os testes passarem.", {"path": "core/example.py", "content": "codigo", "tests": ["py_compile_candidate"], "max_attempts": 1, "approved": True}, _verified_self_update),
+    "arsi_core_update": EveTool("arsi_core_update", "ARSI aplicado ao core: classifica risco, exige aprovacao para core, testa candidato, cria backup/rollback e so depois aplica.", {"path": "core/example.py", "content": "codigo", "tests": ["py_compile_candidate"], "max_attempts": 1, "approved": True}, _arsi_core_update),
 }
 
 
-def tool_catalog_prompt() -> str:
+def tool_catalog_prompt(excluded_tools: set[str] | None = None) -> str:
+    excluded_tools = excluded_tools or set()
     rows = [
         "Ferramentas locais disponiveis para ti (Eve). Quando quiseres usar uma ferramenta, responde apenas numa linha com:",
         'EVE_TOOL {"tool":"nome_da_ferramenta","args":{...}}',
@@ -921,6 +1017,8 @@ def tool_catalog_prompt() -> str:
         "Ferramentas:",
     ]
     for tool in TOOLS.values():
+        if tool.name in excluded_tools:
+            continue
         rows.append(f"- {tool.name}: {tool.description} args {json.dumps(tool.args_schema, ensure_ascii=False)}")
     rows.extend(
         [
