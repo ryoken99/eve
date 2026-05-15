@@ -1,15 +1,15 @@
 # Point 17 Full Autonomy Runtime
 
-Generated: 2026-05-15T15:27:44.956456Z
+Generated: 2026-05-15T16:05:07.970210Z
 EVE_ROOT: `E:\eve`
 Runtime score: **10.0/10**
 
 ## Checks
 
 - **PASS** critical: daemon tick returns heartbeat payload
-  - evidence: `{"timestamp": "2026-05-15T15:27:34.979968Z", "transcripts": {"chat": "E:\\eve\\logs\\transcripts\\chat\\15-05-26.jsonl", "tools": "E:\\eve\\logs\\transcripts\\tools\\15-05-26.jsonl", "actions": "E:\\eve\\logs\\transcripts\\actions\\15-05-26.jsonl", "errors": "E:\\eve\\logs\\transcripts\\errors\\15-05-26.jsonl", "console": "E:\\eve\\logs\\transcripts\\console\\15-05-26.jsonl", "interface": "E:\\eve\\logs\\transcripts\\interface\\15-05-26.jsonl"}, "cron": {"executed": [], "count": 0}, "triggers": {"discovered": ["error_repair", "memory_review", "curiosity_research", "capability_review"], "created_missions": []}, "proposals": [{"kind": "error_review", "message": "resumir erros recentes e criar licoes adaptativas", "risk": "low", "notify_sandro": true}, {"kind": "schedule_hygiene", "message": "criar agenda local para consolidacao, sonho e pesquisa tecnologica", "risk": "low", "notify_sandro": false}, {"kind": "continuity", "message": "manter diario e estado vivo atualizados", "risk": "low", "notify_sandro": false}], "proactive_decisions": {"count": 3, "log_path": "E:\\eve\\logs\\autonomy\\proactive_decisions.jsonl"}, "autonomy": {"created_missions": [{"id": "20260515-162730-melhorar-po...(truncated)`
+  - evidence: `{"timestamp": "2026-05-15T16:04:57.651948Z", "transcripts": {"chat": "E:\\eve\\logs\\transcripts\\chat\\15-05-26.jsonl", "tools": "E:\\eve\\logs\\transcripts\\tools\\15-05-26.jsonl", "actions": "E:\\eve\\logs\\transcripts\\actions\\15-05-26.jsonl", "errors": "E:\\eve\\logs\\transcripts\\errors\\15-05-26.jsonl", "console": "E:\\eve\\logs\\transcripts\\console\\15-05-26.jsonl", "interface": "E:\\eve\\logs\\transcripts\\interface\\15-05-26.jsonl"}, "cron": {"executed": [], "count": 0}, "triggers": {"discovered": ["error_repair", "memory_review", "curiosity_research", "capability_review"], "created_missions": []}, "proposals": [{"kind": "error_review", "message": "resumir erros recentes e criar licoes adaptativas", "risk": "low", "notify_sandro": true}, {"kind": "schedule_hygiene", "message": "criar agenda local para consolidacao, sonho e pesquisa tecnologica", "risk": "low", "notify_sandro": false}, {"kind": "continuity", "message": "manter diario e estado vivo atualizados", "risk": "low", "notify_sandro": false}], "proactive_decisions": {"count": 3, "log_path": "E:\\eve\\logs\\autonomy\\proactive_decisions.jsonl"}, "autonomy": {"created_missions": [{"id": "20260515-170453-melhorar-po...(truncated)`
 - **PASS** critical: daemon tick can run three times
-  - evidence: `{"runs": ["2026-05-15T15:27:34.979968Z", "2026-05-15T15:27:39.905105Z", "2026-05-15T15:27:44.882461Z"]}`
+  - evidence: `{"runs": ["2026-05-15T16:04:57.651948Z", "2026-05-15T16:05:02.748781Z", "2026-05-15T16:05:07.895240Z"]}`
 - **PASS** critical: daemon heartbeat file exists
   - evidence: `"E:\\eve\\state\\daemon_heartbeat.json"`
 - **PASS** critical: cron result present

@@ -1,6 +1,6 @@
 # Point 15 Computer Use VNext Runtime
 
-Generated: 2026-05-15T15:27:27.641272Z
+Generated: 2026-05-15T16:04:50.097792Z
 EVE_ROOT: `E:\eve`
 Runtime score: **10.0/10**
 
@@ -19,8 +19,8 @@ Runtime score: **10.0/10**
 - **PASS** critical: UIA find_element works by name/control_type
   - evidence: `{"found": true, "element": {"name": "Save", "control_type": "Button", "element_id": "save"}, "engine": "uia"}`
 - **PASS** critical: action router types via UIA before OCR
-  - evidence: `{"ok": true, "engine": "uia", "attempts": [{"ok": true, "engine": "uia", "action": "type", "element": {"name": "Editor", "control_type": "Edit", "element_id": "edit"}, "text_length": 5, "simulated": true}], "verification": {"verified": true, "diff": {"changed": true, "changes": {"timestamp": {"before": "2026-05-15T15:27:26.658242Z", "after": "2026-05-15T15:27:26.659243Z"}}}, "reason": "state changed"}, "permission": {"allowed": true, "policy": {"can_click": true, "can_type": true}}}`
+  - evidence: `{"ok": true, "engine": "uia", "attempts": [{"ok": true, "engine": "uia", "action": "type", "element": {"name": "Editor", "control_type": "Edit", "element_id": "edit"}, "text_length": 5, "simulated": true}], "verification": {"verified": false, "diff": {"changed": false, "changes": {}}, "reason": "no observable change"}, "permission": {"allowed": true, "policy": {"can_click": true, "can_type": true}}}`
 - **PASS** critical: sensitive browser action blocks without confirmation
   - evidence: `{"ok": false, "stage": "permission", "permission": {"allowed": false, "reason": "sensitive action requires confirmation", "policy": {"can_click": true, "can_type": true, "requires_submit_confirmation": true}, "confirmation_required": true}}`
 - **PASS**: OCR fallback is attempted only after structured route fails
-  - evidence: `{"ok": false, "engine": null, "attempts": [{"ok": false, "engine": "uia", "action": "invoke", "reason": "element not found", "query": {"name": "definitely_missing_runtime_text", "control_type": null, "automation_id": null}}, {"ok": false, "engine": "ocr", "action": "click", "reason": "texto nao localizado por OCR"}], "verification": {"verified": false, "diff": {"changed": true, "changes": {"timestamp": {"before": "2026-05-15T15:27:26.669242Z", "after": "2026-05-15T15:27:27.615273Z"}}}, "missing": ["ocr_text"], "expected_change": {"ocr_text": "missing"}}, "permission": {"allowed": true, "policy": {"can_click": true, "can_type": true}}}`
+  - evidence: `{"ok": false, "engine": null, "attempts": [{"ok": false, "engine": "uia", "action": "invoke", "reason": "element not found", "query": {"name": "definitely_missing_runtime_text", "control_type": null, "automation_id": null}}, {"ok": false, "engine": "ocr", "action": "click", "reason": "texto nao localizado por OCR"}], "verification": {"verified": false, "diff": {"changed": true, "changes": {"timestamp": {"before": "2026-05-15T16:04:49.131777Z", "after": "2026-05-15T16:04:50.071307Z"}}}, "missing": ["ocr_text"], "expected_change": {"ocr_text": "missing"}}, "permission": {"allowed": true, "policy": {"can_click": true, "can_type": true}}}`
