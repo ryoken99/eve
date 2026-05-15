@@ -1,31 +1,31 @@
 # Point 02 Transcripts Runtime
 
-Generated: 2026-05-15T16:24:17.832054Z
-EVE_ROOT: `E:\eve`
-Runtime score: **6.0/10**
+Generated: 2026-05-15T16:55:45.264045Z
+EVE_ROOT: `D:\Eve`
+Runtime score: **10.0/10**
 
 ## Checks
 
 - **PASS** critical: chat transcript file exists and has runtime event
-  - evidence: `{"path": "E:\\eve\\logs\\transcripts\\chat\\15-05-26.jsonl", "last_hash": "7278101e1d93cacaf57f9923a3f62a4460d73c5a6d51f8a2f4e8d1be165ed968"}`
+  - evidence: `{"path": "D:\\Eve\\logs\\transcripts\\chat\\15-05-26.jsonl", "last_hash": "c47c597dc7fabd5bc800e19afffb8ef0904246f2a29d779579fb6ce66575199c"}`
 - **PASS** critical: console transcript file exists and has runtime event
-  - evidence: `{"path": "E:\\eve\\logs\\transcripts\\console\\15-05-26.jsonl", "last_hash": "689dcb0fdd2e21eb6f9b56a2c91f3d07a8bc7870233e2d2917332db62eb80681"}`
+  - evidence: `{"path": "D:\\Eve\\logs\\transcripts\\console\\15-05-26.jsonl", "last_hash": "06ca22d2a9e9bd1297b7dd38057c052b5bbc5b70c8085f1f9b2c6cc4c1a04e34"}`
 - **PASS** critical: interface transcript file exists and has runtime event
-  - evidence: `{"path": "E:\\eve\\logs\\transcripts\\interface\\15-05-26.jsonl", "last_hash": "dfb215f1726e1ac2523f92a6c655cf258c4afcc18fa12c9f747841411bedced7"}`
+  - evidence: `{"path": "D:\\Eve\\logs\\transcripts\\interface\\15-05-26.jsonl", "last_hash": "e5921ba6aaa8840a08e39c67bec31c7a0c6f18545ea66779431a352782d095d1"}`
 - **PASS** critical: tools transcript file exists and has runtime event
-  - evidence: `{"path": "E:\\eve\\logs\\transcripts\\tools\\15-05-26.jsonl", "last_hash": "8b889e5a5b4d4bd0470cf80e81291b110d239638cf1b4e144bc2a76e520f822d"}`
+  - evidence: `{"path": "D:\\Eve\\logs\\transcripts\\tools\\15-05-26.jsonl", "last_hash": "fc1a1925d902ac0a7fba15a73e88928461437f6c3735d18c429200a5bdff8cc9"}`
 - **PASS** critical: actions transcript file exists and has runtime event
-  - evidence: `{"path": "E:\\eve\\logs\\transcripts\\actions\\15-05-26.jsonl", "last_hash": "d9582adc8591dc518fe854a9ecaf08afcd69c8e3f3e293db035aabd0f214744f"}`
+  - evidence: `{"path": "D:\\Eve\\logs\\transcripts\\actions\\15-05-26.jsonl", "last_hash": "9b2e13664be66dfe5a1b91e014f7f80874f4501e942e4f2d3c46cdea1091beaf"}`
 - **PASS** critical: errors transcript file exists and has runtime event
-  - evidence: `{"path": "E:\\eve\\logs\\transcripts\\errors\\15-05-26.jsonl", "last_hash": "334d02bfe54e55aded77ddcb4cb03209361248f81de61154f7a3e8235018ae88"}`
-- **FAIL** critical: autonomy transcript file exists and has runtime event
-  - evidence: `{"path": "E:\\eve\\logs\\transcripts\\autonomy\\15-05-26.jsonl", "last_hash": null}`
-- **FAIL** critical: dream transcript file exists and has runtime event
-  - evidence: `{"path": "E:\\eve\\logs\\transcripts\\dream\\15-05-26.jsonl", "last_hash": null}`
-- **FAIL** critical: research transcript file exists and has runtime event
-  - evidence: `{"path": "E:\\eve\\logs\\transcripts\\research\\15-05-26.jsonl", "last_hash": null}`
-- **FAIL** critical: arsi transcript file exists and has runtime event
-  - evidence: `{"path": "E:\\eve\\logs\\transcripts\\arsi\\15-05-26.jsonl", "last_hash": null}`
+  - evidence: `{"path": "D:\\Eve\\logs\\transcripts\\errors\\15-05-26.jsonl", "last_hash": "98a492b2339796e0ea8bacc58fc5b9554f9425c6685657522e54c1c6c2a46be4"}`
+- **PASS** critical: autonomy transcript file exists and has runtime event
+  - evidence: `{"path": "D:\\Eve\\logs\\transcripts\\autonomy\\15-05-26.jsonl", "last_hash": "5bd1320b08b167da36c4517ba334393ee8c50f336ec3ecc6a68fcdc70296297a"}`
+- **PASS** critical: dream transcript file exists and has runtime event
+  - evidence: `{"path": "D:\\Eve\\logs\\transcripts\\dream\\15-05-26.jsonl", "last_hash": "4825be7c6c98d6e154b0ab6e2409d87523a439ff210b63a9e1ec2f417f11b179"}`
+- **PASS** critical: research transcript file exists and has runtime event
+  - evidence: `{"path": "D:\\Eve\\logs\\transcripts\\research\\15-05-26.jsonl", "last_hash": "9f786d35d9bba46a058a58b1c0dfd82f093dac75055ebeaa7c4ec7e4e00aeafd"}`
+- **PASS** critical: arsi transcript file exists and has runtime event
+  - evidence: `{"path": "D:\\Eve\\logs\\transcripts\\arsi\\15-05-26.jsonl", "last_hash": "db80cfd0a9ec10ef055ec83ed58865a1db03a31ca7099c5d6e610990c44917e6"}`
 
 ## Summary
 
@@ -33,7 +33,7 @@ Runtime score: **6.0/10**
 {
   "written": {
     "chat": {
-      "timestamp": "2026-05-15T16:24:17.471049Z",
+      "timestamp": "2026-05-15T16:55:44.917414Z",
       "date_key": "15/05/26",
       "kind": "chat",
       "event": "runtime_chat",
@@ -41,11 +41,11 @@ Runtime score: **6.0/10**
         "role": "user",
         "content": "runtime transcript test"
       },
-      "previous_hash": "bbdfbd72fae3f843329d55bbf7b1be86719a271adb993b857024bc85ecf945e5",
-      "hash": "7278101e1d93cacaf57f9923a3f62a4460d73c5a6d51f8a2f4e8d1be165ed968"
+      "previous_hash": "ed6a431ed0e082ba2060532e0fd4834e4af36fbdfcf59671ddaa109a23c6a8c8",
+      "hash": "c47c597dc7fabd5bc800e19afffb8ef0904246f2a29d779579fb6ce66575199c"
     },
     "console": {
-      "timestamp": "2026-05-15T16:24:17.477048Z",
+      "timestamp": "2026-05-15T16:55:44.918951Z",
       "date_key": "15/05/26",
       "kind": "console",
       "event": "runtime_console",
@@ -53,11 +53,11 @@ Runtime score: **6.0/10**
         "stream": "stdout",
         "text": "console line"
       },
-      "previous_hash": "5102d2d11009d968c42a17cfb39d88a6ccf3cc204ff1bafab6f17e58e42cb365",
-      "hash": "689dcb0fdd2e21eb6f9b56a2c91f3d07a8bc7870233e2d2917332db62eb80681"
+      "previous_hash": "1cf7bf327a4e9c9f5a450b401a25810095556962c372a3c613cfe2581b386c0a",
+      "hash": "06ca22d2a9e9bd1297b7dd38057c052b5bbc5b70c8085f1f9b2c6cc4c1a04e34"
     },
     "interface": {
-      "timestamp": "2026-05-15T16:24:17.482048Z",
+      "timestamp": "2026-05-15T16:55:44.921974Z",
       "date_key": "15/05/26",
       "kind": "interface",
       "event": "runtime_interface",
@@ -66,11 +66,11 @@ Runtime score: **6.0/10**
         "target": "eve",
         "content": "interface line"
       },
-      "previous_hash": "07bb2b4c488f689d5da2415f221dceaf3e6917709762c82ba099fb85a45e42a2",
-      "hash": "dfb215f1726e1ac2523f92a6c655cf258c4afcc18fa12c9f747841411bedced7"
+      "previous_hash": "70ed0039e96251c2f83a21f422d9e814bb52158a483071a2203f479e08311357",
+      "hash": "e5921ba6aaa8840a08e39c67bec31c7a0c6f18545ea66779431a352782d095d1"
     },
     "tools": {
-      "timestamp": "2026-05-15T16:24:17.489050Z",
+      "timestamp": "2026-05-15T16:55:44.923966Z",
       "date_key": "15/05/26",
       "kind": "tools",
       "event": "runtime_tool",
@@ -80,11 +80,11 @@ Runtime score: **6.0/10**
           "ok": true
         }
       },
-      "previous_hash": "b3b1de6d94be4996d4c95f403e84c6d3ad46b56db662826045ae844f90ae7ede",
-      "hash": "8b889e5a5b4d4bd0470cf80e81291b110d239638cf1b4e144bc2a76e520f822d"
+      "previous_hash": "81af771ad6523ef18ebac1b6163e18fc32c9e4fa464d7fa7f554849babb8c661",
+      "hash": "fc1a1925d902ac0a7fba15a73e88928461437f6c3735d18c429200a5bdff8cc9"
     },
     "errors": {
-      "timestamp": "2026-05-15T16:24:17.494050Z",
+      "timestamp": "2026-05-15T16:55:44.924972Z",
       "date_key": "15/05/26",
       "kind": "errors",
       "event": "runtime_error",
@@ -92,11 +92,11 @@ Runtime score: **6.0/10**
         "source": "runtime",
         "error": "synthetic"
       },
-      "previous_hash": "d62bd92d46deaea5cab99b28cd0687718dc5eb75ec7a626da8b20c12783b573e",
-      "hash": "334d02bfe54e55aded77ddcb4cb03209361248f81de61154f7a3e8235018ae88"
+      "previous_hash": "0bc79e8a5a876b2166f7445bb385f1142f579b1f6004b8e16153f56327ff8475",
+      "hash": "98a492b2339796e0ea8bacc58fc5b9554f9425c6685657522e54c1c6c2a46be4"
     },
     "actions": {
-      "timestamp": "2026-05-15T16:24:17.565050Z",
+      "timestamp": "2026-05-15T16:55:44.976979Z",
       "date_key": "15/05/26",
       "kind": "actions",
       "event": "runtime_autonomy",
@@ -104,8 +104,56 @@ Runtime score: **6.0/10**
         "kind": "autonomy",
         "status": "observed"
       },
-      "previous_hash": "5f53e78890c0b2475eebb578ad6b288060fbacfb4345ec6c07bc735601c0fe67",
-      "hash": "d9582adc8591dc518fe854a9ecaf08afcd69c8e3f3e293db035aabd0f214744f"
+      "previous_hash": "7343f5fc92f94f063a84b63a0479d6d85ea33659dcb0d2bc44f7235fbde0daa8",
+      "hash": "9b2e13664be66dfe5a1b91e014f7f80874f4501e942e4f2d3c46cdea1091beaf"
+    },
+    "autonomy": {
+      "timestamp": "2026-05-15T16:55:44.979489Z",
+      "date_key": "15/05/26",
+      "kind": "autonomy",
+      "event": "runtime_autonomy",
+      "payload": {
+        "kind": "autonomous_cycle",
+        "status": "observed"
+      },
+      "previous_hash": "001b0f400a0a9d6823225ba8b8dc8037b35fdb9178cc796def76d91bd93afada",
+      "hash": "5bd1320b08b167da36c4517ba334393ee8c50f336ec3ecc6a68fcdc70296297a"
+    },
+    "dream": {
+      "timestamp": "2026-05-15T16:55:44.981635Z",
+      "date_key": "15/05/26",
+      "kind": "dream",
+      "event": "runtime_dream",
+      "payload": {
+        "kind": "dream_cycle",
+        "status": "observed"
+      },
+      "previous_hash": "2f5753608639fbadb7b91944aeaa2c202776236650e6a279a0b36992323a711c",
+      "hash": "4825be7c6c98d6e154b0ab6e2409d87523a439ff210b63a9e1ec2f417f11b179"
+    },
+    "research": {
+      "timestamp": "2026-05-15T16:55:44.983626Z",
+      "date_key": "15/05/26",
+      "kind": "research",
+      "event": "runtime_research",
+      "payload": {
+        "kind": "research_cycle",
+        "status": "observed"
+      },
+      "previous_hash": "bcb8093e18ca51d3f73b1eeb5a7089f82f9d1dc90107872665e8659751d2c19a",
+      "hash": "9f786d35d9bba46a058a58b1c0dfd82f093dac75055ebeaa7c4ec7e4e00aeafd"
+    },
+    "arsi": {
+      "timestamp": "2026-05-15T16:55:44.985626Z",
+      "date_key": "15/05/26",
+      "kind": "arsi",
+      "event": "runtime_arsi",
+      "payload": {
+        "kind": "self_improvement",
+        "status": "observed"
+      },
+      "previous_hash": "83b68cbecb215a224f3570f81f8f18e86a42d892269c01228803a0254a72ded0",
+      "hash": "db80cfd0a9ec10ef055ec83ed58865a1db03a31ca7099c5d6e610990c44917e6"
     }
   }
 }

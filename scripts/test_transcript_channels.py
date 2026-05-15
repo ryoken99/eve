@@ -14,6 +14,10 @@ def main() -> dict:
         "tools": ("runtime_tool", {"tool": "runtime_test", "result": {"ok": True}}),
         "errors": ("runtime_error", {"source": "runtime", "error": "synthetic"}),
         "actions": ("runtime_autonomy", {"kind": "autonomy", "status": "observed"}),
+        "autonomy": ("runtime_autonomy", {"kind": "autonomous_cycle", "status": "observed"}),
+        "dream": ("runtime_dream", {"kind": "dream_cycle", "status": "observed"}),
+        "research": ("runtime_research", {"kind": "research_cycle", "status": "observed"}),
+        "arsi": ("runtime_arsi", {"kind": "self_improvement", "status": "observed"}),
     }
     written = {kind: append_transcript(kind, event, payload) for kind, (event, payload) in events.items()}
     checks = []

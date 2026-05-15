@@ -1,7 +1,7 @@
 # Point 15 Computer Use VNext Runtime
 
-Generated: 2026-05-15T16:24:51.119317Z
-EVE_ROOT: `E:\eve`
+Generated: 2026-05-15T16:56:14.001286Z
+EVE_ROOT: `D:\Eve`
 Runtime score: **10.0/10**
 
 ## Checks
@@ -15,7 +15,7 @@ Runtime score: **10.0/10**
 - **PASS**: fill_by_label without page fails without using OCR
   - evidence: `{"ok": false, "engine": "playwright", "action": "fill_by_label", "detail": {"reason": "no playwright page attached", "label": "Email"}}`
 - **PASS** critical: UIA tree can be requested
-  - evidence: `{"available": true, "engine": "uia", "active_window": "Windows PowerShell", "tree": {"element_id": "0:0:Console Window", "name": "Windows PowerShell", "control_type": "WindowControl", "automation_id": "Console Window", "enabled": true, "children": [{"element_id": "1:0:NonClientVerticalScrollBar", "name": "Vertical", "control_type": "ScrollBarControl", "automation_id": "NonClientVerticalScrollBar", "enabled": true, "children": [{"element_id": "2:0:UpButton", "name": "Linha para cima", "control_type": "ButtonControl", "automation_id": "UpButton", "enabled": true, "children": null}, {"element_id": "2:1:ScrollbarThumb", "name": "Posição", "control_type": "ThumbControl", "automation_id": "ScrollbarThumb", "enabled": true, "children": null}, {"element_id": "2:2:DownPageButton", "name": "Página para baixo", "control_type": "ButtonControl", "automation_id": "DownPageButton", "enabled": true, "children": null}, {"element_id": "2:3:DownButton", "name": "Linha para baixo", "control_type": "ButtonControl", "automation_id": "DownButton", "enabled": true, "children": null}]}, {"element_id": "1:1:TitleBarControl", "name": "", "control_type": "TitleBarControl", "automation_id": "", "enabled": true...(truncated)`
+  - evidence: `{"available": false, "engine": "uia", "active_window": "Windows PowerShell", "tree": null, "error": "[Errno 13] Permission denied: 'C:\\\\Program Files\\\\Python310\\\\lib\\\\site-packages\\\\comtypes\\\\gen\\\\_944DE083_8FB8_45CF_BCB7_C477ACB2F897_0_1_0.py'"}`
 - **PASS** critical: UIA find_element works by name/control_type
   - evidence: `{"found": true, "element": {"name": "Save", "control_type": "Button", "element_id": "save"}, "engine": "uia"}`
 - **PASS** critical: action router types via UIA before OCR
@@ -23,4 +23,4 @@ Runtime score: **10.0/10**
 - **PASS** critical: sensitive browser action blocks without confirmation
   - evidence: `{"ok": false, "stage": "permission", "permission": {"allowed": false, "reason": "sensitive action requires confirmation", "policy": {"can_click": true, "can_type": true, "requires_submit_confirmation": true}, "confirmation_required": true}}`
 - **PASS**: OCR fallback is attempted only after structured route fails
-  - evidence: `{"ok": false, "engine": null, "engine_order": ["browser_dom", "browser_accessibility", "windows_uia", "app_specific_adapter", "keyboard_shortcut", "screenshot", "ocr", "coordinates"], "ocr_policy": "OCR is a fallback after DOM/accessibility/UIA/app adapters/shortcuts.", "attempts": [{"ok": false, "engine": "uia", "action": "invoke", "reason": "element not found", "query": {"name": "definitely_missing_runtime_text", "control_type": null, "automation_id": null}}, {"ok": false, "engine": "ocr", "action": "click", "reason": "texto nao localizado por OCR"}], "verification": {"verified": false, "diff": {"changed": true, "changes": {"timestamp": {"before": "2026-05-15T16:24:49.421152Z", "after": "2026-05-15T16:24:51.093816Z"}}}, "missing": ["ocr_text"], "expected_change": {"ocr_text": "missing"}}, "permission": {"allowed": true, "policy": {"can_click": true, "can_type": true}}}`
+  - evidence: `{"ok": false, "engine": null, "engine_order": ["browser_dom", "browser_accessibility", "windows_uia", "app_specific_adapter", "keyboard_shortcut", "screenshot", "ocr", "coordinates"], "ocr_policy": "OCR is a fallback after DOM/accessibility/UIA/app adapters/shortcuts.", "attempts": [{"ok": false, "engine": "uia", "action": "invoke", "reason": "element not found", "query": {"name": "definitely_missing_runtime_text", "control_type": null, "automation_id": null}}, {"ok": false, "engine": "ocr", "action": "click", "reason": "texto nao localizado por OCR"}], "verification": {"verified": false, "diff": {"changed": true, "changes": {"timestamp": {"before": "2026-05-15T16:56:11.925668Z", "after": "2026-05-15T16:56:13.859320Z"}}}, "missing": ["ocr_text"], "expected_change": {"ocr_text": "missing"}}, "permission": {"allowed": true, "policy": {"can_click": true, "can_type": true}}}`

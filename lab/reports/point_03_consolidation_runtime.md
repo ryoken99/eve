@@ -1,16 +1,16 @@
 # Point 03 Diary Consolidation Runtime
 
-Generated: 2026-05-15T16:24:18.376311Z
-EVE_ROOT: `E:\eve`
+Generated: 2026-05-15T16:55:45.635167Z
+EVE_ROOT: `D:\Eve`
 Runtime score: **10.0/10**
 
 ## Checks
 
 - **PASS** critical: consolidation markdown exists
-  - evidence: `"E:\\eve\\memory\\medium_term\\daily_summary_2026-05-15.md"`
+  - evidence: `"D:\\Eve\\memory\\medium_term\\daily_summary_2026-05-15.md"`
 - **PASS** critical: summary contains project and error signals
-  - evidence: `"# Daily Summary 2026-05-15\n\nGenerated: 2026-05-15T17:24:18\n\n## Signals By Theme\n\n### memory\n- Resumo honesto: - Pesquisei sobretudo **IA frontier, agentes, memória, tool-use, avaliação e open source**.\n- O que aprendi: - A direção externa está a ir para agentes com mais **explicabilidade**, memória, avaliação e integração com ferramentas.\n- Impulsos: [ { \"kind\": \"capability_improvement\", \"title\": \"Melhorar ponto 6: Sistema de sonhos\", \"reason\": \"Roadmap interno marcou maturidade improve_quality para: sonhos autonomos e curadoria de memoria.\", \"risk\": \"low\", \"plan\": [ \"Ler evidencias existentes do ponto\", \"Criar nota de lacuna e proposta de melhoria\", \"Criar candidato no lab sem alterar core automaticamente\" ], \"permissions\": [ \"read_memory\", \"write_memory\" ], \"capability_point\": { \"id\": 6, \"title\": \"Sistema de sonhos\", \"status\": \"implemented_base\", \"maturity\": \"improve_quality\", \"desired\": \"sonhos autonomos e curadoria de memoria\", \"evidence\": [ \"dream/dream_cycle.py\", \"dream/memory_re"`
+  - evidence: `"# Daily Summary 2026-05-15\n\nGenerated: 2026-05-15T17:55:45\n\n## Signals By Theme\n\n### memory\n- Estado honesto: **a rotina ainda não atingiu o nível completo que pediste**, porque faltaram registos verificados em memória/lab nesta execução original e a extração factual foi fraca.\n- ## 2026-05-15T16:51:38.916967Z - tool {\"ok\": true, \"tool\": \"memory_append\", \"result\": {\"path\": \"D:\\\\Eve\\\\memory\\\\world\\\\daily\\\\15-05-26.md\"}, \"verification\": {\"ok\": true, \"status\": \"verified\", \"reason\": \"generic result check passed\"}, \"runtime\": {\"attempts\": 1, \"history\": [{\"attempt\": 1, \"verification\": {\"ok\": true, \"status\": \"verified\", \"reason\": \"generic result check passed\"}}], \"awareness_before\": {\"timestamp\": \"2026-05-15T17:51:34+01:00\", \"timezone\": \"Europe/Lisbon\", \"system\": {\"os\": \"Windows\", \"release\": \"10\", \"version\": \"10.0.26200\", \"machine\": \"AMD64\"}, \"eve\": {\"root\": \"D:\\\\Eve\", \"cwd\": \"D:\\\\Eve\", \"mode\": \"unrestricted_mode\", \"active_project\": \"Eve\", \"active_task\": \"post_gap_completion\"}, \"desktop\": {\"a"`
 - **PASS** critical: candidate memories file exists
-  - evidence: `"E:\\eve\\memory\\long_term\\candidate_memories.md"`
+  - evidence: `"D:\\Eve\\memory\\long_term\\candidate_memories.md"`
 - **PASS** critical: autonomy consolidation log exists
-  - evidence: `"E:\\eve\\logs\\autonomy\\diary_consolidation_runs.jsonl"`
+  - evidence: `"D:\\Eve\\logs\\autonomy\\diary_consolidation_runs.jsonl"`

@@ -1,30 +1,30 @@
 # Point 06 Dream Runtime
 
-Generated: 2026-05-15T16:24:32.499834Z
-EVE_ROOT: `E:\eve`
+Generated: 2026-05-15T16:55:55.158200Z
+EVE_ROOT: `D:\Eve`
 Runtime score: **10.0/10**
 
 ## Checks
 
 - **PASS** critical: dream cycle returns report path
-  - evidence: `{"created_at": "2026-05-15T17:24:32", "dream_report": "E:\\eve\\lab\\reports\\dream_2026-05-15.md", "memory_report": "E:\\eve\\memory\\dream_reports\\dream_2026-05-15.md", "vector_index": "E:\\eve\\memory\\semantic_vector\\index.json", "promotion_rules": {"short_term": ["tarefa actual", "erro recente", "ficheiros em edicao", "janela activa"], "medium_term": ["projectos activos", "skills em teste", "decisoes recentes", "padroes recentes"], "long_term": ["preferencias estaveis", "missao", "constituicao", "regras de seguranca", "correccoes importantes"], "archive_only": ["conversa casual", "duplicados", "ruido", "informacao expirada"]}, "memory_decisions": [{"text": "Keep stable user requirements in long-term memory.", "decision": {"layer": "medium_term", "target_file": "layered_observations.md", "description": "Projetos, decisoes recentes e padroes que ainda podem mudar.", "reason": "default: useful but not stable enough for long-term", "metadata": {"source": "dream_cycle"}}}, {"text": "Keep daily operational notes in medium-term memory.", "decision": {"layer": "medium_term", "target_file": "layered_observations.md", "description": "Projetos, decisoes recentes e padroes que ainda pod...(truncated)`
+  - evidence: `{"created_at": "2026-05-15T17:55:55", "dream_report": "D:\\Eve\\lab\\reports\\dream_2026-05-15.md", "memory_report": "D:\\Eve\\memory\\dream_reports\\dream_2026-05-15.md", "vector_index": "D:\\Eve\\memory\\semantic_vector\\index.json", "promotion_rules": {"short_term": ["tarefa actual", "erro recente", "ficheiros em edicao", "janela activa"], "medium_term": ["projectos activos", "skills em teste", "decisoes recentes", "padroes recentes"], "long_term": ["preferencias estaveis", "missao", "constituicao", "regras de seguranca", "correccoes importantes"], "archive_only": ["conversa casual", "duplicados", "ruido", "informacao expirada"]}, "memory_decisions": [{"text": "Keep stable user requirements in long-term memory.", "decision": {"layer": "medium_term", "target_file": "layered_observations.md", "description": "Projetos, decisoes recentes e padroes que ainda podem mudar.", "reason": "default: useful but not stable enough for long-term", "metadata": {"source": "dream_cycle"}}}, {"text": "Keep daily operational notes in medium-term memory.", "decision": {"layer": "medium_term", "target_file": "layered_observations.md", "description": "Projetos, decisoes recentes e padroes que ainda pod...(truncated)`
 - **PASS** critical: dream report exists
-  - evidence: `"E:\\eve\\memory\\dream_reports\\dream_2026-05-15.md"`
+  - evidence: `"D:\\Eve\\memory\\dream_reports\\dream_2026-05-15.md"`
 - **PASS** critical: dream queue candidate exists
-  - evidence: `"E:\\eve\\lab\\queue\\dream_cycle_2026-05-15_172432.json"`
+  - evidence: `"D:\\Eve\\lab\\queue\\dream_cycle_2026-05-15_175555.json"`
 - **PASS** critical: memory decisions generated
   - evidence: `[{"text": "Keep stable user requirements in long-term memory.", "decision": {"layer": "medium_term", "target_file": "layered_observations.md", "description": "Projetos, decisoes recentes e padroes que ainda podem mudar.", "reason": "default: useful but not stable enough for long-term", "metadata": {"source": "dream_cycle"}}}, {"text": "Keep daily operational notes in medium-term memory.", "decision": {"layer": "medium_term", "target_file": "layered_observations.md", "description": "Projetos, decisoes recentes e padroes que ainda podem mudar.", "reason": "default: useful but not stable enough for long-term", "metadata": {"source": "dream_cycle"}}}, {"text": "Keep active task state in short-term memory.", "decision": {"layer": "medium_term", "target_file": "layered_observations.md", "description": "Projetos, decisoes recentes e padroes que ainda podem mudar.", "reason": "default: useful but not stable enough for long-term", "metadata": {"source": "dream_cycle"}}}, {"text": "Recent repeated errors should become medium-term lessons and lab candidates.", "decision": {"layer": "medium_term", "target_file": "layered_observations.md", "description": "Projetos, decisoes recentes e padroes q...(truncated)`
 - **PASS**: dream report mirrored under memory/dream_reports
-  - evidence: `"E:\\eve\\memory\\dream_reports"`
+  - evidence: `"D:\\Eve\\memory\\dream_reports"`
 
 ## Summary
 
 ```json
 {
-  "created_at": "2026-05-15T17:24:32",
-  "dream_report": "E:\\eve\\lab\\reports\\dream_2026-05-15.md",
-  "memory_report": "E:\\eve\\memory\\dream_reports\\dream_2026-05-15.md",
-  "vector_index": "E:\\eve\\memory\\semantic_vector\\index.json",
+  "created_at": "2026-05-15T17:55:55",
+  "dream_report": "D:\\Eve\\lab\\reports\\dream_2026-05-15.md",
+  "memory_report": "D:\\Eve\\memory\\dream_reports\\dream_2026-05-15.md",
+  "vector_index": "D:\\Eve\\memory\\semantic_vector\\index.json",
   "promotion_rules": {
     "short_term": [
       "tarefa actual",
@@ -120,10 +120,10 @@ Runtime score: **10.0/10**
     "task": "dream_cycle",
     "safety_mode": "unrestricted_mode",
     "awareness": {
-      "time": "2026-05-15T17:24:30+01:00",
+      "time": "2026-05-15T17:55:53+01:00",
       "active_project": "Eve",
       "active_task": "post_gap_completion",
-      "active_window": "Codex"
+      "active_window": "LM Studio"
     },
     "functional_state": {
       "curiosity": 0.6,
@@ -155,6 +155,6 @@ Runtime score: **10.0/10**
     "testar persona_stability_checks contra a constituicao da Eve",
     "verificar erros recorrentes antes de criar novas skills"
   ],
-  "queue": "E:\\eve\\lab\\queue\\dream_cycle_2026-05-15_172432.json"
+  "queue": "D:\\Eve\\lab\\queue\\dream_cycle_2026-05-15_175555.json"
 }
 ```

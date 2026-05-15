@@ -1,15 +1,15 @@
 # Sprint 0 Runtime Environment
 
-Generated: 2026-05-15T16:24:15.937214Z
-EVE_ROOT: `E:\eve`
+Generated: 2026-05-15T16:55:44.115611Z
+EVE_ROOT: `D:\Eve`
 Runtime score: **10.0/10**
 
 ## Checks
 
 - **PASS** critical: Python is available
-  - evidence: `{"executable": "C:\\Users\\Sandro\\AppData\\Local\\Programs\\Python\\Python311\\python.exe", "version": "3.11.7 (tags/v3.11.7:fa7a6f2, Dec  4 2023, 19:24:49) [MSC v.1937 64 bit (AMD64)]"}`
+  - evidence: `{"executable": "C:\\Program Files\\Python310\\python.exe", "version": "3.10.11 (tags/v3.10.11:7d4cc5a, Apr  5 2023, 00:38:17) [MSC v.1929 64 bit (AMD64)]"}`
 - **PASS**: venv python exists
-  - evidence: `"E:\\eve\\.venv\\Scripts\\python.exe"`
+  - evidence: `"D:\\Eve\\.venv\\Scripts\\python.exe"`
 - **PASS** critical: Playwright Python module importable
   - evidence: `{"name": "playwright", "available": true, "version": null}`
 - **PASS**: pyautogui importable
@@ -17,15 +17,15 @@ Runtime score: **10.0/10**
 - **PASS** critical: uiautomation importable
   - evidence: `{"name": "uiautomation", "available": true, "version": null}`
 - **PASS**: PIL importable
-  - evidence: `{"name": "PIL", "available": true, "version": "12.2.0"}`
+  - evidence: `{"name": "PIL", "available": true, "version": "11.2.1"}`
 - **PASS**: pytesseract importable if installed
   - evidence: `{"name": "pytesseract", "available": true, "version": "0.3.13"}`
 - **PASS** critical: EVE_ROOT exists and is writable
-  - evidence: `"E:\\eve"`
+  - evidence: `"D:\\Eve"`
 - **PASS** critical: PC path detected
-  - evidence: `{"pc": "PC2", "root": "E:\\eve", "drive": "E:", "expected_pc1": "D:\\Eve", "expected_pc2": "E:\\eve"}`
+  - evidence: `{"pc": "PC1", "root": "D:\\Eve", "drive": "D:", "expected_pc1": "D:\\Eve", "expected_pc2": "E:\\eve"}`
 - **PASS** critical: config.yaml exists
-  - evidence: `"E:\\eve\\config.yaml"`
+  - evidence: `"D:\\Eve\\config.yaml"`
 - **PASS**: default mode remains unrestricted_mode
   - evidence: `{"mode": "unrestricted_mode"}`
 
@@ -34,8 +34,8 @@ Runtime score: **10.0/10**
 ```json
 {
   "imports": {
-    "python": "3.11.7 (tags/v3.11.7:fa7a6f2, Dec  4 2023, 19:24:49) [MSC v.1937 64 bit (AMD64)]",
-    "platform": "Windows-10-10.0.19045-SP0",
+    "python": "3.10.11 (tags/v3.10.11:7d4cc5a, Apr  5 2023, 00:38:17) [MSC v.1929 64 bit (AMD64)]",
+    "platform": "Windows-10-10.0.26200-SP0",
     "modules": {
       "playwright": {
         "name": "playwright",
@@ -55,7 +55,7 @@ Runtime score: **10.0/10**
       "PIL": {
         "name": "PIL",
         "available": true,
-        "version": "12.2.0"
+        "version": "11.2.1"
       },
       "pytesseract": {
         "name": "pytesseract",
@@ -65,9 +65,9 @@ Runtime score: **10.0/10**
     }
   },
   "pc": {
-    "pc": "PC2",
-    "root": "E:\\eve",
-    "drive": "E:",
+    "pc": "PC1",
+    "root": "D:\\Eve",
+    "drive": "D:",
     "expected_pc1": "D:\\Eve",
     "expected_pc2": "E:\\eve"
   }
