@@ -10,7 +10,7 @@ from typing import Any
 from core.paths import LOGS_DIR, ensure_project_dirs
 
 
-TRANSCRIPT_TYPES = ("chat", "tools", "actions", "errors", "console", "interface")
+TRANSCRIPT_TYPES = ("chat", "console", "interface", "tools", "actions", "errors", "autonomy", "dream", "research", "arsi")
 
 
 def now_iso() -> str:
@@ -81,3 +81,10 @@ def append_interface_transcript(source: str, target: str, content: str, *, tags:
         "interface_message",
         {"source": source, "target": target, "content": content, "tags": tags or []},
     )
+
+
+def append_structured_transcript(event: dict[str, Any]) -> dict[str, Any]:
+    from memory.transcript_schema import normalize_transcript_event
+
+    normalized = normalize_transcript_event(event)
+    return append_transcript(normalized["channel"], "structured_event", normalized)

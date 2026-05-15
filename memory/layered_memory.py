@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import json
+import uuid
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
+from enum import Enum
 from pathlib import Path
 from typing import Any
 
@@ -31,6 +34,37 @@ LAYER_RULES: dict[str, dict[str, Any]] = {
         "file": "archive_only.md",
     },
 }
+
+
+class MemoryDecision(str, Enum):
+    SHORT_TERM = "short_term"
+    MEDIUM_TERM = "medium_term"
+    LONG_TERM = "long_term"
+    ARCHIVE = "archive"
+    REJECT = "reject"
+
+
+@dataclass(frozen=True)
+class MemoryItem:
+    id: str
+    content: str
+    layer: str = "medium_term"
+    source: str = "unknown"
+    confidence: float = 0.6
+    stability: float = 0.4
+    importance: float = 0.5
+    created_at: str = ""
+    updated_at: str = ""
+    evidence_count: int = 1
+    tags: list[str] = field(default_factory=list)
+
+    def as_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+def new_memory_item(content: str, **kwargs: Any) -> MemoryItem:
+    now = _now_iso()
+    return MemoryItem(id=f"mem_{uuid.uuid4().hex[:12]}", content=content, created_at=now, updated_at=now, **kwargs)
 
 
 def _now_iso() -> str:
@@ -81,3 +115,38 @@ def route_memory_item(text: str, *, metadata: dict[str, Any] | None = None) -> d
         handle.write(json.dumps(row, ensure_ascii=False) + "\n")
     index_path = add_document(f"layered_memory/{decision['layer']}/{decision['target_file']}", text, {"path": str(target), "layer": decision["layer"]})
     return {"decision": decision, "path": str(target), "log_path": str(log_path), "vector_index": str(index_path)}
+
+
+def promote_memory_item(item: MemoryItem | dict[str, Any]) -> dict[str, Any]:
+    data = item.as_dict() if isinstance(item, MemoryItem) else dict(item)
+    evidence = int(data.get("evidence_count") or 1)
+    importance = float(data.get("importance") or 0.5)
+    confidence = float(data.get("confidence") or 0.6)
+    if evidence >= 3 and confidence >= 0.75 and importance >= 0.7:
+        data["layer"] = MemoryDecision.LONG_TERM.value
+    elif evidence >= 2 or importance >= 0.55:
+        data["layer"] = MemoryDecision.MEDIUM_TERM.value
+    else:
+        data["layer"] = MemoryDecision.SHORT_TERM.value
+    data["updated_at"] = _now_iso()
+    return data
+
+
+def deduplicate_memory_item(item: MemoryItem | dict[str, Any], existing: list[dict[str, Any]]) -> dict[str, Any]:
+    data = item.as_dict() if isinstance(item, MemoryItem) else dict(item)
+    normalized = " ".join(str(data.get("content", "")).lower().split())
+    for row in existing:
+        if " ".join(str(row.get("content", "")).lower().split()) == normalized:
+            merged = dict(row)
+            merged["evidence_count"] = int(merged.get("evidence_count") or 1) + int(data.get("evidence_count") or 1)
+            merged["updated_at"] = _now_iso()
+            return merged
+    return data
+
+
+def decay_memory_item(item: MemoryItem | dict[str, Any], *, amount: float = 0.05) -> dict[str, Any]:
+    data = item.as_dict() if isinstance(item, MemoryItem) else dict(item)
+    data["importance"] = max(0.0, round(float(data.get("importance") or 0.5) - amount, 3))
+    data["confidence"] = max(0.0, round(float(data.get("confidence") or 0.6) - amount / 2, 3))
+    data["updated_at"] = _now_iso()
+    return data
