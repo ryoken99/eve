@@ -92,6 +92,57 @@ def run_script(script: str, *, timeout: int = 240) -> dict:
     }
 
 
+def optional_telegram_bridge_status() -> dict:
+    """Return Telegram bridge status without affecting the 17-point score."""
+    started = time.perf_counter()
+    path = EVE_ROOT / "scripts" / "check_telegram_bridge.py"
+    if not path.exists():
+        return {
+            "available": False,
+            "running": False,
+            "warning": "scripts/check_telegram_bridge.py is not present",
+            "duration_seconds": round(time.perf_counter() - started, 3),
+        }
+    try:
+        completed = subprocess.run(
+            [sys.executable, str(path)],
+            cwd=str(EVE_ROOT),
+            capture_output=True,
+            text=True,
+            timeout=45,
+        )
+    except Exception as exc:
+        return {
+            "available": True,
+            "running": False,
+            "warning": f"{type(exc).__name__}: {exc}",
+            "duration_seconds": round(time.perf_counter() - started, 3),
+        }
+    parsed = None
+    try:
+        stdout = completed.stdout.strip()
+        start = stdout.find("{")
+        end = stdout.rfind("}")
+        if start >= 0 and end >= start:
+            parsed = json.loads(stdout[start : end + 1])
+    except Exception:
+        parsed = None
+    return {
+        "available": True,
+        "returncode": completed.returncode,
+        "running": bool((parsed or {}).get("running")),
+        "pid": (parsed or {}).get("pid"),
+        "last_update": (parsed or {}).get("last_update"),
+        "token_configured": bool(((parsed or {}).get("token") or {}).get("configured")),
+        "warning": None
+        if completed.returncode == 0 and bool((parsed or {}).get("running"))
+        else "Telegram bridge is not running or status check returned a warning",
+        "status": parsed,
+        "stderr_tail": completed.stderr[-1000:],
+        "duration_seconds": round(time.perf_counter() - started, 3),
+    }
+
+
 def write_final_report(payload: dict) -> Path:
     lines = [
         "# Eve 17 Points Runtime Healthcheck",
@@ -118,6 +169,20 @@ def write_final_report(payload: dict) -> Path:
         lines.append(f"- Point {row['point']} {row['title']}: score={row['score']} returncode={row['returncode']}")
         if row.get("stderr_tail"):
             lines.append(f"  - stderr: `{row['stderr_tail'][:500]}`")
+    telegram = payload.get("telegram_bridge_status") or {}
+    lines.extend(
+        [
+            "",
+            "## Optional Telegram Bridge",
+            "",
+            f"- Available: `{telegram.get('available')}`",
+            f"- Running: `{telegram.get('running')}`",
+            f"- PID: `{telegram.get('pid')}`",
+            f"- Last update: `{telegram.get('last_update')}`",
+            f"- Token configured: `{telegram.get('token_configured')}`",
+            f"- Warning: `{telegram.get('warning')}`",
+        ]
+    )
     path = LAB_DIR / "reports" / "eve_17_points_healthcheck.md"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -140,6 +205,7 @@ def main() -> dict:
         "all_points_at_target": all(float(row.get("score") or 0.0) >= 8.6 for row in point_rows),
         "points": rows,
     }
+    payload["telegram_bridge_status"] = optional_telegram_bridge_status()
     payload["state_path"] = str(write_health_state(payload))
     payload["report_path"] = str(write_final_report(payload))
     print(json.dumps(payload, indent=2, ensure_ascii=False, default=str))
