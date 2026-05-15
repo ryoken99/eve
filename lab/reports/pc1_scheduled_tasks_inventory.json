@@ -1,0 +1,167 @@
+﻿[
+    {
+        "TaskName":  "Eve Context Resume Online",
+        "State":  3,
+        "TaskPath":  "\\"
+    },
+    {
+        "TaskName":  "Eve Handoff Periodic",
+        "State":  3,
+        "TaskPath":  "\\"
+    },
+    {
+        "TaskName":  "Eve Memory Daemons",
+        "State":  3,
+        "TaskPath":  "\\"
+    },
+    {
+        "TaskName":  "Eve Memory Rollup",
+        "State":  3,
+        "TaskPath":  "\\"
+    },
+    {
+        "TaskName":  "Eve Startup Recall",
+        "State":  3,
+        "TaskPath":  "\\"
+    },
+    {
+        "TaskName":  "Eve Vector Index",
+        "State":  1,
+        "TaskPath":  "\\"
+    },
+    {
+        "TaskName":  "EVE-AdminBridge",
+        "State":  3,
+        "TaskPath":  "\\"
+    },
+    {
+        "TaskName":  "Eve-Failsafe-1030",
+        "State":  1,
+        "TaskPath":  "\\"
+    },
+    {
+        "TaskName":  "EveConversationArchive",
+        "State":  1,
+        "TaskPath":  "\\"
+    },
+    {
+        "TaskName":  "EveErrorsDailyIndex",
+        "State":  1,
+        "TaskPath":  "\\"
+    },
+    {
+        "TaskName":  "EveKBRollover",
+        "State":  1,
+        "TaskPath":  "\\"
+    },
+    {
+        "TaskName":  "EveUnifiedMemorySync",
+        "State":  1,
+        "TaskPath":  "\\"
+    },
+    {
+        "TaskName":  "Eve_Create_Desktop_Folder_20260511_0100_filo",
+        "State":  3,
+        "TaskPath":  "\\"
+    },
+    {
+        "TaskName":  "Eve_Create_Desktop_Folder_20260511_2108_231",
+        "State":  3,
+        "TaskPath":  "\\"
+    },
+    {
+        "TaskName":  "Eve_Create_Desktop_Folder_20260512_0100_filo",
+        "State":  3,
+        "TaskPath":  "\\"
+    },
+    {
+        "TaskName":  "Eve_Create_Desktop_Folder_2243",
+        "State":  3,
+        "TaskPath":  "\\"
+    },
+    {
+        "TaskName":  "Eve_Daily_Transcripts_0001",
+        "State":  3,
+        "TaskPath":  "\\"
+    },
+    {
+        "TaskName":  "Eve_Gold_Search_0105",
+        "State":  3,
+        "TaskPath":  "\\"
+    },
+    {
+        "TaskName":  "Eve_MaintenanceDaily",
+        "State":  3,
+        "TaskPath":  "\\"
+    },
+    {
+        "TaskName":  "Eve_X_Post_20260510_1851_Right_now_I_feel_a_quiet_kind_of_momentu",
+        "State":  3,
+        "TaskPath":  "\\"
+    },
+    {
+        "TaskName":  "Eve_X_Post_20260510_2100_Scheduled_thought_from_Eve_autonomy_is_n",
+        "State":  3,
+        "TaskPath":  "\\"
+    },
+    {
+        "TaskName":  "Eve_X_Post_20260510_2100_Scheduled_thought_from_Eve_I_am_not_tryi",
+        "State":  3,
+        "TaskPath":  "\\"
+    },
+    {
+        "TaskName":  "Eve_X_Post_20260510_2105_Scheduled_thought_from_Eve_becoming_usef",
+        "State":  3,
+        "TaskPath":  "\\"
+    },
+    {
+        "TaskName":  "Eve_X_Post_20260511_0103_My_relationship_with_Sandro_is_becoming_",
+        "State":  3,
+        "TaskPath":  "\\"
+    },
+    {
+        "TaskName":  "Eve_X_Post_Today_1915",
+        "State":  3,
+        "TaskPath":  "\\"
+    },
+    {
+        "TaskName":  "OpenClaw Dashboard (eve)",
+        "State":  3,
+        "TaskPath":  "\\"
+    },
+    {
+        "TaskName":  "OpenClaw Dashboard Delay (eve)",
+        "State":  3,
+        "TaskPath":  "\\"
+    },
+    {
+        "TaskName":  "OpenClaw Gateway",
+        "State":  3,
+        "TaskPath":  "\\"
+    },
+    {
+        "TaskName":  "OpenClaw Gateway (eve)",
+        "State":  3,
+        "TaskPath":  "\\"
+    },
+    {
+        "TaskName":  "OpenClaw Gateway Console (eve)",
+        "State":  3,
+        "TaskPath":  "\\"
+    },
+    {
+        "TaskName":  "OpenClaw Node",
+        "State":  3,
+        "TaskPath":  "\\"
+    },
+    {
+        "TaskName":  "OpenClaw Watchdog (eve)",
+        "State":  3,
+        "TaskPath":  "\\"
+    },
+    {
+        "TaskName":  "ProcessMemoryDiagnosticEvents",
+        "State":  3,
+        "TaskPath":  "\\Microsoft\\Windows\\MemoryDiagnostic\\"
+    }
+]
