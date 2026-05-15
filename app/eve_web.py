@@ -83,20 +83,29 @@ def save_chat_image(image: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def tail_text_lines(path: Path, *, max_bytes: int = 256 * 1024) -> list[str]:
+    size = path.stat().st_size
+    with path.open("rb") as handle:
+        if size > max_bytes:
+            handle.seek(-max_bytes, os.SEEK_END)
+            handle.readline()
+        raw = handle.read()
+    return raw.decode("utf-8", errors="replace").splitlines()
+
+
 def recent_activity(limit: int = 8) -> list[dict[str, Any]]:
     items: deque[dict[str, Any]] = deque(maxlen=max(1, min(int(limit or 8), 50)))
     for kind in ("actions", "tools", "errors"):
         path = transcript_path(kind)
         if not path.exists():
             continue
-        with path.open("r", encoding="utf-8", errors="replace") as handle:
-            for line in handle:
-                try:
-                    row = json.loads(line)
-                except json.JSONDecodeError:
-                    continue
-                row["kind"] = kind
-                items.append(row)
+        for line in tail_text_lines(path):
+            try:
+                row = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            row["kind"] = kind
+            items.append(row)
     return sorted(items, key=lambda row: row.get("timestamp", ""))[-max(1, min(int(limit or 8), 50)):]
 
 
@@ -105,20 +114,19 @@ def recent_chat_messages(limit: int = 40) -> list[dict[str, str]]:
     path = transcript_path("chat")
     if not path.exists():
         return []
-    with path.open("r", encoding="utf-8", errors="replace") as handle:
-        for line in handle:
-            try:
-                row = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-            payload = row.get("payload") or {}
-            content = str(payload.get("content") or "").strip()
-            if not content:
-                continue
-            if row.get("event") in {"web_user_message", "console_user_message"}:
-                items.append({"who": "user", "text": content})
-            elif row.get("event") in {"web_eve_reply", "console_eve_reply"}:
-                items.append({"who": "eve", "text": content})
+    for line in tail_text_lines(path, max_bytes=512 * 1024):
+        try:
+            row = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        payload = row.get("payload") or {}
+        content = str(payload.get("content") or "").strip()
+        if not content:
+            continue
+        if row.get("event") in {"web_user_message", "console_user_message"}:
+            items.append({"who": "user", "text": content})
+        elif row.get("event") in {"web_eve_reply", "console_eve_reply"}:
+            items.append({"who": "eve", "text": content})
     return list(items)
 
 
@@ -646,6 +654,7 @@ class EveWebHandler(BaseHTTPRequestHandler):
 class EveWebServer(ThreadingHTTPServer):
     allow_reuse_address = True
     daemon_threads = True
+    request_queue_size = 128
 
 
 def run_server(host: str = DEFAULT_HOST, port: int = DEFAULT_PORT, *, open_ui: bool = False) -> None:
@@ -654,7 +663,10 @@ def run_server(host: str = DEFAULT_HOST, port: int = DEFAULT_PORT, *, open_ui: b
         threading.Thread(target=lambda: (time.sleep(1), webbrowser.open(url)), daemon=True).start()
     server = EveWebServer((host, port), EveWebHandler)
     print(f"Eve web interface: {url}")
-    append_transcript("actions", "web_server_started", {"url": url})
+    threading.Thread(
+        target=lambda: append_transcript("actions", "web_server_started", {"url": url}),
+        daemon=True,
+    ).start()
     server.serve_forever()
 
 
