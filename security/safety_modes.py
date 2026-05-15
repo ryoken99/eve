@@ -9,6 +9,7 @@ from security.audit_log import log_event
 
 
 STATUS_PATH = STATE_DIR / "eve_status.json"
+DEFAULT_SAFETY_MODE = "unrestricted_mode"
 
 SAFETY_MODES = {
     "safe_mode": {
@@ -77,8 +78,8 @@ def _save_status(status: dict) -> Path:
 
 def current_safety_mode() -> str:
     status = _load_status()
-    mode = status.get("mode", "unrestricted_mode")
-    return mode if mode in SAFETY_MODES else "unrestricted_mode"
+    mode = status.get("mode", DEFAULT_SAFETY_MODE)
+    return mode if mode in SAFETY_MODES else DEFAULT_SAFETY_MODE
 
 
 def current_safety_profile() -> dict:
@@ -89,7 +90,7 @@ def set_safety_mode(mode: str, reason: str = "") -> Path:
     if mode not in SAFETY_MODES:
         raise ValueError(f"Modo desconhecido: {mode}. Modos: {', '.join(SAFETY_MODES)}")
     status = _load_status()
-    previous = status.get("mode", "unrestricted_mode")
+    previous = status.get("mode", DEFAULT_SAFETY_MODE)
     profile = SAFETY_MODES[mode]
     status["mode"] = mode
     status["computer_control"] = bool(profile["ui_control"])

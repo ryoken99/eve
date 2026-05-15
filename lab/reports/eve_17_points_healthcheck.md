@@ -1,14 +1,14 @@
 # Eve 17 Points Runtime Healthcheck
 
-Generated: 2026-05-15T16:05:08.129213Z
+Generated: 2026-05-15T16:25:10.204541Z
 Environment: `{'pc': 'PC2', 'root': 'E:\\eve', 'drive': 'E:', 'expected_pc1': 'D:\\Eve', 'expected_pc2': 'E:\\eve'}`
-Overall runtime score: **10.0/10**
+Overall runtime score: **9.76/10**
 
 | Point | Area | Before | Runtime | Passed | Evidence |
 |---:|---|---:|---:|---|---|
 | 0 | Environment |  | 10.0 | True | `E:\eve\lab\reports\runtime_environment_pc2.md` |
 | 1 | Admin runtime | 6.8 | 10.0 | True | `E:\eve\lab\reports\point_01_admin_runtime.md` |
-| 2 | Transcripts runtime | 7.4 | 10.0 | True | `E:\eve\lab\reports\point_02_transcripts_runtime.md` |
+| 2 | Transcripts runtime | 7.4 | 6.0 | True | `E:\eve\lab\reports\point_02_transcripts_runtime.md` |
 | 3 | Consolidation runtime | 6.6 | 10.0 | True | `E:\eve\lab\reports\point_03_consolidation_runtime.md` |
 | 4 | Layered memory runtime | 7.0 | 10.0 | True | `E:\eve\lab\reports\point_04_layered_memory_runtime.md` |
 | 5 | Vector memory runtime | 4.8 | 10.0 | True | `E:\eve\lab\reports\point_05_vector_memory_runtime.md` |
@@ -27,4 +27,4 @@ Overall runtime score: **10.0/10**
 
 ## Failures
 
-- None.
+- Point 2 Transcripts runtime: score=6.0 returncode=0

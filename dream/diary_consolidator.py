@@ -8,6 +8,13 @@ from pathlib import Path
 
 from autonomy.cron_manager import add_cron_job, list_cron_jobs
 from core.paths import EVE_ROOT, LOGS_DIR, MEMORY_DIR, ensure_project_dirs
+from dream.consolidation_schema import (
+    ConsolidationDecision,
+    ConsolidationInput,
+    ConsolidationReport,
+    ConsolidationSignal,
+    ConsolidationSignalType,
+)
 from memory.diary_manager import read_diary, today_key
 
 
@@ -22,11 +29,85 @@ KEYWORDS = {
 
 CONSOLIDATION_JOB_NAME = "Eve Diary Consolidation"
 
+SIGNAL_HINTS = {
+    ConsolidationSignalType.FACT: ["sou ", "tenho ", "moro", "nasci", "trabalho"],
+    ConsolidationSignalType.PREFERENCE: ["gosto", "adoro", "prefiro", "quero", "odeio"],
+    ConsolidationSignalType.PROJECT_UPDATE: ["projeto", "projecto", "eve", "helix", "repo", "github"],
+    ConsolidationSignalType.TASK: ["agenda", "faz", "cria", "corrige", "pesquisa", "posta"],
+    ConsolidationSignalType.ERROR: ["erro", "falhou", "falha", "nao fez", "não fez", "bug"],
+    ConsolidationSignalType.IDEA: ["ideia", "podia", "devia", "melhorar", "evoluir"],
+    ConsolidationSignalType.RELATIONSHIP: ["marta", "bubu", "raton", "mestre", "familia"],
+    ConsolidationSignalType.TECHNICAL_DECISION: ["decisao", "decisão", "arquitectura", "schema", "daemon", "cron"],
+    ConsolidationSignalType.FUTURE_FOLLOWUP: ["depois", "amanha", "amanhã", "mais tarde", "proximo", "próximo"],
+}
+
 
 def _sentences(text: str) -> list[str]:
     cleaned = re.sub(r"\s+", " ", text).strip()
     parts = re.split(r"(?<=[.!?])\s+", cleaned)
     return [p.strip() for p in parts if len(p.strip()) > 12]
+
+
+def _signal_type(sentence: str) -> ConsolidationSignalType:
+    lowered = sentence.lower()
+    for signal_type, hints in SIGNAL_HINTS.items():
+        if any(hint in lowered for hint in hints):
+            return signal_type
+    return ConsolidationSignalType.FACT
+
+
+def _destination(signal_type: ConsolidationSignalType, importance: float, recurrence: float) -> str:
+    if signal_type in {ConsolidationSignalType.ERROR, ConsolidationSignalType.TASK, ConsolidationSignalType.FUTURE_FOLLOWUP}:
+        return "medium_term"
+    if signal_type in {ConsolidationSignalType.PREFERENCE, ConsolidationSignalType.RELATIONSHIP} and importance + recurrence >= 1.15:
+        return "long_term"
+    if signal_type in {ConsolidationSignalType.TECHNICAL_DECISION, ConsolidationSignalType.PROJECT_UPDATE} and importance >= 0.65:
+        return "medium_term"
+    return "short_term"
+
+
+def build_consolidation_report(day: str, diary: str) -> ConsolidationReport:
+    sentences = _sentences(diary)
+    counts = Counter(sentence.lower() for sentence in sentences)
+    signals: list[ConsolidationSignal] = []
+    decisions: list[ConsolidationDecision] = []
+    for index, sentence in enumerate(sentences):
+        signal_type = _signal_type(sentence)
+        recurrence = min(1.0, counts[sentence.lower()] / 3)
+        user_value = 0.8 if signal_type in {ConsolidationSignalType.PREFERENCE, ConsolidationSignalType.ERROR, ConsolidationSignalType.TECHNICAL_DECISION} else 0.55
+        importance = min(1.0, 0.45 + recurrence + (0.25 if signal_type != ConsolidationSignalType.FACT else 0.0))
+        confidence = 0.7 if len(sentence) > 25 else 0.5
+        destination = _destination(signal_type, importance, recurrence)
+        signal = ConsolidationSignal(
+            signal_id=f"{day}-{index:04d}",
+            type=signal_type,
+            text=sentence,
+            source="diary",
+            importance=round(importance, 3),
+            recurrence=round(recurrence, 3),
+            user_value=round(user_value, 3),
+            confidence=round(confidence, 3),
+            memory_destination=destination,
+            tags=[],
+        )
+        signals.append(signal)
+        decisions.append(
+            ConsolidationDecision(
+                signal_id=signal.signal_id,
+                decision="store" if importance >= 0.5 else "ignore",
+                destination=destination,
+                reason=f"{signal_type.value} signal with importance={signal.importance}, recurrence={signal.recurrence}",
+                confidence=signal.confidence,
+            )
+        )
+    return ConsolidationReport(
+        day=day,
+        input=ConsolidationInput(day=day, transcript_paths=[]),
+        signals=signals,
+        decisions=decisions,
+        summary=f"Structured consolidation found {len(signals)} signals and {len(decisions)} memory decisions.",
+        generated_at=datetime.now().isoformat(timespec="seconds"),
+    )
 
 
 def consolidate(day: str | None = None) -> Path:
@@ -44,6 +125,7 @@ def consolidate(day: str | None = None) -> Path:
         return out
 
     sentences = _sentences(diary)
+    structured_report = build_consolidation_report(day, diary)
     hits: dict[str, list[str]] = {name: [] for name in KEYWORDS}
     for sentence in sentences:
         lowered = sentence.lower()
@@ -72,7 +154,21 @@ def consolidate(day: str | None = None) -> Path:
         lines.append("")
 
     lines.extend(["## Frequent Terms", "", ", ".join(common), ""])
+    lines.extend(["## Structured Memory Decisions", ""])
+    for decision in structured_report.decisions[-20:]:
+        signal = next((item for item in structured_report.signals if item.signal_id == decision.signal_id), None)
+        text = signal.text if signal else decision.signal_id
+        lines.append(f"- {decision.destination}: {text} ({decision.reason})")
+    lines.append("")
     out.write_text("\n".join(lines), encoding="utf-8")
+
+    json_out = MEMORY_DIR / "medium_term" / f"daily_summary_{day}.json"
+    json_out.write_text(json.dumps(structured_report.to_dict(), indent=2, ensure_ascii=False), encoding="utf-8")
+    candidate_jsonl = MEMORY_DIR / "long_term" / "candidate_memories.jsonl"
+    with candidate_jsonl.open("a", encoding="utf-8") as handle:
+        for signal, decision in zip(structured_report.signals, structured_report.decisions):
+            if decision.decision == "store" and decision.destination in {"medium_term", "long_term"}:
+                handle.write(json.dumps({"signal": signal.to_dict(), "decision": decision.to_dict()}, ensure_ascii=False) + "\n")
 
     with candidates.open("a", encoding="utf-8") as fh:
         promoted = 0
@@ -88,6 +184,8 @@ def consolidate(day: str | None = None) -> Path:
                     "day": day,
                     "status": "ok",
                     "summary": str(out),
+                    "structured_summary": str(json_out),
+                    "candidate_memory_jsonl": str(candidate_jsonl),
                     "candidate_memory": str(candidates),
                     "themes": {theme: len(values) for theme, values in hits.items()},
                     "promoted_candidates": promoted,
