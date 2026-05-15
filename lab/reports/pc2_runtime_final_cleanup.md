@@ -153,9 +153,9 @@ Port 8787 remains saturated in Windows TCP state. Even a minimal HTTP server on 
 ## Eve/Python Processes After Cleanup
 
 
-ProcessId CommandLine                                                                                                  
---------- -----------                                                                                                  
-     5412 E:\eve\.venv\Scripts\python.exe E:\eve\scripts\telegram_bridge.py run --interval 5                           
+ProcessId CommandLine
+--------- -----------
+     5412 E:\eve\.venv\Scripts\python.exe E:\eve\scripts\telegram_bridge.py run --interval 5
     10036 "C:\Users\Sandro\AppData\Local\Programs\Python\Python311\python.exe" E:\eve\scripts\telegram_bridge.py run...
     11772 "C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe" -Command "[Console]::OutputEncoding=[System.Te...
 
