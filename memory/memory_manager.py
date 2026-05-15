@@ -7,6 +7,7 @@ from core.paths import MEMORY_DIR, ensure_project_dirs
 from memory.diary_manager import diary_path, read_diary, today_key
 from dream.diary_consolidator import consolidate
 from memory.layered_memory import route_memory_item
+from memory.semantic_vector.provider_base import semantic_context_prefetch
 
 
 CRITICAL_CONTEXT_ANCHOR = """## Eve Operational Capabilities anchor
@@ -77,6 +78,13 @@ def context_bundle(max_chars: int = 12000) -> str:
     diary = read_diary().strip()
     if diary:
         pieces.append(f"## diary/{today_key()}.md\n{diary[-4000:]}")
+        semantic_rows = semantic_context_prefetch(diary[-1200:], limit=5)
+        if semantic_rows:
+            lines = []
+            for row in semantic_rows:
+                content = str(row.get("content") or row.get("excerpt") or "")[:500]
+                lines.append(f"- {row.get('source')} hybrid={row.get('hybrid_score')}: {content}")
+            pieces.append("## semantic_context_prefetch\n" + "\n".join(lines))
     sandro_core = read_memory_file("long_term", "sandro_core_memory.md").strip()
     if sandro_core:
         pieces.append(f"## memory/long_term/sandro_core_memory.md\n{sandro_core[:8000]}")

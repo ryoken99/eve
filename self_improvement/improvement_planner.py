@@ -10,6 +10,26 @@ from autonomy.capability_roadmap import capability_audit
 from security.audit_log import log_event
 
 
+def improvement_candidate_to_lab_candidate(candidate: dict) -> Path:
+    return propose_improvement(
+        str(candidate.get("source") or "autonomous"),
+        str(candidate.get("affected_point_id") or candidate.get("hypothesis") or "system"),
+        str(candidate.get("hypothesis") or "Improve Eve capability"),
+        str(candidate.get("risk") or "low"),
+    )
+
+
+def improvement_candidate_to_patch_plan(candidate: dict) -> dict:
+    return {
+        "source": candidate.get("source", "unknown"),
+        "affected_point_id": candidate.get("affected_point_id"),
+        "files_to_change": candidate.get("files_to_change", []),
+        "tests_required": candidate.get("tests_required", ["python -m pytest tests/test_core.py -q"]),
+        "rollback": "restore git diff or backup created by verified_self_update",
+        "risk": candidate.get("risk", "low"),
+    }
+
+
 def propose_improvement(area: str, problem: str, proposal: str, risk: str = "low") -> Path:
     ensure_project_dirs()
     safe = "".join(ch if ch.isalnum() or ch in "-_" else "_" for ch in f"{area}_{problem}".lower()).strip("_")

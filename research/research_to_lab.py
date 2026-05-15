@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 
 from core.paths import LAB_DIR, ensure_project_dirs
 from research.applicability_judge import judge_applicability
+from research.research_schema import ResearchDecision
 
 
 def research_to_lab_candidate(item: dict) -> dict:
@@ -20,6 +21,21 @@ def research_to_lab_candidate(item: dict) -> dict:
         "judgment": judgment,
     }
     return candidate
+
+
+def decide_research_for_lab(item: dict) -> dict:
+    judgment = judge_applicability(item)
+    gain = float(judgment.get("expected_gain") or 0.0)
+    decision = ResearchDecision.IGNORE
+    if gain >= 0.65 and judgment.get("testability", 0) >= 0.5:
+        decision = ResearchDecision.TEST_IN_LAB
+    elif gain >= 0.35:
+        decision = ResearchDecision.WATCH
+    return {"decision": decision.value, "judgment": judgment}
+
+
+def research_item_to_lab_candidate(item: dict) -> dict:
+    return research_to_lab_candidate(item)
 
 
 def write_research_lab_candidate(item: dict) -> dict:

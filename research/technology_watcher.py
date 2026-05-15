@@ -21,12 +21,17 @@ SOURCES = {
     "github_trending_ai": "https://github.com/trending/python?since=daily",
     "papers_with_code": "https://paperswithcode.com/latest",
     "xai_news": "https://x.ai/news",
+    "the_verge_ai": "https://www.theverge.com/ai-artificial-intelligence",
+    "mit_technology_review": "https://www.technologyreview.com/",
+    "science_daily": "https://www.sciencedaily.com/",
+    "gamesindustry": "https://www.gamesindustry.biz/",
 }
 
 SOURCE_GROUPS = {
     "frontier_labs": ("openai_blog", "anthropic_news", "google_research", "meta_ai_blog", "xai_news"),
     "papers": ("arxiv_ai", "arxiv_cl", "papers_with_code"),
     "open_source": ("huggingface_blog", "github_trending_ai"),
+    "sandro_world_sources": ("the_verge_ai", "mit_technology_review", "science_daily", "gamesindustry"),
 }
 
 

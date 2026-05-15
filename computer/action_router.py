@@ -11,6 +11,7 @@ except Exception:  # pragma: no cover - optional GUI dependency fallback
         return {"ok": False, "engine": "ocr", "action": "click", "reason": "visual executor unavailable", "text": text}
 from security.app_permissions import check_app_permission
 from tools.browser_playwright import click_by_role, fill_by_label
+from computer.interface_tree_provider import FALLBACK_ORDER
 
 
 def perform_ui_action(
@@ -31,6 +32,7 @@ def perform_ui_action(
     before = capture_environment_state(include_screen=False, include_uia=False)
     attempts = []
     selected = selector if isinstance(selector, dict) else {"name": selector}
+    engine_order = list(selected.get("fallback_order") or FALLBACK_ORDER)
 
     if target_app.lower() in {"chrome.exe", "msedge.exe", "browser"}:
         if action in {"click", "invoke"} and selected.get("role") and selected.get("name"):
@@ -56,6 +58,8 @@ def perform_ui_action(
     return {
         "ok": bool(success) and (verification.get("verified") or expected_change is None),
         "engine": success.get("engine") if success else None,
+        "engine_order": engine_order,
+        "ocr_policy": "OCR is a fallback after DOM/accessibility/UIA/app adapters/shortcuts.",
         "attempts": attempts,
         "verification": verification,
         "permission": permission,
