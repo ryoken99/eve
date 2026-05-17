@@ -1,0 +1,8 @@
+{
+  "enabled": true,
+  "active_memory_day": "YYYY-MM-DD",
+  "previous_memory_day": "YYYY-MM-DD",
+  "reason": "example_test",
+  "created_at": "YYYY-MM-DDTHH:MM:SS",
+  "expires_mode": "manual_or_next_midnight"
+}

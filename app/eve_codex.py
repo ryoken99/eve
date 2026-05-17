@@ -39,6 +39,8 @@ from core.session_store import add_session_message
 from core.session_handoff import context_status, create_session_checkpoint, current_session_id, format_active_handoff
 from core.task_ledger import finish_tool_task, start_tool_task
 from core.self_report import format_self_report
+from core.terminal_memory_context import build_terminal_prompt
+from core.transcript_writer import write_error_event, write_tool_event, write_transcript
 from computer.vision import describe_screen, find_text_on_screen, first_text_center, monitor_report, screenshot_monitor
 from computer.ocr import ocr_status
 from computer.emergency_stop import clear_emergency_lock, enable_emergency_lock, emergency_locked
@@ -225,7 +227,7 @@ def _context_handoff_prompt() -> str:
         status = context_status()
         if status["should_checkpoint"]:
             create_session_checkpoint(reason=f"auto checkpoint: context status {status['level']}")
-        handoff = format_active_handoff()
+        handoff = format_active_handoff(max_chars=2500)
         return f"SESSION STATUS:\n{json.dumps(status, ensure_ascii=False)}\n\nACTIVE HANDOFF:\n{handoff}"
     except Exception as exc:
         append_loop_event("handoff_context_error", {"error": f"{type(exc).__name__}: {exc}"})
@@ -1052,6 +1054,9 @@ def ask(
     publish_to_interface: bool = True,
     allow_tools: bool = True,
     excluded_tools: set[str] | None = None,
+    enable_terminal_memory: bool = False,
+    memory_debug: bool = False,
+    visible_prompt_override: str | None = None,
 ) -> str:
     role = speaker_role(speaker)
     display_name = speaker_display_name(speaker)
@@ -1071,8 +1076,43 @@ def ask(
     handoff_context = _context_handoff_prompt()
     internal_plan_context = format_internal_plan(prompt)
     visible_prompt = prompt
+    terminal_memory_payload = None
+    if enable_terminal_memory and role == "user":
+        try:
+            terminal_memory_payload = build_terminal_prompt(prompt)
+            visible_prompt = terminal_memory_payload["final_prompt"]
+        except Exception as exc:
+            append_loop_event("memory_retrieval_failed", {"error": f"{type(exc).__name__}: {exc}", "channel": "terminal"})
+            terminal_memory_payload = {
+                "retrieval_metadata": {
+                    "memory_enabled": True,
+                    "fallback_without_memory": True,
+                    "error": f"{type(exc).__name__}: {exc}",
+                    "chunks_used": 0,
+                    "chars_used": 0,
+                    "sources": [],
+                }
+            }
+            visible_prompt = prompt
+    if visible_prompt_override is not None and role != "codex_instructor":
+        visible_prompt = visible_prompt_override
     if role == "codex_instructor":
         visible_prompt = f"[Mensagem de Codex-instrutor para Eve, nao de Sandro]\n{prompt}"
+    terminal_memory_metadata = (terminal_memory_payload or {}).get("retrieval_metadata") or {}
+    terminal_memory_debug_context = ""
+    if terminal_memory_payload:
+        terminal_memory_debug_context = json.dumps(
+            {
+                "chunks_used": terminal_memory_metadata.get("chunks_used"),
+                "chars_used": terminal_memory_metadata.get("chars_used"),
+                "max_chars": terminal_memory_metadata.get("max_chars"),
+                "collection": terminal_memory_metadata.get("collection"),
+                "fallback_without_memory": terminal_memory_metadata.get("fallback_without_memory", False),
+                "error": terminal_memory_metadata.get("error"),
+                "sources": terminal_memory_metadata.get("sources", [])[:8],
+            },
+            ensure_ascii=False,
+        )
     instructions = (
         "You are Eve, a local personal agent running on Sandro's Windows PC. "
         "Be concise, practical, expressive, and emotionally present. Respect Eve's constitution and permissions. "
@@ -1088,18 +1128,54 @@ def ask(
         "Slash commands are only human shortcuts; you should use tools/internal actions directly instead of telling Sandro to type commands. "
         "For long tasks, use missions, checkpoints, autonomous cycles, background processes, and session handoffs to preserve continuity. "
         "When answering personal facts, use RELEVANT ENTITY MEMORY. Distinguish stable real-profile facts from fictional, roleplay, or simulated-story sources. "
-        "If the memory only suggests a fact from roleplay/simulation, say it is uncertain instead of presenting it as confirmed.\n\n"
+        "If the memory only suggests a fact from roleplay/simulation, say it is uncertain instead of presenting it as confirmed. "
+        "When the prompt includes MEMORY CONTEXT, treat it as compact local terminal memory: use it for continuity, but do not dump it back verbatim.\n\n"
         f"{tool_catalog_prompt(excluded_tools=excluded_tools) if allow_tools else 'Ferramentas locais ja executadas ou indisponiveis nesta etapa; responde em texto normal.'}\n\n"
         f"INTERNAL COMMAND PLANNER:\n{internal_plan_context}\n\n"
         f"SESSION HANDOFF / CONTEXT ROTATION:\n{handoff_context}\n\n"
         f"INTENCAO PENDENTE:\n{pending_context}\n\n"
         f"HISTORICO RECENTE DO CHAT (usa para referencias imediatas):\n{recent_context}\n\n"
         f"VECTOR MEMORY PREFETCH (memorias semanticamente parecidas, se existirem):\n{vector_context}\n\n"
+        f"TERMINAL MEMORY DEBUG METADATA (metadata only):\n{terminal_memory_debug_context}\n\n"
         f"LOCAL MEMORY CONTEXT:\n{memory_context}\n\n"
         f"ENTITY BASE MEMORY ROOT: {ENTITIES_MEMORY_DIR}\n"
         f"RELEVANT ENTITY MEMORY:\n{json.dumps(entity_context, ensure_ascii=False)[:5000]}"
     )
     append_chat(role, prompt, tags=["codex_instructor"] if role == "codex_instructor" else None)
+    if enable_terminal_memory:
+        try:
+            write_transcript(
+                "terminal",
+                "sandro" if role == "user" else role,
+                prompt,
+                {
+                    "speaker": speaker,
+                    "memory_enabled": bool(terminal_memory_payload),
+                    "memory_metadata": terminal_memory_metadata if terminal_memory_payload else None,
+                },
+            )
+        except Exception as exc:
+            append_loop_event("terminal_transcript_write_failed", {"error": f"{type(exc).__name__}: {exc}", "speaker": speaker})
+    if enable_terminal_memory and memory_debug:
+        safe_print(
+            "[memory_debug] "
+            + json.dumps(
+                {
+                    "chunks_used": terminal_memory_metadata.get("chunks_used"),
+                    "chars_used": terminal_memory_metadata.get("chars_used"),
+                    "sources": [
+                        {
+                            "source_file": item.get("source_file"),
+                            "category": item.get("category"),
+                            "sensitivity": item.get("sensitivity"),
+                        }
+                        for item in (terminal_memory_metadata.get("sources") or [])[:8]
+                    ],
+                    "fallback_without_memory": terminal_memory_metadata.get("fallback_without_memory", False),
+                },
+                ensure_ascii=False,
+            )
+        )
     _record_session_message(role, prompt, {"speaker": speaker, "display_name": display_name})
     _sync_vector_message(role, prompt)
     if publish_to_interface:
@@ -1113,6 +1189,15 @@ def ask(
         text = f"Pedido falhou ({status_code}).\n{json.dumps(payload, indent=2)[:4000]}"
         safe_print(text)
         append_chat("error", text, tags=["llm_error"])
+        try:
+            write_error_event("llm_error", text, {"status_code": status_code, "source": "eve_codex.ask"})
+        except Exception:
+            pass
+        if enable_terminal_memory:
+            try:
+                write_transcript("terminal", "system", text, {"status_code": status_code, "memory_metadata": terminal_memory_metadata})
+            except Exception as exc:
+                append_loop_event("terminal_transcript_write_failed", {"error": f"{type(exc).__name__}: {exc}", "speaker": "system"})
         _record_session_message("error", text, {"status_code": status_code})
         _sync_vector_message("error", text)
         return text
@@ -1128,6 +1213,11 @@ def ask(
             excluded_tools=excluded_tools,
         )
         if final_text is not None:
+            if enable_terminal_memory:
+                try:
+                    write_transcript("terminal", "eve", final_text, {"reply_to": display_name, "memory_metadata": terminal_memory_metadata})
+                except Exception as exc:
+                    append_loop_event("terminal_transcript_write_failed", {"error": f"{type(exc).__name__}: {exc}", "speaker": "eve"})
             return final_text
     if text:
         if _extract_eve_tool_calls(text):
@@ -1138,6 +1228,11 @@ def ask(
             )
         safe_print(text)
         append_chat("assistant", text)
+        if enable_terminal_memory:
+            try:
+                write_transcript("terminal", "eve", text, {"reply_to": display_name, "memory_metadata": terminal_memory_metadata})
+            except Exception as exc:
+                append_loop_event("terminal_transcript_write_failed", {"error": f"{type(exc).__name__}: {exc}", "speaker": "eve"})
         _record_session_message("assistant", text, {"reply_to": display_name})
         _sync_vector_message("assistant", text)
         if role == "user":
@@ -1149,6 +1244,11 @@ def ask(
         text = json.dumps(payload, indent=2)[:4000]
         safe_print(text)
         append_chat("assistant", text)
+        if enable_terminal_memory:
+            try:
+                write_transcript("terminal", "eve", text, {"reply_to": display_name, "payload_fallback": True, "memory_metadata": terminal_memory_metadata})
+            except Exception as exc:
+                append_loop_event("terminal_transcript_write_failed", {"error": f"{type(exc).__name__}: {exc}", "speaker": "eve"})
         _record_session_message("assistant", text, {"reply_to": display_name, "payload_fallback": True})
         _sync_vector_message("assistant", text)
         if publish_to_interface:
@@ -1199,6 +1299,20 @@ def _run_tool_loop(
                 tool_result = execute_eve_tool(tool_call)
             finish_tool_task(task_id, tool_result)
             append_chat("tool", json.dumps(tool_result, ensure_ascii=False), tags=["tool_result", tool_call["tool"], f"batch:{index}/{len(tool_calls)}"])
+            try:
+                write_tool_event(
+                    tool_call["tool"],
+                    "tool_result",
+                    format_eve_tool_result(tool_result)[:1000],
+                    {
+                        "ok": bool(tool_result.get("ok")),
+                        "verified": bool((tool_result.get("verification") or {}).get("ok", tool_result.get("ok", False))),
+                        "batch_index": index,
+                        "batch_total": len(tool_calls),
+                    },
+                )
+            except Exception:
+                pass
             _record_session_message("tool", json.dumps(tool_result, ensure_ascii=False), {"tool": tool_call["tool"], "batch_index": index, "batch_total": len(tool_calls)})
             _sync_vector_message("tool", json.dumps(tool_result, ensure_ascii=False))
             if tool_call["tool"] in {"publish_x_post_now", "schedule_x_post", "schedule_repeated_x_posts"} and tool_result.get("ok"):
@@ -1701,11 +1815,12 @@ def handle_natural_tool_request(prompt: str, *, speaker: str = "sandro") -> bool
 
 def chat() -> None:
     print("Eve chat. Escreve /sair para sair.")
-    print("Comandos: /menu, /voltar, /speaker sandro|codex, /codex mensagem, /loop objectivo, /loop-status, /loop-modo 1|2|3, /auth, /auth-contas, /auth-trocar, /auth-login nome, /dashboard, /modelo, /estado, /capacidades, /seguranca, /modo-seguranca, /liberdade-total, /seguranca-safe, /entidades-path, /entidades-files, /aprender-sandro, /entidades, /entidade, /relacao, /entidades-search, /monitores, /ocr-status, /ecra, /ecra-monitor, /ver-texto, /centro-texto, /clicar-texto, /visual-click, /vector-index, /vector-search, /vector-search2, /win-agendar, /win-tarefas, /x-agendar, /daemon-tick, /daemon-stop, /autonomia-ciclo, /autonomia-llm, /autonomia-executar, /autonomia-relatorio, /missao-executar-auto, /watch-tech, /notify, /speak, /mobile, /mobile-msg, /app-profile, /app-profiles, /demo-record, /demo-summary, /pipeline, /admin-elevado, /app, /browser, /pesquisar, /research-report, /missao-criar, /missoes, /missao, /missao-retomar, /missao-status, /missao-passo, /missao-log, /missao-checkpoint, /email-draft, /mouse, /mover, /clicar, /tecla, /hotkey, /escrever, /agenda, /agendar, /proativo, /workspace-scan, /preferencia, /preferencias, /falha-skill, /licao, /skill-note, /experiencia, /experiencia-result, /melhoria, /melhorias-erros, /patch-proposta, /sandbox, /admin, /aprovar-admin, /rsi, /lock, /unlock, /diario, /consolidar, /sonhar, /lembrar, /world, /tech, /lab, /workspace, /ls, /ler, /nota, /cmd, /aprovar-cmd, /erros, /skills, /skill-run, /skill-promote, /skill-demo")
+    print("Comandos: /menu, /voltar, /speaker sandro|codex, /codex mensagem, /memory_debug on|off, /loop objectivo, /loop-status, /loop-modo 1|2|3, /auth, /auth-contas, /auth-trocar, /auth-login nome, /dashboard, /modelo, /estado, /capacidades, /seguranca, /modo-seguranca, /liberdade-total, /seguranca-safe, /entidades-path, /entidades-files, /aprender-sandro, /entidades, /entidade, /relacao, /entidades-search, /monitores, /ocr-status, /ecra, /ecra-monitor, /ver-texto, /centro-texto, /clicar-texto, /visual-click, /vector-index, /vector-search, /vector-search2, /win-agendar, /win-tarefas, /x-agendar, /daemon-tick, /daemon-stop, /autonomia-ciclo, /autonomia-llm, /autonomia-executar, /autonomia-relatorio, /missao-executar-auto, /watch-tech, /notify, /speak, /mobile, /mobile-msg, /app-profile, /app-profiles, /demo-record, /demo-summary, /pipeline, /admin-elevado, /app, /browser, /pesquisar, /research-report, /missao-criar, /missoes, /missao, /missao-retomar, /missao-status, /missao-passo, /missao-log, /missao-checkpoint, /email-draft, /mouse, /mover, /clicar, /tecla, /hotkey, /escrever, /agenda, /agendar, /proativo, /workspace-scan, /preferencia, /preferencias, /falha-skill, /licao, /skill-note, /experiencia, /experiencia-result, /melhoria, /melhorias-erros, /patch-proposta, /sandbox, /admin, /aprovar-admin, /rsi, /lock, /unlock, /diario, /consolidar, /sonhar, /lembrar, /world, /tech, /lab, /workspace, /ls, /ler, /nota, /cmd, /aprovar-cmd, /erros, /skills, /skill-run, /skill-promote, /skill-demo")
     print("Mensagens externas de Codex-instrutor aparecem automaticamente aqui.")
     print()
     start_interface_inbox_watcher()
     current_speaker = "sandro"
+    memory_debug = os.environ.get("EVE_MEMORY_DEBUG", "").lower() in {"1", "true", "yes", "on"}
     while True:
         try:
             prompt = input(f"{speaker_prompt(current_speaker)}> ").strip()
@@ -1732,6 +1847,14 @@ def chat() -> None:
             continue
         if prompt.lower() == "/quem-fala":
             print(f"Falante atual: {current_speaker} ({speaker_role(current_speaker)})")
+            continue
+        if prompt.lower() in {"/memory_debug on", "/memory-debug on"}:
+            memory_debug = True
+            print("Memory debug ativo.")
+            continue
+        if prompt.lower() in {"/memory_debug off", "/memory-debug off"}:
+            memory_debug = False
+            print("Memory debug inativo.")
             continue
         if prompt.lower().startswith("/speaker "):
             current_speaker = normalize_speaker(prompt.split(None, 1)[1])
@@ -2444,7 +2567,7 @@ def chat() -> None:
                 print(f"Erro a criar demonstracao: {exc}")
             continue
         print("eve> ", end="", flush=True)
-        ask(prompt, speaker=one_off_speaker, publish_to_interface=False)
+        ask(prompt, speaker=one_off_speaker, publish_to_interface=False, enable_terminal_memory=True, memory_debug=memory_debug)
         print()
 
 
@@ -2516,7 +2639,7 @@ def main() -> None:
     elif args.cmd == "x-schedule":
         safe_print(json.dumps(schedule_x_post(args.text, args.time, approved_by="sandro"), indent=2, ensure_ascii=False))
     elif args.cmd == "ask":
-        ask(args.prompt, speaker=args.speaker)
+        ask(args.prompt, speaker=args.speaker, enable_terminal_memory=True)
     elif args.cmd == "model":
         set_model(args.model)
 

@@ -1,13 +1,8 @@
 $ErrorActionPreference = "Stop"
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $RepoRoot = Split-Path -Parent $ScriptDir
-$ExpectedRoot = "E:\eve"
 $StartScript = Join-Path $RepoRoot "scripts\start_eve_pc2.ps1"
 $ShortcutPath = Join-Path ([Environment]::GetFolderPath("Desktop")) "Abrir Eve PC2.lnk"
-
-if ((Resolve-Path $RepoRoot).Path.ToLowerInvariant() -ne $ExpectedRoot.ToLowerInvariant()) {
-    throw "Refusing to create PC2 shortcut outside $ExpectedRoot. Current root: $RepoRoot"
-}
 
 if (-not (Test-Path $StartScript)) {
     throw "Start script not found: $StartScript"
@@ -16,7 +11,7 @@ if (-not (Test-Path $StartScript)) {
 $shell = New-Object -ComObject WScript.Shell
 $shortcut = $shell.CreateShortcut($ShortcutPath)
 $shortcut.TargetPath = "powershell.exe"
-$shortcut.Arguments = "-ExecutionPolicy Bypass -File `"$StartScript`""
+$shortcut.Arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$StartScript`""
 $shortcut.WorkingDirectory = $RepoRoot
 $iconCandidate = Join-Path $RepoRoot "assets\eve.ico"
 if (Test-Path $iconCandidate) {

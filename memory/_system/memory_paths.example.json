@@ -1,0 +1,17 @@
+{
+  "import_inbox": "E:\\eve\\memory\\_inbox",
+  "imported_memory_v1_to_v7": "E:\\eve\\memory\\_inbox\\imports\\memory_v1_to_v7",
+  "raw_webui_transcripts": "E:\\eve\\memory\\transcripts\\raw\\webui",
+  "raw_telegram_transcripts": "E:\\eve\\memory\\transcripts\\raw\\telegram",
+  "raw_terminal_transcripts": "E:\\eve\\memory\\transcripts\\raw\\terminal",
+  "raw_system_transcripts": "E:\\eve\\memory\\transcripts\\raw\\system",
+  "tool_transcripts": "E:\\eve\\memory\\transcripts\\tools",
+  "error_transcripts": "E:\\eve\\memory\\transcripts\\errors",
+  "daily_rollups": "E:\\eve\\memory\\transcripts\\daily_rollups",
+  "short_term": "E:\\eve\\memory\\short_term",
+  "medium_term": "E:\\eve\\memory\\medium_term",
+  "long_term": "E:\\eve\\memory\\long_term",
+  "vector_store": "E:\\eve\\memory\\vector\\chroma",
+  "reports": "E:\\eve\\memory\\_reports",
+  "system": "E:\\eve\\memory\\_system"
+}

@@ -1,0 +1,40 @@
+rules:
+  short_term:
+    - recebe informacao util mas temporaria
+    - expira ou e reavaliada quando deixa de ser contexto ativo
+  medium_term:
+    - recebe decisoes recentes
+    - recebe tarefas
+    - recebe licoes
+    - recebe projetos ativos
+  long_term:
+    - recebe identidade
+    - recebe preferencias estaveis
+    - recebe relacoes
+    - recebe projetos centrais
+    - recebe regras permanentes
+    - automatico apenas para factos explicitamente confirmados pelo Sandro
+  private_health:
+    - vai sempre para pasta privada
+    - nunca deve ser misturada com conhecimento publico ou lore
+    - saude privada nunca e promovida sem cuidado e revisao
+  technical_errors:
+    - erros tecnicos importantes vao para medium_term/technical_lessons ou transcripts/errors
+  repetition:
+    - informacao repetida reforca confianca
+    - informacao repetida nao deve criar duplicados
+  lore:
+    - lore e simulacao ficam separados de realidade
+  entities:
+    - entidades ficticias ficam separadas de pessoas reais
+conflict_policy:
+  newer_primary_user_instruction_wins: true
+  keep_conflict_evidence: true
+  do_not_delete_without_review: true
+  if_conflict_create_memory_conflict_entry: true
+promotion_policy:
+  automatic_long_term_requires_explicit_sandro_confirmation: true
+  score_2_destination: short_term
+  score_3_destination: medium_term_proposed
+  score_4_5_destination: candidate_proposed
+  identity_cards_can_be_long_term_when_explicit: true

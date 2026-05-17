@@ -1,0 +1,18 @@
+never_rebuild_full_db_unless_requested: true
+update_mode: incremental
+source_of_new_chunks:
+  - transcripts/daily_rollups
+  - _processed/classifications
+  - short_term
+  - medium_term
+  - long_term
+embedding_provider: ollama
+embedding_model: nomic-embed-text
+private_data_external_api_allowed: false
+rebuild_requires_manual_confirmation: true
+daily_context_injection_limit_chars: 4000
+max_chunks_per_prompt: 8
+max_identity_cards_per_prompt: 3
+identity_cards_first_for_identity_queries: true
+never_inject_full_transcripts: true
+never_inject_full_files: true

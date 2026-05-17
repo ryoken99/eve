@@ -1,0 +1,15 @@
+{
+  "created_at": "YYYY-MM-DDTHH:MM:SS",
+  "cards": [
+    {
+      "card_name": "example_identity_card.md",
+      "path": "E:\\eve\\memory\\long_term\\_identity_cards\\example_identity_card.md",
+      "canonical_name": "Example Entity",
+      "aliases": ["Example"],
+      "category": "example",
+      "sensitivity": "private",
+      "priority": 5,
+      "status": "template"
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+canonical_entity_name: Eve
+runtime_home: PC2
+development_workshop: PC1
+rules:
+  - A memoria e local e privada.
+  - Nada privado deve ir para GitHub.
+  - Raw transcripts nunca sao editadas.
+  - Raw transcripts podem ser resumidas em rollups.
+  - Conversas ficam separadas de ferramentas.
+  - Ferramentas ficam em transcripts/tools.
+  - Erros ficam em transcripts/errors.
+  - Saude privada fica sempre em pasta privada.
+  - Informacao sensivel nunca e commitada.
+  - Simulacao/lore nao deve ser misturada com realidade.
+  - Eve e o nome canonico.
+  - PC2 e casa/runtime da Eve.
+  - PC1 e oficina/dev.
+  - A palavra mais recente do utilizador principal tem prioridade sobre memorias antigas.
+  - Ficheiros importados V1-V7 sao fontes, nao memoria final.
+  - A Eve deve processar, classificar e so depois promover informacao.
+raw_transcript_policy:
+  preserve_original_text: true
+  normalize_name_in_new_reports: true
+  do_not_rewrite_old_voice_capture_errors: true
+git_policy:
+  never_commit:
+    - secrets
+    - logs
+    - state
+    - workspace
+    - memory/_inbox
+    - memory/_processed
+    - memory/transcripts
+    - memory/long_term
+    - memory/medium_term
+    - memory/short_term
+    - memory/dreams
+    - memory/vector
+    - private_health
+    - telegram_state

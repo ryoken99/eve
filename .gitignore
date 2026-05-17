@@ -64,3 +64,50 @@ external/
 workspace/unit_test_logs/
 memory/procedural/apps/*.json
 memory/procedural/demonstrations/*.events.json
+
+# Private Eve memory/runtime data
+memory/_inbox/**
+memory/_processed/**
+memory/transcripts/**
+memory/vector/**
+memory/runtime/**
+memory/dreams/**
+memory/short_term/**
+memory/medium_term/**
+memory/long_term/**
+memory/_reports/**
+memory/archive_only/**
+memory/diary/**
+memory/dream_reports/**
+memory/errors/**
+memory/semantic_vector/**
+memory/technology/**
+memory/world/**
+memory/knowledge/**
+memory/personality/**
+
+# Runtime/log/state/secrets
+logs/**
+state/**
+workspace/**
+secrets/**
+*.pid
+*.sqlite3
+*.db
+*.jsonl
+
+# Allow folder skeletons and safe examples/templates
+!memory/**/
+!memory/**/.gitkeep
+!memory/**/README.md
+!memory/**/*.example.json
+!memory/**/*.example.yaml
+!memory/**/*.template.json
+!memory/**/*.template.yaml
+
+# Allow safe generic policies in _system
+!memory/_system/
+!memory/_system/*.yaml
+!memory/_system/*.example.json
+!memory/_system/*.example.yaml
+!memory/_system/README.md

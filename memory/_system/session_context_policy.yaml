@@ -1,0 +1,12 @@
+max_handoff_chars: 2500
+max_memory_context_chars: 4000
+max_total_context_chars: 6000
+max_recent_messages: 6
+never_include_full_day_transcript: true
+never_include_full_raw_transcript: true
+session_rollover_enabled: true
+daily_session_reset_time: "00:00"
+handoff_required_after_rollover: true
+self_state_context_enabled: true
+self_state_max_chars: 1000
+include_self_state_only_when_relevant: true

@@ -1,0 +1,12 @@
+{
+  "backend": "chroma",
+  "embedding_provider": "ollama",
+  "embedding_model": "nomic-embed-text",
+  "created_at": "YYYY-MM-DDTHH:MM:SS",
+  "collections": {
+    "eve_all_memory": 0
+  },
+  "total_chunks_indexed": 0,
+  "chunks_failed": 0,
+  "private_data_external_api_allowed": false
+}
