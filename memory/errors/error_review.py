@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -34,6 +35,35 @@ def _text(error: dict[str, Any]) -> str:
         str(error.get(key) or "")
         for key in ("source", "task", "error_type", "error_text", "message", "lesson")
     ).lower()
+
+
+def _error_signature(error: dict[str, Any]) -> str:
+    payload = {
+        "source": str(error.get("source") or "").strip().lower(),
+        "task": str(error.get("task") or "").strip().lower(),
+        "error_type": str(error.get("error_type") or "").strip().lower(),
+        "error_text": str(error.get("error_text") or error.get("message") or "").strip().lower()[:2000],
+    }
+    raw = json.dumps(payload, sort_keys=True, ensure_ascii=False)
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]
+
+
+def _existing_signatures() -> set[str]:
+    signatures: set[str] = set()
+    if ERROR_LESSONS_PATH.exists():
+        for line in ERROR_LESSONS_PATH.read_text(encoding="utf-8", errors="ignore").splitlines():
+            if "Signature:" in line:
+                signatures.add(line.split("Signature:", 1)[1].strip().strip("`"))
+    if ERROR_CANDIDATES_PATH.exists():
+        for line in ERROR_CANDIDATES_PATH.read_text(encoding="utf-8", errors="ignore").splitlines():
+            try:
+                payload = json.loads(line)
+            except Exception:
+                continue
+            signature = payload.get("error_signature")
+            if signature:
+                signatures.add(str(signature))
+    return signatures
 
 
 def collect_recent_errors(limit: int = 50) -> list[dict]:
@@ -76,8 +106,10 @@ def classify_error(error: dict) -> dict:
 def create_lesson_from_error(error: dict) -> dict:
     classification = classify_error(error)
     lesson = error_to_lesson(error)
+    signature = _error_signature(error)
     return {
         "created_at": _now(),
+        "error_signature": signature,
         "source": error.get("source") or "unknown",
         "task": error.get("task") or "",
         "error_type": error.get("error_type") or "unknown",
@@ -90,13 +122,15 @@ def create_lesson_from_error(error: dict) -> dict:
 
 def create_improvement_candidate_from_error(error: dict) -> dict:
     classification = classify_error(error)
+    signature = _error_signature(error)
     candidate_id = (
-        f"err_{datetime.now().strftime('%Y%m%d%H%M%S')}_"
+        f"err_{signature}_"
         f"{classification['kind']}_{str(error.get('error_type') or 'unknown')}"
     )
     return {
         "candidate_id": candidate_id,
         "created_at": _now(),
+        "error_signature": signature,
         "origin": "error",
         "problem": str(error.get("error_text") or error.get("message") or error.get("error_type") or "")[:1000],
         "evidence": {
@@ -124,6 +158,7 @@ def _append_lesson_markdown(lessons: list[dict]) -> None:
                     [
                         "",
                         f"## {lesson['created_at']} - {lesson['error_kind']}",
+                        f"- Signature: `{lesson['error_signature']}`",
                         f"- Source: {lesson['source']}",
                         f"- Error type: {lesson['error_type']}",
                         f"- Severity: {lesson['severity']}",
@@ -143,23 +178,48 @@ def _append_candidates(candidates: list[dict]) -> None:
             handle.write(json.dumps(candidate, ensure_ascii=False) + "\n")
 
 
-def run_error_review(limit: int = 50, dry_run: bool = False) -> dict:
+def run_error_review(
+    limit: int = 50,
+    dry_run: bool = False,
+    max_lessons: int = 10,
+    max_candidates: int = 5,
+    deduplicate: bool = True,
+) -> dict:
     _ensure_dirs()
     errors = collect_recent_errors(limit=limit)
+    existing_signatures = _existing_signatures() if deduplicate else set()
+    seen_signatures: set[str] = set()
     reviewed = []
     lessons = []
     candidates = []
+    duplicates_skipped = 0
     for error in errors:
+        signature = _error_signature(error)
         classification = classify_error(error)
-        lesson = create_lesson_from_error(error)
-        candidate = create_improvement_candidate_from_error(error)
-        reviewed.append({"error": error, "classification": classification})
-        lessons.append(lesson)
-        candidates.append(candidate)
+        duplicate = deduplicate and (signature in existing_signatures or signature in seen_signatures)
+        reviewed.append({"error": error, "classification": classification, "error_signature": signature, "duplicate": duplicate})
+        if duplicate:
+            duplicates_skipped += 1
+            continue
+        seen_signatures.add(signature)
+        if len(lessons) < max_lessons:
+            lessons.append(create_lesson_from_error(error))
+        if len(candidates) < max_candidates:
+            candidates.append(create_improvement_candidate_from_error(error))
 
     report = {
         "ok": True,
         "dry_run": dry_run,
+        "errors_reviewed": len(reviewed),
+        "lessons_created": len(lessons),
+        "candidates_created": len(candidates),
+        "duplicates_skipped": duplicates_skipped,
+        "limits": {
+            "limit": limit,
+            "max_lessons": max_lessons,
+            "max_candidates": max_candidates,
+            "deduplicate": deduplicate,
+        },
         "reviewed_count": len(reviewed),
         "lessons_count": len(lessons),
         "candidates_count": len(candidates),
@@ -173,7 +233,17 @@ def run_error_review(limit: int = 50, dry_run: bool = False) -> dict:
     _append_lesson_markdown(lessons)
     _append_candidates(candidates)
     log_path = ERROR_REVIEW_LOG_DIR / f"error_review_{_today()}.md"
-    lines = ["# Error Review", "", f"- Created: {_now()}", f"- Errors reviewed: {len(reviewed)}", ""]
+    lines = [
+        "# Error Review",
+        "",
+        f"- Created: {_now()}",
+        f"- Errors reviewed: {len(reviewed)}",
+        f"- Lessons created: {len(lessons)}",
+        f"- Candidates created: {len(candidates)}",
+        f"- Duplicates skipped: {duplicates_skipped}",
+        f"- Limits: limit={limit}, max_lessons={max_lessons}, max_candidates={max_candidates}, deduplicate={deduplicate}",
+        "",
+    ]
     for item in reviewed:
         classification = item["classification"]
         error = item["error"]
