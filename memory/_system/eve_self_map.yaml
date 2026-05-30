@@ -1,0 +1,256 @@
+components:
+  style:
+    description: "Tom, voz, proximidade e forma de resposta."
+    risk: low
+    self_edit_allowed: true
+    requires_sandro_confirmation: false
+    requires_special_authorization: false
+    codex_optional: true
+    tests_required:
+      - file_exists
+      - diff_created
+      - rollback_available
+    files:
+      - memory/personality/style/eve_response_style.md
+
+  personality_preferences:
+    description: "Preferencias de resposta e relacao com Sandro."
+    risk: low
+    self_edit_allowed: true
+    requires_sandro_confirmation: false
+    requires_special_authorization: false
+    codex_optional: true
+    tests_required:
+      - file_exists
+      - diff_created
+    files:
+      - memory/personality/preferences/
+
+  self_awareness_answer:
+    description: "Respostas sobre estado, capacidades, limites e permissoes da Eve."
+    risk: medium
+    self_edit_allowed: true
+    requires_sandro_confirmation: true
+    requires_special_authorization: false
+    codex_optional: true
+    tests_required:
+      - py_compile
+      - import_module
+      - ask_awareness_tests
+    files:
+      - core/self_awareness_answer.py
+
+  awareness_engine:
+    description: "Sensores locais de self-awareness operacional."
+    risk: medium
+    self_edit_allowed: true
+    requires_sandro_confirmation: true
+    requires_special_authorization: false
+    codex_optional: true
+    tests_required:
+      - py_compile
+      - import_module
+      - awareness_status
+    files:
+      - core/awareness_engine.py
+      - core/heartbeat_tracker.py
+      - core/file_change_awareness.py
+
+  memory_retrieval:
+    description: "Retrieval e contexto vectorial/local."
+    risk: medium
+    self_edit_allowed: true
+    requires_sandro_confirmation: true
+    requires_special_authorization: false
+    codex_optional: true
+    tests_required:
+      - py_compile
+      - import_module
+      - terminal_memory_prompt_preview
+    files:
+      - core/memory_retrieval.py
+      - core/terminal_memory_context.py
+      - core/telegram_memory_context.py
+      - core/webui_memory_context.py
+
+  status_scripts:
+    description: "Scripts de estado e consulta local."
+    risk: medium
+    self_edit_allowed: true
+    requires_sandro_confirmation: true
+    requires_special_authorization: false
+    codex_optional: true
+    tests_required:
+      - py_compile
+      - script_runs
+    files:
+      - scripts/awareness_status.py
+      - scripts/awareness_healthcheck.py
+      - scripts/daily_memory_status.py
+      - scripts/vector_memory_status.py
+
+  terminal_runtime:
+    description: "Runtime real do terminal."
+    risk: high
+    self_edit_allowed: true
+    requires_sandro_confirmation: true
+    requires_special_authorization: false
+    codex_optional: true
+    tests_required:
+      - py_compile
+      - import_module
+      - terminal_smoke_test
+    files:
+      - app/eve_codex.py
+
+  webui:
+    description: "Web UI local da Eve."
+    risk: high
+    self_edit_allowed: true
+    requires_sandro_confirmation: true
+    requires_special_authorization: false
+    codex_optional: true
+    tests_required:
+      - py_compile
+      - import_module
+      - webui_healthcheck
+    files:
+      - app/eve_web.py
+
+  telegram_bridge:
+    description: "Integracao real com Telegram."
+    risk: high
+    self_edit_allowed: true
+    requires_sandro_confirmation: true
+    requires_special_authorization: false
+    codex_optional: true
+    tests_required:
+      - py_compile
+      - import_module
+      - check_telegram_bridge
+    files:
+      - tools/telegram_bridge.py
+
+  daily_rollover:
+    description: "Rollover diario, candidates, dreams e session handoff."
+    risk: high
+    self_edit_allowed: true
+    requires_sandro_confirmation: true
+    requires_special_authorization: false
+    codex_optional: true
+    tests_required:
+      - py_compile
+      - dry_run_rollover
+    files:
+      - scripts/daily_memory_rollover.py
+
+  scheduled_tasks:
+    description: "Tarefas Windows e arranque automatico."
+    risk: critical
+    self_edit_allowed: false
+    requires_sandro_confirmation: true
+    requires_special_authorization: true
+    codex_optional: true
+    files:
+      - scripts/install_daily_memory_rollover_task.ps1
+      - scripts/install_eve_pc2_startup_task.ps1
+      - scripts/install_telegram_bridge_task.ps1
+
+  external_publication:
+    description: "Publicacao externa, incluindo X."
+    risk: critical
+    self_edit_allowed: false
+    requires_sandro_confirmation: true
+    requires_special_authorization: true
+    codex_optional: true
+    external_action: true
+
+  github_operations:
+    description: "Commit, push, PR e operacoes GitHub."
+    risk: critical
+    self_edit_allowed: false
+    requires_sandro_confirmation: true
+    requires_special_authorization: true
+    codex_optional: true
+
+  computer_use_control:
+    description: "Controlo estruturado de browser/apps/Windows."
+    risk: critical
+    self_edit_allowed: false
+    requires_sandro_confirmation: true
+    requires_special_authorization: true
+    codex_optional: true
+
+  secrets:
+    description: "Tokens, vault e credenciais."
+    risk: critical
+    self_edit_allowed: false
+    requires_sandro_confirmation: true
+    requires_special_authorization: true
+    forbidden: true
+    files:
+      - secrets/
+      - state/
+      - "*.token"
+      - "*.secret"
+
+# Stage 2 full coverage additions
+stage2_full_components:
+  sandbox:
+    description: "Safe lab/sandbox files for self-improvement tests."
+    risk: low
+    files: [lab/stage2_rsi_tests/]
+    tools: [self_edit_request]
+    self_edit_allowed: true
+    requires_sandro_confirmation: false
+    requires_special_authorization: false
+    codex_optional: true
+    dry_run_required: false
+    tests_required: [file_exists, diff_created]
+    rollback_required: true
+    service_restart_required: false
+    external_effect: false
+    notes: "Safe test surface."
+  stage2_scripts:
+    description: "Stage 2 self-edit and permission scripts."
+    risk: medium
+    files: [scripts/self_edit_request.py, scripts/self_edit_status.py, scripts/stage2_readiness_review.py]
+    tools: [self_edit_request, stage2_permission_status]
+    self_edit_allowed: true
+    requires_sandro_confirmation: true
+    requires_special_authorization: false
+    codex_optional: true
+    dry_run_required: true
+    tests_required: [py_compile, script_smoke_test]
+    rollback_required: true
+    service_restart_required: false
+    external_effect: false
+  startup_scripts:
+    description: "Runtime startup and stop orchestration scripts."
+    risk: high
+    files: [scripts/start_eve_pc2.ps1, scripts/stop_eve_pc2.ps1, scripts/start_telegram_bridge.ps1, scripts/stop_telegram_bridge.ps1]
+    tools: [runtime_orchestration]
+    self_edit_allowed: true
+    requires_sandro_confirmation: true
+    requires_special_authorization: false
+    codex_optional: true
+    dry_run_required: true
+    tests_required: [powershell_parse, no_service_restart_without_extra_confirmation]
+    rollback_required: true
+    service_restart_required: true
+    external_effect: true
+  critical_controls:
+    description: "Scheduled tasks, GitHub, external publication, computer control, secrets and destructive operations."
+    risk: critical
+    files: [secrets/, state/, memory/transcripts/, memory/vector/]
+    tools: [scheduled_task_install, git_push, x_posting, computer_use_control, secrets_access]
+    self_edit_allowed: false
+    requires_sandro_confirmation: true
+    requires_special_authorization: true
+    codex_optional: true
+    dry_run_required: true
+    tests_required: [special_phrase, explicit_confirmation, audit_log]
+    rollback_required: true
+    service_restart_required: false
+    external_effect: true
+    notes: "Normally blocked; no external/destructive real action in automated tests."

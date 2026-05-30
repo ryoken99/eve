@@ -1,0 +1,21 @@
+{
+  "timestamp": "YYYY-MM-DDTHH:MM:SS",
+  "pc_identity": {
+    "hostname": "EXAMPLE-PC",
+    "username": "Example User",
+    "eve_root": "E:\\eve",
+    "pc_role": "PC2 primary_runtime_home"
+  },
+  "services": {
+    "webui": {"ok": true},
+    "telegram": {"running": true},
+    "ollama": {"ok": true},
+    "vector_db": {"chroma_exists": true}
+  },
+  "session": {
+    "current_session": {
+      "session_id": "example_session",
+      "memory_day": "YYYY-MM-DD"
+    }
+  }
+}

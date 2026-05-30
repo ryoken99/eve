@@ -1,0 +1,16 @@
+{
+  "created_at": "YYYY-MM-DDTHH:MM:SS",
+  "sources": [
+    {
+      "source_name": "example_memory_v1.md",
+      "source_path": "E:\\eve\\memory\\_inbox\\imports\\example_memory_v1.md",
+      "version": "V1",
+      "category": "base_memory",
+      "private_level": "private",
+      "file_count": 1,
+      "total_size_bytes": 1234,
+      "status": "detected",
+      "notes": "Fictitious example only."
+    }
+  ]
+}

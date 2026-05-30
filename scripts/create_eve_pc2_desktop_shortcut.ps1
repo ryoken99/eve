@@ -16,7 +16,7 @@ if (-not (Test-Path $StartScript)) {
 $shell = New-Object -ComObject WScript.Shell
 $shortcut = $shell.CreateShortcut($ShortcutPath)
 $shortcut.TargetPath = "powershell.exe"
-$shortcut.Arguments = "-ExecutionPolicy Bypass -File `"$StartScript`""
+$shortcut.Arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$StartScript`""
 $shortcut.WorkingDirectory = $RepoRoot
 $iconCandidate = Join-Path $RepoRoot "assets\eve.ico"
 if (Test-Path $iconCandidate) {

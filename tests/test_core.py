@@ -44,6 +44,8 @@ from app.eve_codex import (
     speaker_display_name,
     speaker_role,
     _is_interest_register_request,
+    _is_self_awareness_request,
+    _is_self_edit_request,
     append_loop_event,
     ask,
     publish_interface_message,
@@ -1799,7 +1801,18 @@ class EveCoreTests(unittest.TestCase):
         self.assertIn("world note", output.getvalue())
 
     def test_followup_show_what_you_wrote_matches_interest_registers(self):
-        self.assertTrue(_is_interest_register_request("ok tenta agr mostrar me o que escreveste la"))
+        self.assertFalse(_is_interest_register_request("ok tenta agr mostrar me o que escreveste la"))
+
+    def test_telegram_awareness_and_self_edit_do_not_match_interest_registers(self):
+        awareness_prompt = "Ola Eve ja tens nocao dos teus ficheiros awareness de ti mesma?"
+        edit_prompt = "na mensagem de quando ligas e mandas mensagem no telegram adiciona o emoji morcego"
+        self.assertTrue(_is_self_awareness_request(awareness_prompt))
+        self.assertTrue(_is_self_edit_request(edit_prompt))
+        self.assertFalse(_is_interest_register_request(awareness_prompt))
+        self.assertFalse(_is_interest_register_request(edit_prompt))
+
+    def test_explicit_daily_technology_registers_match_interest_registers(self):
+        self.assertTrue(_is_interest_register_request("mostra os registos diarios de tecnologia"))
 
     def test_ask_handles_interest_registers_without_llm(self):
         fake = {
@@ -1809,8 +1822,31 @@ class EveCoreTests(unittest.TestCase):
         }
         with patch("app.eve_codex.read_daily_interest_registers", return_value=fake):
             with patch("app.eve_codex.load_auth", side_effect=AssertionError("LLM/auth should not be needed")):
-                text = ask("ok tenta agr mostrar me o que escreveste la", publish_to_interface=False)
+                text = ask("mostra os registos diarios de tecnologia", publish_to_interface=False)
         self.assertIn("world note", text)
+
+    def test_ask_routes_awareness_before_interest_registers(self):
+        with patch("app.eve_codex.answer_self_awareness_question", return_value="awareness ok"):
+            with patch("app.eve_codex.read_daily_interest_registers", side_effect=AssertionError("daily interests must not run")):
+                with patch("app.eve_codex.load_auth", side_effect=AssertionError("LLM/auth should not be needed")):
+                    text = ask("Ola Eve ja tens nocao dos teus ficheiros awareness de ti mesma?", publish_to_interface=False)
+        self.assertEqual(text, "awareness ok")
+
+    def test_ask_routes_self_edit_before_interest_registers(self):
+        fake_result = {
+            "status": "permission_required",
+            "classification": {"risk": "high", "target_area": "telegram"},
+            "target_files": ["tools/telegram_bridge.py"],
+            "change_plan_path": "plan.md",
+            "permission_request_id": "REQ_TEST",
+            "tests": {"passed": True},
+        }
+        with patch("app.eve_codex.execute_self_edit_request", return_value=fake_result):
+            with patch("app.eve_codex.read_daily_interest_registers", side_effect=AssertionError("daily interests must not run")):
+                with patch("app.eve_codex.load_auth", side_effect=AssertionError("LLM/auth should not be needed")):
+                    text = ask("na mensagem de quando ligas e mandas mensagem no telegram adiciona o emoji morcego", publish_to_interface=False)
+        self.assertIn("Pedido Stage 2", text)
+        self.assertIn("REQ_TEST", text)
 
 
 if __name__ == "__main__":

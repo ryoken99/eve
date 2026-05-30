@@ -1,0 +1,32 @@
+codex_tool:
+  enabled_as_optional_tool: true
+  required_for_stage2_2: false
+  eve_is_primary_agent: true
+  allowed_uses:
+    - second_opinion
+    - generate_alternative_patch
+    - sandbox_refactor
+    - code_review
+    - test_generation
+    - failure_recovery
+  requires_sandro_confirmation_for:
+    - sending_private_context
+    - modifying_runtime
+    - git_commit
+    - git_push
+    - external_actions
+  forbidden:
+    - secrets
+    - tokens
+    - private_memory_dump
+    - direct_push_without_approval
+  eve_responsibilities:
+    - define_goal
+    - define_constraints
+    - classify_risk
+    - request_permission
+    - review_output
+    - decide_apply
+    - test
+    - rollback
+    - report

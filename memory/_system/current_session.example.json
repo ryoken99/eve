@@ -1,0 +1,9 @@
+{
+  "session_id": "YYYY-MM-DD_main",
+  "memory_day": "YYYY-MM-DD",
+  "started_at": "YYYY-MM-DDTHH:MM:SS",
+  "channels": ["terminal", "telegram", "webui"],
+  "handoff_loaded": true,
+  "previous_session_id": "YYYY-MM-DD_main",
+  "status": "active"
+}

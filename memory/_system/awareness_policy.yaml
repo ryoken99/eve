@@ -1,0 +1,19 @@
+awareness_enabled: true
+pc_role:
+  pc2: "primary_runtime_home"
+  pc1: "builder_dev_workshop"
+no_llm_for_sensors: true
+external_api_allowed: false
+write_local_only: true
+snapshot_mode: "manual_first"
+watcher_mode: "disabled_until_authorized"
+screen_awareness_mode: "disabled_until_authorized"
+heartbeat_interval_minutes: 5
+max_report_chars: 6000
+track_git: true
+track_services: true
+track_memory: true
+track_sessions: true
+track_rollover: true
+track_file_changes: true
+track_screen: false

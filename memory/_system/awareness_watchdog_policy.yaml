@@ -1,0 +1,6 @@
+enabled: false
+heartbeat_interval_minutes: 5
+snapshot_interval_minutes: 30
+healthcheck_interval_minutes: 15
+file_scan_interval_minutes: 30
+screen_awareness_enabled: false

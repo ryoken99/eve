@@ -21,6 +21,8 @@ if EVE_ROOT not in sys.path:
     sys.path.insert(0, EVE_ROOT)
 
 from app.eve_codex import active_auth_profile, ask, list_auth_accounts, select_auth_account
+from core.transcript_writer import write_error_event, write_eve_message, write_user_message
+from core.webui_memory_context import build_webui_prompt
 from memory.daily_transcripts import append_transcript, transcript_path
 from security.local_account import active_installation, list_installations, set_active_installation, verify_access_code
 
@@ -629,17 +631,52 @@ class EveWebHandler(BaseHTTPRequestHandler):
                     )
                     prompt = (prompt or "Analisa esta imagem.") + image_note
                 append_transcript("chat", "web_user_message", {"content": text or "[imagem]", "image": image_meta})
-                reply = ask(prompt, speaker="sandro", publish_to_interface=False)
+                memory_payload = None
+                try:
+                    memory_payload = build_webui_prompt(
+                        prompt,
+                        {
+                            "path": parsed.path,
+                            "client": self.client_address[0] if self.client_address else "",
+                            "has_image": bool(image_meta),
+                        },
+                    )
+                except Exception as exc:
+                    append_transcript("errors", "web_memory_retrieval_failed", {"error": f"{type(exc).__name__}: {exc}"})
+                    memory_payload = {
+                        "final_prompt": f"[WEB UI USER MESSAGE]\n{prompt}\n[/WEB UI USER MESSAGE]",
+                        "retrieval_metadata": {
+                            "fallback_without_memory": True,
+                            "error": f"{type(exc).__name__}: {exc}",
+                            "chunks_used": 0,
+                            "chars_used": 0,
+                            "sources": [],
+                        },
+                    }
+                memory_metadata = memory_payload.get("retrieval_metadata") or {}
+                transcript_metadata = {
+                    "source": "webui",
+                    "memory_used": bool(memory_payload and not memory_metadata.get("fallback_without_memory")),
+                    "chunks_used": memory_metadata.get("chunks_used", 0),
+                    "memory_context_chars": memory_metadata.get("chars_used", 0),
+                    "memory_sources": memory_metadata.get("sources", [])[:8],
+                    "has_image": bool(image_meta),
+                }
+                write_user_message("webui", text or "[imagem]", transcript_metadata)
+                reply = ask(prompt, speaker="sandro", publish_to_interface=False, visible_prompt_override=memory_payload["final_prompt"], channel="webui")
+                write_eve_message("webui", reply, transcript_metadata)
                 append_transcript("chat", "web_eve_reply", {"content": reply})
                 self._send_json({"ok": True, "reply": reply, "image": image_meta})
                 return
         except Exception as exc:
             append_transcript("errors", "web_error", {"path": parsed.path, "error": f"{type(exc).__name__}: {exc}"})
+            write_error_event("web_error", f"{type(exc).__name__}: {exc}", {"source": "webui", "path": parsed.path})
             self._send_json({"ok": False, "error": f"{type(exc).__name__}: {exc}"}, 500)
             return
         except SystemExit as exc:
             message = str(exc) or "A operacao foi interrompida."
             append_transcript("errors", "web_system_exit", {"path": parsed.path, "error": message})
+            write_error_event("web_system_exit", message, {"source": "webui", "path": parsed.path})
             self._send_json({"ok": False, "error": message}, 500)
             return
         self.send_error(HTTPStatus.NOT_FOUND)

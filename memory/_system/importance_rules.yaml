@@ -1,0 +1,38 @@
+scale:
+  0: noise
+  1: temporary
+  2: short_term
+  3: active_project
+  4: medium_term
+  5: long_term_core
+examples:
+  - text: "PC2 e a casa da Eve"
+    importance: 5
+    category: eve_identity
+  - text: "PC1 e oficina/dev"
+    importance: 5
+    category: eve_identity
+  - text: "pessoa privada tem informacao de saude sensivel"
+    importance: 5
+    category: private_health
+  - text: "corrigir mapa do reino 6"
+    importance: 4
+    category: project
+  - text: "amanha testar Web UI"
+    importance: 2
+    category: short_term
+  - text: "erro numa ferramenta"
+    importance: "3_or_4"
+    category: technical_error
+  - text: "conversa casual sem decisao"
+    importance: 1
+    category: temporary
+  - text: "lore LifePath"
+    importance: "3_or_4"
+    category: lore_simulation
+  - text: "nova regra permanente da Eve"
+    importance: 5
+    category: eve_identity
+  - text: "preferencia estavel do utilizador principal"
+    importance: 5
+    category: user_core

@@ -1,0 +1,50 @@
+enabled: true
+mode: assisted_autonomy
+no_subagents: true
+codex_is_external: true
+
+rules:
+  - Eve may analyze her own transcripts.
+  - Eve may extract lessons.
+  - Eve may detect repeated failures.
+  - Eve may propose improvements.
+  - Eve may create Codex-ready task instructions.
+  - Eve may create safe local test plans.
+  - Eve may update lessons_learned and candidates.
+  - Eve may update vector memory incrementally.
+  - Eve must not modify secrets.
+  - Eve must not commit private memory.
+  - Eve must not push private data.
+  - Eve must not alter safety/security settings without Sandro approval.
+  - Eve must not modify core runtime automatically unless change is low-risk and explicitly allowed.
+  - Eve must not install scheduled tasks without Sandro approval.
+  - Eve must separate reality, lore, entities and private health.
+  - Eve must ask for approval before applying medium/high risk improvements.
+
+risk_levels:
+  low:
+    examples:
+      - style prompt improvement
+      - documentation
+      - report formatting
+      - adding non-invasive status command
+  medium:
+    examples:
+      - modifying retrieval logic
+      - changing rollover classification
+      - changing transcript metadata format
+      - adding new script
+  high:
+    examples:
+      - changing startup behaviour
+      - changing Telegram Bridge core loop
+      - changing Web UI routing
+      - modifying secrets/vault
+      - installing scheduled tasks
+      - git operations
+      - deleting files
+
+approval_required:
+  medium: true
+  high: true
+  low: false_if_tested_and_non_destructive

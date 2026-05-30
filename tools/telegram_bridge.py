@@ -13,8 +13,16 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+SCRIPTS_DIR = Path(__file__).resolve().parents[1] / "scripts"
+if str(SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPTS_DIR))
+
 from core.paths import EVE_ROOT, LOGS_DIR, STATE_DIR, ensure_project_dirs
+from core.telegram_memory_context import build_telegram_prompt
+from core.transcript_writer import write_transcript
+from core.memory_retrieval import COLLECTIONS, get_collection, load_vector_manifest
 from memory.daily_transcripts import append_transcript
+from local_embedding_provider import check_ollama_embedding_model
 from security.secrets_vault import get_secret, mask_secret
 
 
@@ -118,6 +126,47 @@ def _build_prompt(message: dict[str, Any]) -> str:
     )
 
 
+def _memory_status_text() -> str:
+    manifest = load_vector_manifest()
+    ollama = check_ollama_embedding_model()
+    identity_ok = False
+    all_count = None
+    identity_count = None
+    error = None
+    try:
+        all_count = get_collection(COLLECTIONS["all"]).count()
+        identity_count = get_collection(COLLECTIONS["identity"]).count()
+        identity_ok = bool(identity_count and identity_count > 0)
+    except Exception as exc:
+        error = f"{type(exc).__name__}: {exc}"
+    lines = [
+        "Memory status:",
+        f"- vector DB: {'ok' if manifest.get('ok') else 'fail'}",
+        f"- embedding model: nomic-embed-text ({'ok' if ollama.get('ok') else 'fail'})",
+        f"- chunks indexed approx: {all_count if all_count is not None else 'unknown'}",
+        f"- identity cards: {'ok' if identity_ok else 'fail'} ({identity_count if identity_count is not None else 'unknown'})",
+    ]
+    if error:
+        lines.append(f"- last memory error: {error[:300]}")
+    elif not manifest.get("ok"):
+        lines.append(f"- last memory error: {manifest.get('error')}")
+    return "\n".join(lines)
+
+
+def _telegram_transcript_metadata(message: dict[str, Any], *, memory_payload: dict[str, Any] | None = None) -> dict[str, Any]:
+    memory_metadata = (memory_payload or {}).get("retrieval_metadata") or {}
+    return {
+        "telegram_chat_id": message.get("chat_id"),
+        "telegram_message_id": message.get("message_id"),
+        "telegram_update_id": message.get("update_id"),
+        "source": "telegram_bridge",
+        "memory_used": bool(memory_payload and not memory_metadata.get("fallback_without_memory")),
+        "chunks_used": memory_metadata.get("chunks_used", 0),
+        "memory_context_chars": memory_metadata.get("chars_used", 0),
+        "memory_sources": memory_metadata.get("sources", [])[:8],
+    }
+
+
 def poll_once(*, respond: bool = True, token: str | None = None) -> dict[str, Any]:
     state = _load_state()
     offset = state.get("offset")
@@ -132,6 +181,28 @@ def poll_once(*, respond: bool = True, token: str | None = None) -> dict[str, An
         state["last_chat_id"] = message["chat_id"]
         state["last_message_at"] = now_iso()
         append_transcript("chat", "telegram_user_message", {"content": message["text"], "chat_id": message["chat_id"]})
+        raw_text = str(message["text"] or "").strip()
+        if raw_text == "/memory_status":
+            reply = _memory_status_text()
+            write_transcript("telegram", "sandro", raw_text, _telegram_transcript_metadata(message, memory_payload=None))
+            write_transcript(
+                "telegram",
+                "eve",
+                reply,
+                {
+                    "telegram_chat_id": message.get("chat_id"),
+                    "telegram_message_id": None,
+                    "source": "telegram_bridge",
+                    "command": "memory_status",
+                    "memory_used": False,
+                    "chunks_used": 0,
+                    "memory_context_chars": 0,
+                },
+            )
+            if respond:
+                send_message(message["chat_id"], reply, token=token)
+            processed.append({"update_id": update_id, "chat_id": message["chat_id"], "responded": bool(respond), "command": "memory_status"})
+            continue
         reply = ""
         if respond:
             from app.eve_codex import ask
@@ -140,11 +211,28 @@ def poll_once(*, respond: bool = True, token: str | None = None) -> dict[str, An
             # same local tool loop as the web UI for files, memory, diagnostics,
             # and other guarded actions. Hide/block Telegram transport tools so
             # the response is sent exactly once by this bridge.
+            memory_payload = None
+            try:
+                memory_payload = build_telegram_prompt(message["text"], {"chat_id": message.get("chat_id"), "message_id": message.get("message_id")})
+            except Exception as exc:
+                _log("memory_retrieval_failed_telegram", {"error": f"{type(exc).__name__}: {exc}", "chat_id": message.get("chat_id")})
+                memory_payload = {
+                    "final_prompt": (
+                        "[TELEGRAM USER MESSAGE]\n"
+                        f"{message['text']}\n"
+                        "[/TELEGRAM USER MESSAGE]"
+                    ),
+                    "retrieval_metadata": {"fallback_without_memory": True, "error": f"{type(exc).__name__}: {exc}", "chunks_used": 0, "chars_used": 0, "sources": []},
+                }
+            write_transcript("telegram", "sandro", message["text"], _telegram_transcript_metadata(message, memory_payload=memory_payload))
+            channel_prompt = _build_prompt(message) + "\n\n" + memory_payload["final_prompt"]
             reply = ask(
-                _build_prompt(message),
+                message["text"],
                 speaker="sandro",
                 publish_to_interface=True,
                 allow_tools=True,
+                visible_prompt_override=channel_prompt,
+                channel="telegram",
                 excluded_tools={
                     "telegram_status",
                     "telegram_start_bridge",
@@ -153,6 +241,7 @@ def poll_once(*, respond: bool = True, token: str | None = None) -> dict[str, An
                     "telegram_send_message",
                 },
             )
+            write_transcript("telegram", "eve", reply, _telegram_transcript_metadata(message, memory_payload=memory_payload))
             send_message(message["chat_id"], reply, token=token)
             append_transcript("chat", "telegram_eve_reply", {"content": reply, "chat_id": message["chat_id"]})
         processed.append({"update_id": update_id, "chat_id": message["chat_id"], "responded": bool(reply)})
