@@ -5,11 +5,11 @@ param(
 $ErrorActionPreference = "Stop"
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $RepoRoot = Split-Path -Parent $ScriptDir
-$ExpectedRoot = "E:\eve"
+$ExpectedRoot = $env:EVE_PC2_EXPECTED_ROOT
 $TaskName = "Eve_Telegram_Bridge_PC2"
 $StartScript = Join-Path $RepoRoot "scripts\start_telegram_bridge.ps1"
 
-if ((Resolve-Path $RepoRoot).Path.ToLowerInvariant() -ne $ExpectedRoot.ToLowerInvariant()) {
+if (-not [string]::IsNullOrWhiteSpace($ExpectedRoot) -and (Resolve-Path $RepoRoot).Path.ToLowerInvariant() -ne $ExpectedRoot.ToLowerInvariant()) {
     throw "Refusing to install PC2 Telegram bridge task outside $ExpectedRoot. Current root: $RepoRoot"
 }
 

@@ -1,11 +1,11 @@
 $ErrorActionPreference = "Stop"
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $RepoRoot = Split-Path -Parent $ScriptDir
-$ExpectedRoot = "E:\eve"
+$ExpectedRoot = $env:EVE_PC2_EXPECTED_ROOT
 $StartScript = Join-Path $RepoRoot "scripts\start_eve_pc2.ps1"
 $ShortcutPath = Join-Path ([Environment]::GetFolderPath("Desktop")) "Abrir Eve PC2.lnk"
 
-if ((Resolve-Path $RepoRoot).Path.ToLowerInvariant() -ne $ExpectedRoot.ToLowerInvariant()) {
+if (-not [string]::IsNullOrWhiteSpace($ExpectedRoot) -and (Resolve-Path $RepoRoot).Path.ToLowerInvariant() -ne $ExpectedRoot.ToLowerInvariant()) {
     throw "Refusing to create PC2 shortcut outside $ExpectedRoot. Current root: $RepoRoot"
 }
 

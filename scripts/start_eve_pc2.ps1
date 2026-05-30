@@ -7,7 +7,7 @@ param(
 $ErrorActionPreference = "Stop"
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $RepoRoot = Split-Path -Parent $ScriptDir
-$ExpectedRoot = "E:\eve"
+$ExpectedRoot = $env:EVE_PC2_EXPECTED_ROOT
 $Python = Join-Path $RepoRoot ".venv\Scripts\python.exe"
 $RuntimeLogDir = Join-Path $RepoRoot "logs\runtime"
 $LogPath = Join-Path $RuntimeLogDir "eve_pc2_startup.log"
@@ -77,7 +77,7 @@ function Start-WebUiIfNeeded {
     return @{ running = $false; started = $true; pid = $process.Id }
 }
 
-if ((Resolve-Path $RepoRoot).Path.ToLowerInvariant() -ne $ExpectedRoot.ToLowerInvariant()) {
+if (-not [string]::IsNullOrWhiteSpace($ExpectedRoot) -and (Resolve-Path $RepoRoot).Path.ToLowerInvariant() -ne $ExpectedRoot.ToLowerInvariant()) {
     throw "Refusing to start PC2 main Eve runtime outside $ExpectedRoot. Current root: $RepoRoot"
 }
 
