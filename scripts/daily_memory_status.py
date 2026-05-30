@@ -126,6 +126,22 @@ def count_open_errors() -> int:
     return count
 
 
+def continual_learning_status() -> dict[str, Any]:
+    root = MEMORY_ROOT / "continual_learning"
+    candidates = root / "improvement_candidates" / "self_improvement_candidates.jsonl"
+    approvals = root / "approval_queue" / "pending_approvals.jsonl"
+    lessons = root / "lessons" / "lessons_learned.md"
+    latest_analysis = latest_file(root / "daily_analysis", "*_experience_analysis.md")
+    return {
+        "policy": file_info(root / "continual_learning_policy.yaml"),
+        "latest_analysis": file_info(latest_analysis) if latest_analysis else None,
+        "lessons": file_info(lessons),
+        "candidates": file_info(candidates),
+        "pending_approvals": file_info(approvals),
+        "status": run_json_script("continual_learning_status.py"),
+    }
+
+
 def main() -> int:
     today = datetime.now().strftime("%Y-%m-%d")
     yesterday = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
@@ -166,6 +182,7 @@ def main() -> int:
         "tool_lessons": file_info(MEMORY_ROOT / "medium_term" / "tool_lessons" / "tool_lessons.jsonl"),
         "session": session_status(),
         "scheduled_task": scheduled_task_status(),
+        "continual_learning": continual_learning_status(),
         "vector_db": run_json_script("vector_memory_status.py"),
         "telegram": run_json_script("check_telegram_bridge.py", timeout=60),
         "web_ui": {"ok": http_ok("http://127.0.0.1:8787/api/health"), "url": "http://127.0.0.1:8787/"},

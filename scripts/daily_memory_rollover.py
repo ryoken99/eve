@@ -792,6 +792,44 @@ def update_vector_incremental(chunks_path: Path) -> dict[str, Any]:
         return {"ok": False, "stdout": completed.stdout[-2000:], "stderr": completed.stderr[-2000:], "error": "could not parse vector update json"}
 
 
+def run_continual_learning(date_key: str) -> dict[str, Any]:
+    scripts = [
+        ("analysis", EVE_ROOT / "scripts" / "analyze_daily_experience.py"),
+        ("lessons", EVE_ROOT / "scripts" / "update_lessons_learned.py"),
+        ("improvements", EVE_ROOT / "scripts" / "propose_self_improvements.py"),
+    ]
+    results: dict[str, Any] = {}
+    for name, script in scripts:
+        if not script.exists():
+            results[name] = {"ok": False, "error": f"missing script: {script}"}
+            continue
+        completed = subprocess.run(
+            [sys.executable, str(script), "--date", date_key],
+            cwd=str(EVE_ROOT),
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=180,
+        )
+        try:
+            start = completed.stdout.find("{")
+            payload = json.loads(completed.stdout[start:].strip()) if start >= 0 else {}
+        except json.JSONDecodeError:
+            payload = {}
+        payload.update(
+            {
+                "ok": completed.returncode == 0 and bool(payload.get("ok", True)),
+                "returncode": completed.returncode,
+                "stdout_tail": completed.stdout[-1200:],
+                "stderr_tail": completed.stderr[-1200:],
+            }
+        )
+        results[name] = payload
+    results["ok"] = all(item.get("ok") for item in results.values() if isinstance(item, dict))
+    return results
+
+
 def write_memory_day_override(previous_day: str, active_day: str, reason: str) -> Path:
     SESSION_STATE_DIR.mkdir(parents=True, exist_ok=True)
     payload = {
@@ -925,6 +963,7 @@ def run(
     close_current_day: bool = False,
     advance_memory_day: bool = False,
     test_run_label: str | None = None,
+    run_continual_learning_analysis: bool = True,
 ) -> dict[str, Any]:
     ensure_dirs()
     date_key = date.strftime("%Y-%m-%d")
@@ -968,6 +1007,7 @@ def run(
     if close_current_day and advance_memory_day:
         active_memory_day = next_date_key
         override_path = str(write_memory_day_override(date_key, active_memory_day, test_run_label or "forced_rollover"))
+    continual_learning = run_continual_learning(date_key) if run_continual_learning_analysis else {"ok": True, "skipped": True}
     return {
         "ok": bool(vector_result.get("ok")),
         "date": date_key,
@@ -997,6 +1037,7 @@ def run(
         "arsi_candidate_count": len(arsi),
         "chunk_count": len(chunks),
         "vector_update": vector_result,
+        "continual_learning": continual_learning,
     }
 
 
@@ -1007,6 +1048,7 @@ def main() -> int:
     parser.add_argument("--close-current-day", action="store_true", help="Mark the selected memory day as closed in the output metadata.")
     parser.add_argument("--advance-memory-day", action="store_true", help="Create a memory-day override pointing new transcripts at the next day.")
     parser.add_argument("--test-run-label", default=None, help="Optional label for controlled/manual test runs.")
+    parser.add_argument("--skip-continual-learning", action="store_true", help="Skip continual learning proposal generation.")
     args = parser.parse_args()
     date = parse_date(args.date) if args.date else default_rollover_date()
     result = run(
@@ -1015,6 +1057,7 @@ def main() -> int:
         close_current_day=args.close_current_day,
         advance_memory_day=args.advance_memory_day,
         test_run_label=args.test_run_label,
+        run_continual_learning_analysis=not args.skip_continual_learning,
     )
     print(json.dumps(result, ensure_ascii=False, indent=2))
     return 0 if result.get("ok") else 1

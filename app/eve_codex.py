@@ -7,6 +7,7 @@ import subprocess
 import sys
 import threading
 import time
+import unicodedata
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -41,6 +42,9 @@ from core.task_ledger import finish_tool_task, start_tool_task
 from core.self_report import format_self_report
 from core.terminal_memory_context import build_terminal_prompt
 from core.transcript_writer import write_error_event, write_tool_event, write_transcript
+from core.self_awareness_answer import answer_self_awareness_question
+from core.self_edit_engine import execute_self_edit_request
+from core.llm_intent_router import log_router_decision, route_message
 from computer.vision import describe_screen, find_text_on_screen, first_text_center, monitor_report, screenshot_monitor
 from computer.ocr import ocr_status
 from computer.emergency_stop import clear_emergency_lock, enable_emergency_lock, emergency_locked
@@ -1057,12 +1061,27 @@ def ask(
     enable_terminal_memory: bool = False,
     memory_debug: bool = False,
     visible_prompt_override: str | None = None,
+    channel: str = "terminal",
 ) -> str:
     role = speaker_role(speaker)
     display_name = speaker_display_name(speaker)
     excluded_tools = excluded_tools or set()
-    if allow_tools and role == "user" and _is_interest_register_request(prompt):
-        return _answer_interest_register_request(prompt, role=role, display_name=display_name, publish_to_interface=publish_to_interface)
+    if allow_tools and role == "user":
+        route = route_message(prompt, channel, {"source": channel, "has_memory_context": bool(visible_prompt_override)})
+        intent = route.get("intent")
+        if intent in {"self_edit_request", "external_publication_request", "scheduled_task_request"}:
+            log_router_decision(route, prompt, route_chosen="stage2_self_edit")
+            return _answer_self_edit_request(prompt, role=role, display_name=display_name, publish_to_interface=publish_to_interface)
+        if intent in {"self_awareness_question", "system_status_request", "permission_status"}:
+            log_router_decision(route, prompt, route_chosen="self_awareness")
+            return _answer_self_awareness_request(prompt, role=role, display_name=display_name, publish_to_interface=publish_to_interface)
+        if intent == "daily_interest_logs":
+            log_router_decision(route, prompt, route_chosen="interest_registers_read")
+            return _answer_interest_register_request(prompt, role=role, display_name=display_name, publish_to_interface=publish_to_interface)
+        if route.get("risk_hint") == "critical" or route.get("requires_permission"):
+            log_router_decision(route, prompt, route_chosen="stage2_guardrail_plan")
+            return _answer_self_edit_request(prompt, role=role, display_name=display_name, publish_to_interface=publish_to_interface)
+        log_router_decision(route, prompt, route_chosen="normal_response")
 
     auth = refresh_if_needed(load_auth())
     token = auth["tokens"]["access_token"]
@@ -1633,29 +1652,190 @@ def format_eve_tool_result(result: dict) -> str:
     return json.dumps(payload, indent=2, ensure_ascii=False)[:6000]
 
 
-def _is_interest_register_request(prompt: str) -> bool:
-    lowered = prompt.lower()
-    read_terms = ("traz", "mostra", "mostrar", "ver", "ve", "vê", "ler", "le", "lê")
-    register_terms = (
-        "registado",
-        "registos",
-        "ficheiros",
+def _intent_text(prompt: str) -> str:
+    normalized = unicodedata.normalize("NFKD", prompt or "")
+    return "".join(ch for ch in normalized.lower() if not unicodedata.combining(ch))
+
+
+def _is_self_edit_request(prompt: str) -> bool:
+    text = _intent_text(prompt)
+    action_terms = (
+        "adiciona",
+        "acrescenta",
+        "poe",
+        "mete",
+        "muda",
+        "altera",
+        "modifica",
+        "edita",
+        "corrige",
+        "melhora",
+        "ajusta",
+        "actualiza",
+        "atualiza",
+        "remove",
+        "apaga",
+    )
+    target_terms = (
+        "mensagem de arranque",
+        "mensagem de quando ligas",
+        "quando ligas",
+        "mensagem no telegram",
+        "telegram",
+        "bridge",
         "ficheiro",
-        "pesquisa",
+        "ficheiros",
+        "codigo",
+        "runtime",
+        "webui",
+        "web ui",
+        "retrieval",
+        "awareness",
+        "memoria",
+        "stage 2",
+        "stage2",
+        "emoji",
+    )
+    if "self_edit" in text or "self-edit" in text:
+        return True
+    return any(term in text for term in action_terms) and any(term in text for term in target_terms)
+
+
+def _is_self_awareness_request(prompt: str) -> bool:
+    text = _intent_text(prompt)
+    awareness_terms = (
+        "awareness",
+        "nocao",
+        "consciencia",
+        "estado",
+        "capacidades",
+        "limitacoes",
+        "limites",
+        "permissoes",
+        "autorizacao",
+        "ferramentas",
+        "stage 2",
+        "stage2",
+        "ficheiros awareness",
+    )
+    self_terms = ("tens", "teus", "tuas", "ti mesma", "eve", "consegues", "podes")
+    if "self-awareness" in text or "self awareness" in text:
+        return True
+    if any(term in text for term in awareness_terms) and any(term in text for term in self_terms):
+        return True
+    if "consegues mexer" in text and ("ficheiro" in text or "codigo" in text or "em ti" in text):
+        return True
+    return False
+
+
+def _is_interest_register_request(prompt: str) -> bool:
+    if _is_self_edit_request(prompt) or _is_self_awareness_request(prompt):
+        return False
+    text = _intent_text(prompt)
+    read_terms = ("traz", "mostra", "mostrar", "ver", "ve", "ler", "le", "consulta", "abre")
+    register_terms = ("registado", "registos", "registro", "registo", "logs", "ficheiros")
+    daily_terms = ("diario", "diarios", "daily", "dia")
+    interest_scope_terms = (
         "interesses",
         "gostos",
         "evolucao",
-        "evolução",
+        "mundo",
+        "world",
+        "tecnologia",
+        "technology",
+        "personalidade",
+        "personality",
         "depois da pesquisa",
-        "última pesquisa",
         "ultima pesquisa",
-        "o que escreveste",
-        "escreveste la",
-        "escreveste lá",
-        "escrito la",
-        "escrito lá",
     )
-    return any(term in lowered for term in read_terms) and any(term in lowered for term in register_terms)
+    has_read = any(term in text for term in read_terms)
+    has_register = any(term in text for term in register_terms)
+    has_daily_scope = any(term in text for term in daily_terms) or "depois da pesquisa" in text or "ultima pesquisa" in text
+    has_interest_scope = any(term in text for term in interest_scope_terms)
+    return has_read and has_register and has_daily_scope and has_interest_scope
+
+
+def _format_self_edit_result(result: dict) -> str:
+    classification = result.get("classification") or {}
+    status = result.get("status", "unknown")
+    risk = classification.get("risk", "unknown")
+    target_area = classification.get("target_area", "unknown")
+    target_files = result.get("target_files") or classification.get("target_files") or []
+    lines = [
+        "Pedido Stage 2 classificado.",
+        f"- Estado: {status}",
+        f"- Area: {target_area}",
+        f"- Risco: {risk}",
+    ]
+    if target_files:
+        lines.append(f"- Ficheiros alvo: {', '.join(str(item) for item in target_files[:6])}")
+    if result.get("change_plan_path"):
+        lines.append(f"- Plano: {result['change_plan_path']}")
+    request_id = result.get("permission_request_id") or result.get("request_id")
+    if status in {"permission_required", "special_authorization_required"}:
+        lines.insert(0, "Sandro, isto esta fora das minhas permissoes actuais. Criei um pedido de autorizacao para continuares se quiseres.")
+        if request_id:
+            lines.append(f"- Pedido de autorizacao: {request_id}")
+            lines.append("- Para listar pedidos: python scripts\\stage2_list_permission_requests.py")
+            lines.append(f"- Para autorizar: python scripts\\stage2_grant_permission.py --request-id {request_id} --granted-by Sandro")
+        lines.append("- Nada foi aplicado ao runtime real.")
+    else:
+        lines.append(f"- Resultado: {result.get('summary', 'sem resumo')}")
+    tests = result.get("tests") or {}
+    if tests:
+        lines.append(f"- Testes: {'passaram' if tests.get('passed') else 'falharam'}")
+    return "\n".join(lines)
+
+
+def _answer_self_awareness_request(prompt: str, *, role: str, display_name: str, publish_to_interface: bool) -> str:
+    append_chat(role, prompt, tags=["tool_request", "self_awareness"])
+    _record_session_message(role, prompt, {"speaker": "sandro", "display_name": display_name, "direct_local_tool": "self_awareness"})
+    _sync_vector_message(role, prompt)
+    if publish_to_interface:
+        publish_interface_message(display_name, prompt, target="Eve", tags=["incoming", role])
+    try:
+        text = answer_self_awareness_question(prompt)
+        safe_print(text)
+        append_chat("assistant", text, tags=["tool", "self_awareness", "direct"])
+        _record_session_message("assistant", text, {"reply_to": display_name, "direct_local_tool": "self_awareness"})
+        _sync_vector_message("assistant", text)
+        if publish_to_interface:
+            publish_interface_message("Eve", text, target=display_name, tags=["reply", "self_awareness"])
+        return text
+    except Exception as exc:
+        text = f"Erro ao consultar self-awareness: {type(exc).__name__}: {exc}"
+        safe_print(text)
+        append_chat("error", text, tags=["tool_error", "self_awareness"])
+        _record_session_message("error", text, {"reply_to": display_name, "direct_local_tool": "self_awareness"})
+        if publish_to_interface:
+            publish_interface_message("Eve", text, target=display_name, tags=["reply", "error"])
+        return text
+
+
+def _answer_self_edit_request(prompt: str, *, role: str, display_name: str, publish_to_interface: bool) -> str:
+    append_chat(role, prompt, tags=["tool_request", "stage2_self_edit"])
+    _record_session_message(role, prompt, {"speaker": "sandro", "display_name": display_name, "direct_local_tool": "stage2_self_edit"})
+    _sync_vector_message(role, prompt)
+    if publish_to_interface:
+        publish_interface_message(display_name, prompt, target="Eve", tags=["incoming", role])
+    try:
+        result = execute_self_edit_request(prompt)
+        text = _format_self_edit_result(result)
+        safe_print(text)
+        append_chat("assistant", text, tags=["tool", "stage2_self_edit", "direct", str(result.get("status", "unknown"))])
+        _record_session_message("assistant", text, {"reply_to": display_name, "direct_local_tool": "stage2_self_edit", "status": result.get("status")})
+        _sync_vector_message("assistant", text)
+        if publish_to_interface:
+            publish_interface_message("Eve", text, target=display_name, tags=["reply", "stage2_self_edit"])
+        return text
+    except Exception as exc:
+        text = f"Erro ao criar pedido Stage 2: {type(exc).__name__}: {exc}"
+        safe_print(text)
+        append_chat("error", text, tags=["tool_error", "stage2_self_edit"])
+        _record_session_message("error", text, {"reply_to": display_name, "direct_local_tool": "stage2_self_edit"})
+        if publish_to_interface:
+            publish_interface_message("Eve", text, target=display_name, tags=["reply", "error"])
+        return text
 
 
 def _answer_interest_register_request(prompt: str, *, role: str, display_name: str, publish_to_interface: bool) -> str:

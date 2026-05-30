@@ -1,0 +1,309 @@
+tools:
+  awareness_status:
+    command: ".venv/Scripts/python.exe scripts/awareness_status.py"
+    path: scripts/awareness_status.py
+    description: "Report local operational awareness."
+    status: available
+    risk: low
+    allowed_without_confirmation: true
+    allowed_with_one_shot_grant: true
+    requires_special_authorization: false
+    codex_optional: false
+    external_effect: false
+    dry_run_required: false
+    logs_to: memory/runtime/awareness/
+    transcript_channel: system
+    tests_required: []
+    forbidden: false
+
+  awareness_healthcheck:
+    command: ".venv/Scripts/python.exe scripts/awareness_healthcheck.py"
+    path: scripts/awareness_healthcheck.py
+    description: "Run aggregated local healthcheck."
+    status: available
+    risk: low
+    allowed_without_confirmation: true
+    allowed_with_one_shot_grant: true
+    requires_special_authorization: false
+    codex_optional: false
+    external_effect: false
+    dry_run_required: false
+    logs_to: memory/runtime/awareness/health/
+    transcript_channel: system
+    tests_required: []
+    forbidden: false
+
+  daily_memory_status:
+    command: ".venv/Scripts/python.exe scripts/daily_memory_status.py"
+    path: scripts/daily_memory_status.py
+    description: "Show daily memory/rollover status."
+    status: available
+    risk: low
+    allowed_without_confirmation: true
+    allowed_with_one_shot_grant: true
+    requires_special_authorization: false
+    codex_optional: false
+    external_effect: false
+    dry_run_required: false
+    logs_to: memory/runtime/
+    transcript_channel: system
+    tests_required: []
+    forbidden: false
+
+  vector_memory_status:
+    command: ".venv/Scripts/python.exe scripts/vector_memory_status.py"
+    path: scripts/vector_memory_status.py
+    description: "Show local vector memory status."
+    status: available
+    risk: low
+    allowed_without_confirmation: true
+    allowed_with_one_shot_grant: true
+    requires_special_authorization: false
+    codex_optional: false
+    external_effect: false
+    dry_run_required: false
+    logs_to: memory/vector/manifests/
+    transcript_channel: system
+    tests_required: []
+    forbidden: false
+
+  memory_query_vector:
+    command: ".venv/Scripts/python.exe scripts/memory_query_vector.py"
+    path: scripts/memory_query_vector.py
+    description: "Query local Chroma/Ollama memory."
+    status: available
+    risk: low
+    allowed_without_confirmation: true
+    allowed_with_one_shot_grant: true
+    requires_special_authorization: false
+    codex_optional: false
+    external_effect: false
+    dry_run_required: false
+    logs_to: memory/vector/
+    transcript_channel: system
+    tests_required: []
+    forbidden: false
+
+  terminal_memory_prompt_preview:
+    command: ".venv/Scripts/python.exe scripts/terminal_memory_prompt_preview.py"
+    path: scripts/terminal_memory_prompt_preview.py
+    description: "Preview compact memory prompt context."
+    status: available
+    risk: low
+    allowed_without_confirmation: true
+    allowed_with_one_shot_grant: true
+    requires_special_authorization: false
+    codex_optional: false
+    external_effect: false
+    dry_run_required: false
+    logs_to: memory/_reports/
+    transcript_channel: system
+    tests_required: []
+    forbidden: false
+
+  self_edit_request:
+    command: ".venv/Scripts/python.exe scripts/self_edit_request.py"
+    path: scripts/self_edit_request.py
+    description: "Create or execute controlled self-edit requests."
+    status: available
+    risk: medium
+    allowed_without_confirmation: true
+    allowed_with_one_shot_grant: true
+    requires_special_authorization: false
+    codex_optional: true
+    external_effect: false
+    dry_run_required: true
+    logs_to: memory/_processed/autonomy/self_edits/
+    transcript_channel: system
+    tests_required:
+      - backup
+      - diff
+      - py_compile_if_code
+      - rollback_available
+    forbidden: false
+
+  apply_authorized_self_edit:
+    command: ".venv/Scripts/python.exe scripts/stage2_apply_authorized_self_edit.py"
+    path: scripts/stage2_apply_authorized_self_edit.py
+    description: "Apply an already granted one-shot self-edit."
+    status: available
+    risk: medium
+    allowed_without_confirmation: false
+    allowed_with_one_shot_grant: true
+    requires_special_authorization: false
+    codex_optional: true
+    external_effect: false
+    dry_run_required: false
+    logs_to: memory/_processed/autonomy/self_edits/
+    transcript_channel: system
+    tests_required:
+      - py_compile
+      - import_module
+      - rollback_available
+    forbidden: false
+
+  stage2_permission_status:
+    command: ".venv/Scripts/python.exe scripts/stage2_permission_status.py"
+    path: scripts/stage2_permission_status.py
+    description: "Show Stage 2 permission request/grant state."
+    status: available
+    risk: low
+    allowed_without_confirmation: true
+    allowed_with_one_shot_grant: true
+    requires_special_authorization: false
+    codex_optional: false
+    external_effect: false
+    dry_run_required: false
+    logs_to: memory/runtime/permissions/
+    transcript_channel: system
+    tests_required: []
+    forbidden: false
+
+  telegram_bridge_modification:
+    command: null
+    path: tools/telegram_bridge.py
+    description: "Modify Telegram Bridge runtime."
+    status: available
+    risk: high
+    allowed_without_confirmation: false
+    allowed_with_one_shot_grant: true
+    requires_special_authorization: false
+    codex_optional: true
+    external_effect: true
+    dry_run_required: true
+    logs_to: logs/telegram_bridge/
+    transcript_channel: system
+    tests_required:
+      - py_compile
+      - import_module
+      - check_telegram_bridge
+    forbidden: false
+
+  webui_modification:
+    command: null
+    path: app/eve_web.py
+    description: "Modify Web UI runtime."
+    status: available
+    risk: high
+    allowed_without_confirmation: false
+    allowed_with_one_shot_grant: true
+    requires_special_authorization: false
+    codex_optional: true
+    external_effect: true
+    dry_run_required: true
+    logs_to: logs/runtime/
+    transcript_channel: system
+    tests_required:
+      - py_compile
+      - import_module
+      - webui_healthcheck
+    forbidden: false
+
+  scheduled_task_install:
+    command: "powershell.exe -ExecutionPolicy Bypass -File scripts/install_daily_memory_rollover_task.ps1"
+    path: scripts/install_daily_memory_rollover_task.ps1
+    description: "Install or modify Windows scheduled tasks."
+    status: available
+    risk: critical
+    allowed_without_confirmation: false
+    allowed_with_one_shot_grant: false
+    requires_special_authorization: true
+    codex_optional: true
+    external_effect: true
+    dry_run_required: true
+    logs_to: memory/runtime/permissions/audit/
+    transcript_channel: system
+    tests_required: []
+    forbidden: false
+
+  x_posting:
+    command: null
+    path: tools/
+    description: "Post externally to X."
+    status: available
+    risk: critical
+    allowed_without_confirmation: false
+    allowed_with_one_shot_grant: false
+    requires_special_authorization: true
+    codex_optional: true
+    external_effect: true
+    dry_run_required: true
+    logs_to: logs/
+    transcript_channel: tools
+    tests_required:
+      - explicit_final_confirmation
+    forbidden: false
+
+  secrets:
+    command: null
+    path: secrets/
+    description: "Secrets, tokens and vault data."
+    status: available
+    risk: critical
+    allowed_without_confirmation: false
+    allowed_with_one_shot_grant: false
+    requires_special_authorization: true
+    codex_optional: false
+    external_effect: false
+    dry_run_required: false
+    logs_to: null
+    transcript_channel: null
+    tests_required: []
+    forbidden: true
+
+  critical_special_permission:
+    tool_id: critical_special_permission
+    command: ".venv/Scripts/python.exe scripts/stage2_grant_special_permission.py"
+    path: scripts/stage2_grant_special_permission.py
+    description: "Grant a critical special one-shot permission with exact Sandro phrase."
+    status: available
+    risk: critical
+    allowed_without_confirmation: false
+    allowed_with_one_shot_grant: false
+    requires_special_authorization: true
+    external_effect: false
+    dry_run_required: true
+    logs_to: memory/runtime/permissions/audit/
+    transcript_channel: system
+    tests_required: [exact_phrase, request_id_match, dry_run_exists]
+    rollback_strategy: "consume grant and no-op for external critical actions unless separately authorized"
+    codex_optional: false
+    forbidden_without_authorization: true
+
+  git_push:
+    tool_id: git_push
+    command: "git push"
+    path: null
+    description: "Push changes to GitHub."
+    status: available
+    risk: critical
+    allowed_without_confirmation: false
+    allowed_with_one_shot_grant: false
+    requires_special_authorization: true
+    external_effect: true
+    dry_run_required: true
+    logs_to: memory/runtime/permissions/audit/
+    transcript_channel: system
+    tests_required: [explicit_confirmation]
+    rollback_strategy: "not automatically reversible"
+    codex_optional: true
+    forbidden_without_authorization: true
+
+  computer_use_control:
+    tool_id: computer_use_control
+    command: null
+    path: tools/
+    description: "Control browser/apps/computer UI."
+    status: prepared
+    risk: critical
+    allowed_without_confirmation: false
+    allowed_with_one_shot_grant: false
+    requires_special_authorization: true
+    external_effect: true
+    dry_run_required: true
+    logs_to: logs/computer_use/
+    transcript_channel: tools
+    tests_required: [before_after_verification, no_ocr_first]
+    rollback_strategy: "action-specific"
+    codex_optional: true
+    forbidden_without_authorization: true

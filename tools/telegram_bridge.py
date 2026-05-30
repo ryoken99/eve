@@ -232,6 +232,7 @@ def poll_once(*, respond: bool = True, token: str | None = None) -> dict[str, An
                 publish_to_interface=True,
                 allow_tools=True,
                 visible_prompt_override=channel_prompt,
+                channel="telegram",
                 excluded_tools={
                     "telegram_status",
                     "telegram_start_bridge",

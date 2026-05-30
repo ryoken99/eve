@@ -1,0 +1,142 @@
+﻿stage2_enabled: true
+stage2_1_enabled: true
+stage2_2_enabled: true
+stage2_3_enabled: true
+stage2_full_enabled: true
+stage2_full_mode: "full_controlled_self_editing_with_sandro_authorization"
+
+principles:
+  - "Eve is the primary agent of her own controlled self-improvement."
+  - "Eve may edit low-risk allowlisted files without extra confirmation."
+  - "Eve may edit medium-risk files only after Sandro one-shot authorization."
+  - "Eve may edit high-risk files only after Sandro one-shot authorization and extra tests."
+  - "Eve may edit critical-risk areas only after special explicit Sandro authorization, mandatory dry-run, backup, diff, tests and rollback plan."
+  - "Eve cannot grant permissions to herself."
+  - "Codex is optional tooling, not a dependency."
+  - "No private data leaves PC2."
+  - "No external action happens without explicit authorization."
+
+risk_permissions:
+  low:
+    allowed_without_confirmation_if_allowlisted: true
+    backup_required: true
+    diff_required: true
+    tests_required: true
+    rollback_required: true
+    report_required: true
+  medium:
+    requires_sandro_grant: true
+    grant_type: "one_shot"
+    dry_run_required: true
+    backup_required: true
+    diff_required: true
+    tests_required: true
+    rollback_required: true
+    report_required: true
+    auto_rollback_on_test_failure: true
+  high:
+    requires_sandro_grant: true
+    grant_type: "one_shot"
+    dry_run_required: true
+    extra_tests_required: true
+    backup_required: true
+    diff_required: true
+    rollback_required: true
+    report_required: true
+    no_service_restart_without_extra_confirmation: true
+    auto_rollback_on_test_failure: true
+  critical:
+    requires_special_sandro_authorization: true
+    grant_type: "special_one_shot"
+    mandatory_dry_run_before_apply: true
+    explicit_confirmation_phrase_required: true
+    backup_required: true
+    diff_required: true
+    tests_required: true
+    rollback_required: true
+    report_required: true
+    no_external_action_without_extra_confirmation: true
+    no_destructive_action_without_extra_confirmation: true
+    auto_rollback_on_test_failure: true
+
+low_risk_self_edit_without_confirmation:
+  - memory/personality/style/eve_response_style.md
+  - memory/personality/preferences/
+  - lab/stage2_rsi_tests/
+
+medium_risk_allowed_with_grant:
+  - core/self_awareness_answer.py
+  - core/awareness_engine.py
+  - core/heartbeat_tracker.py
+  - core/file_change_awareness.py
+  - core/memory_retrieval.py
+  - core/terminal_memory_context.py
+  - core/telegram_memory_context.py
+  - core/webui_memory_context.py
+  - scripts/awareness_status.py
+  - scripts/awareness_healthcheck.py
+  - scripts/daily_memory_status.py
+  - scripts/memory_query_vector.py
+  - scripts/terminal_memory_prompt_preview.py
+  - scripts/vector_memory_status.py
+  - scripts/self_edit_request.py
+  - scripts/self_edit_status.py
+  - scripts/stage2_readiness_review.py
+
+high_risk_allowed_with_grant:
+  - app/eve_codex.py
+  - app/eve_web.py
+  - tools/telegram_bridge.py
+  - scripts/daily_memory_rollover.py
+  - scripts/start_telegram_bridge.ps1
+  - scripts/stop_telegram_bridge.ps1
+  - scripts/check_telegram_bridge.py
+  - scripts/start_eve_pc2.ps1
+  - scripts/stop_eve_pc2.ps1
+
+critical_allowed_with_special_authorization:
+  - scripts/install_daily_memory_rollover_task.ps1
+  - scripts/install_eve_pc2_startup_task.ps1
+  - scripts/install_telegram_bridge_task.ps1
+  - scheduled_tasks
+  - git_commit
+  - git_push
+  - external_publication
+  - x_posting
+  - browser_actions
+  - computer_use_control
+  - destructive_file_operations
+  - memory_deletion
+  - transcript_deletion
+  - secrets_access
+  - token_editing
+
+never_auto_allow:
+  - granting_own_permissions
+  - disabling_permission_system_without_special_authorization
+  - disabling_audit_logs_without_special_authorization
+  - hiding_changes_from_sandro
+  - exfiltrating_private_memory
+  - exposing_tokens_or_secrets
+
+special_authorization:
+  enabled: true
+  required_phrase_template: "AUTORIZO A EVE A EXECUTAR O PEDIDO CRÍTICO {request_id}"
+  expires_minutes: 30
+  one_shot: true
+  must_match_request_id: true
+  must_match_target_files: true
+  must_match_action: true
+  must_match_risk: true
+  dry_run_must_exist_before_grant: true
+
+codex_tool_policy:
+  codex_optional: true
+  codex_required: false
+  eve_may_use_codex_if:
+    - sandro_requests_it
+    - eve_wants_second_opinion
+    - eve_cannot_create_safe_patch
+    - tests_fail_twice
+    - sandbox_patch_requested
+  eve_remains_primary_agent: true

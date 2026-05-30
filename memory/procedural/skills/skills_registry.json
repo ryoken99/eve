@@ -1,0 +1,272 @@
+{
+  "version": 1,
+  "updated_at": "2026-05-23T19:49:26+01:00",
+  "skills": [
+    {
+      "skill_id": "start_eve_pc2",
+      "name": "Start Eve PC2",
+      "description": "Start Eve local runtime services.",
+      "script_path": "scripts/start_eve_pc2.ps1",
+      "when_to_use": "When Sandro wants to start Eve on PC2.",
+      "inputs": [],
+      "outputs": [],
+      "risk_level": "high",
+      "requires_approval": true,
+      "last_tested_at": null,
+      "status": "known",
+      "notes": ""
+    },
+    {
+      "skill_id": "stop_eve_pc2",
+      "name": "Stop Eve PC2",
+      "description": "Stop Eve local runtime services.",
+      "script_path": "scripts/stop_eve_pc2.ps1",
+      "when_to_use": "When Sandro wants to stop Eve on PC2.",
+      "inputs": [],
+      "outputs": [],
+      "risk_level": "high",
+      "requires_approval": true,
+      "last_tested_at": null,
+      "status": "known",
+      "notes": ""
+    },
+    {
+      "skill_id": "status_eve_pc2",
+      "name": "Status Eve PC2",
+      "description": "Show operational status.",
+      "script_path": "scripts/awareness_status.py",
+      "when_to_use": "When checking Eve runtime state.",
+      "inputs": [],
+      "outputs": [
+        "status"
+      ],
+      "risk_level": "low",
+      "requires_approval": false,
+      "last_tested_at": null,
+      "status": "tested",
+      "notes": ""
+    },
+    {
+      "skill_id": "check_telegram_bridge",
+      "name": "Check Telegram Bridge",
+      "description": "Check Telegram bridge process/status.",
+      "script_path": "scripts/check_telegram_bridge.py",
+      "when_to_use": "When checking Telegram connectivity.",
+      "inputs": [],
+      "outputs": [
+        "telegram status"
+      ],
+      "risk_level": "low",
+      "requires_approval": false,
+      "last_tested_at": null,
+      "status": "known",
+      "notes": ""
+    },
+    {
+      "skill_id": "start_telegram_bridge",
+      "name": "Start Telegram Bridge",
+      "description": "Start Telegram bridge.",
+      "script_path": "scripts/start_telegram_bridge.ps1",
+      "when_to_use": "When Telegram bridge should start.",
+      "inputs": [],
+      "outputs": [],
+      "risk_level": "high",
+      "requires_approval": true,
+      "last_tested_at": null,
+      "status": "known",
+      "notes": ""
+    },
+    {
+      "skill_id": "stop_telegram_bridge",
+      "name": "Stop Telegram Bridge",
+      "description": "Stop Telegram bridge.",
+      "script_path": "scripts/stop_telegram_bridge.ps1",
+      "when_to_use": "When Telegram bridge should stop.",
+      "inputs": [],
+      "outputs": [],
+      "risk_level": "high",
+      "requires_approval": true,
+      "last_tested_at": null,
+      "status": "known",
+      "notes": ""
+    },
+    {
+      "skill_id": "memory_importer",
+      "name": "Memory Importer",
+      "description": "Chunk imported source memories.",
+      "script_path": "scripts/memory_importer.py",
+      "when_to_use": "When importing V1-V7 source memory.",
+      "inputs": [
+        "source memory files"
+      ],
+      "outputs": [
+        "chunks jsonl"
+      ],
+      "risk_level": "medium",
+      "requires_approval": true,
+      "last_tested_at": null,
+      "status": "known",
+      "notes": ""
+    },
+    {
+      "skill_id": "build_vector_memory",
+      "name": "Build Vector Memory",
+      "description": "Build Chroma vector memory from chunks.",
+      "script_path": "scripts/build_vector_memory.py",
+      "when_to_use": "Only when explicitly rebuilding vector DB.",
+      "inputs": [],
+      "outputs": [],
+      "risk_level": "high",
+      "requires_approval": true,
+      "last_tested_at": null,
+      "status": "known",
+      "notes": ""
+    },
+    {
+      "skill_id": "update_vector_memory_incremental",
+      "name": "Update Vector Memory Incremental",
+      "description": "Index new chunks without rebuilding all memory.",
+      "script_path": "scripts/update_vector_memory_incremental.py",
+      "when_to_use": "When new chunks are ready.",
+      "inputs": [
+        "chunks jsonl"
+      ],
+      "outputs": [
+        "Chroma update"
+      ],
+      "risk_level": "medium",
+      "requires_approval": false,
+      "last_tested_at": null,
+      "status": "known",
+      "notes": ""
+    },
+    {
+      "skill_id": "memory_query_vector",
+      "name": "Memory Query Vector",
+      "description": "Search local vector memory.",
+      "script_path": "scripts/memory_query_vector.py",
+      "when_to_use": "When checking semantic memory.",
+      "inputs": [
+        "query"
+      ],
+      "outputs": [
+        "matches"
+      ],
+      "risk_level": "low",
+      "requires_approval": false,
+      "last_tested_at": null,
+      "status": "tested",
+      "notes": ""
+    },
+    {
+      "skill_id": "terminal_memory_prompt_preview",
+      "name": "Terminal Prompt Preview",
+      "description": "Preview memory/context prompt for terminal.",
+      "script_path": "scripts/terminal_memory_prompt_preview.py",
+      "when_to_use": "When debugging prompt context.",
+      "inputs": [
+        "message"
+      ],
+      "outputs": [
+        "prompt preview"
+      ],
+      "risk_level": "low",
+      "requires_approval": false,
+      "last_tested_at": null,
+      "status": "known",
+      "notes": ""
+    },
+    {
+      "skill_id": "daily_memory_rollover",
+      "name": "Daily Memory Rollover",
+      "description": "Close daily memory and update rollups/chunks/vector DB.",
+      "script_path": "scripts/daily_memory_rollover.py",
+      "when_to_use": "At midnight or controlled manual test.",
+      "inputs": [],
+      "outputs": [],
+      "risk_level": "medium",
+      "requires_approval": false,
+      "last_tested_at": null,
+      "status": "known",
+      "notes": ""
+    },
+    {
+      "skill_id": "daily_memory_status",
+      "name": "Daily Memory Status",
+      "description": "Show daily memory status.",
+      "script_path": "scripts/daily_memory_status.py",
+      "when_to_use": "When checking rollover outputs.",
+      "inputs": [],
+      "outputs": [
+        "daily status"
+      ],
+      "risk_level": "low",
+      "requires_approval": false,
+      "last_tested_at": null,
+      "status": "tested",
+      "notes": ""
+    },
+    {
+      "skill_id": "clear_memory_day_override",
+      "name": "Clear Memory Day Override",
+      "description": "Clear forced rollover memory-day override.",
+      "script_path": "scripts/clear_memory_day_override.ps1",
+      "when_to_use": "After controlled rollover test.",
+      "inputs": [],
+      "outputs": [],
+      "risk_level": "medium",
+      "requires_approval": true,
+      "last_tested_at": null,
+      "status": "known",
+      "notes": ""
+    },
+    {
+      "skill_id": "transcript_writer",
+      "name": "Transcript Writer",
+      "description": "Write channel transcripts locally.",
+      "script_path": "core/transcript_writer.py",
+      "when_to_use": "When recording terminal/Telegram/Web UI/tools/errors/system.",
+      "inputs": [],
+      "outputs": [
+        "jsonl transcript"
+      ],
+      "risk_level": "low",
+      "requires_approval": false,
+      "last_tested_at": null,
+      "status": "known",
+      "notes": ""
+    },
+    {
+      "skill_id": "telegram_notify",
+      "name": "Telegram Notify",
+      "description": "Send Telegram notifications.",
+      "script_path": "tools/telegram_bridge.py",
+      "when_to_use": "When Sandro approved Telegram communication.",
+      "inputs": [],
+      "outputs": [],
+      "risk_level": "high",
+      "requires_approval": true,
+      "last_tested_at": null,
+      "status": "known",
+      "notes": ""
+    },
+    {
+      "skill_id": "create_codex_instruction",
+      "name": "Create Codex Instruction",
+      "description": "Generate Codex-ready task from candidate.",
+      "script_path": "scripts/generate_codex_task_from_candidate.py",
+      "when_to_use": "When a proposed improvement should be handed to Codex.",
+      "inputs": [
+        "candidate_id"
+      ],
+      "outputs": [
+        "codex task markdown"
+      ],
+      "risk_level": "low",
+      "requires_approval": false,
+      "last_tested_at": null,
+      "status": "known",
+      "notes": ""
+    }
+  ]
+}

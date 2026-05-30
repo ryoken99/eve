@@ -663,7 +663,7 @@ class EveWebHandler(BaseHTTPRequestHandler):
                     "has_image": bool(image_meta),
                 }
                 write_user_message("webui", text or "[imagem]", transcript_metadata)
-                reply = ask(prompt, speaker="sandro", publish_to_interface=False, visible_prompt_override=memory_payload["final_prompt"])
+                reply = ask(prompt, speaker="sandro", publish_to_interface=False, visible_prompt_override=memory_payload["final_prompt"], channel="webui")
                 write_eve_message("webui", reply, transcript_metadata)
                 append_transcript("chat", "web_eve_reply", {"content": reply})
                 self._send_json({"ok": True, "reply": reply, "image": image_meta})
