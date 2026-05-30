@@ -20,7 +20,7 @@ from core.awareness_engine import collect_awareness, describe_awareness
 from core.diagnostics import build_diagnostics_bundle
 from core.internal_command_planner import all_internal_actions, plan_internal_actions
 from core.plugin_registry import plugin_summary
-from core.personality_engine import update_preference_candidate
+from core.personality_engine import mature_preference_candidates, record_preference_candidate, update_preference_candidate
 from core.session_handoff import context_status, create_session_checkpoint, format_active_handoff, rotate_session
 from core.paths import EVE_ROOT
 from core.capability_self_test import format_capability_self_test
@@ -30,6 +30,7 @@ from dream.diary_consolidator import consolidate, ensure_diary_consolidation_sch
 from learning.skill_curator import curate_skills, record_skill_usage
 from learning.skill_manager import run_skill
 from lab.lab_manager import record_candidate_result
+from lab.autonomous_lab import run_lab_review
 from memory.diary_manager import read_diary
 from memory.memory_manager import append_memory_file, context_bundle, read_memory_file, remember_fact, write_memory_file
 from memory.layered_memory import classify_memory_item, route_memory_item
@@ -74,6 +75,9 @@ from research.daily_research_plan import (
     format_daily_research_tracks,
 )
 from research.research_notes import decide_research_for_lab
+from research.daily_research_runner import run_daily_research_collection
+from research.research_inbox import add_research_item, process_research_inbox
+from memory.errors.error_review import run_error_review
 
 
 @dataclass(frozen=True)
@@ -489,6 +493,85 @@ def _preference_candidate(args: dict) -> dict:
             str(args.get("topic") or ""),
             str(args.get("evidence") or ""),
             sentiment=str(args.get("sentiment") or "positive"),
+        ),
+    }
+
+
+def _research_inbox_add(args: dict) -> dict:
+    path = add_research_item(
+        source=str(args.get("source") or "eve_tool"),
+        title=str(args.get("title") or ""),
+        summary=str(args.get("summary") or ""),
+        url=str(args.get("url") or ""),
+        tags=args.get("tags") or None,
+        raw=args.get("raw") or None,
+    )
+    return {"ok": True, "tool": "research_inbox_add", "result": {"path": str(path)}}
+
+
+def _research_inbox_process(args: dict) -> dict:
+    return {
+        "ok": True,
+        "tool": "research_inbox_process",
+        "result": process_research_inbox(
+            limit=int(args.get("limit") or 10),
+            dry_run=bool(args.get("dry_run", False)),
+        ),
+    }
+
+
+def _preference_candidate_record(args: dict) -> dict:
+    return {
+        "ok": True,
+        "tool": "preference_candidate_record",
+        "result": record_preference_candidate(
+            topic=str(args.get("topic") or ""),
+            source=str(args.get("source") or "tool"),
+            evidence=str(args.get("evidence") or ""),
+            sentiment=str(args.get("sentiment") or "positive"),
+            confidence=float(args.get("confidence") or 0.5),
+            relation_to_sandro=str(args.get("relation_to_sandro") or "inherited"),
+        ),
+    }
+
+
+def _preference_mature(args: dict) -> dict:
+    return {
+        "ok": True,
+        "tool": "preference_mature",
+        "result": mature_preference_candidates(min_confidence=float(args.get("min_confidence") or 0.75)),
+    }
+
+
+def _error_review(args: dict) -> dict:
+    return {
+        "ok": True,
+        "tool": "error_review",
+        "result": run_error_review(
+            limit=int(args.get("limit") or 50),
+            dry_run=bool(args.get("dry_run", False)),
+        ),
+    }
+
+
+def _lab_review(args: dict) -> dict:
+    return {
+        "ok": True,
+        "tool": "lab_review",
+        "result": run_lab_review(
+            max_candidates=int(args.get("max_candidates") or 5),
+            dry_run=bool(args.get("dry_run", True)),
+        ),
+    }
+
+
+def _daily_research_collection(args: dict) -> dict:
+    return {
+        "ok": True,
+        "tool": "daily_research_collection",
+        "result": run_daily_research_collection(
+            dry_run=bool(args.get("dry_run", True)),
+            max_items=int(args.get("max_items") or 10),
         ),
     }
 
@@ -940,6 +1023,13 @@ TOOLS: dict[str, EveTool] = {
     "diary_consolidation_schedule": EveTool("diary_consolidation_schedule", "Garante consolidacao do diario varias vezes por dia.", {"schedule": "6h", "approved": True}, _diary_consolidation_schedule),
     "remember_fact": EveTool("remember_fact", "Guarda facto em memoria media.", {"text": "Sandro prefere..."}, _remember_fact),
     "preference_candidate": EveTool("preference_candidate", "Regista/reforca/rejeita um gosto candidato da Eve antes de virar gosto estavel.", {"topic": "narrativa procedural", "evidence": "apareceu em pesquisa", "sentiment": "positive"}, _preference_candidate),
+    "research_inbox_add": EveTool("research_inbox_add", "Adiciona uma pesquisa nova a inbox local antes de ir para memoria, personalidade ou lab.", {"source": "manual", "title": "titulo", "summary": "resumo", "url": "", "tags": []}, _research_inbox_add),
+    "research_inbox_process": EveTool("research_inbox_process", "Classifica e processa itens da research inbox para world, technology, personality, lab ou review.", {"limit": 10, "dry_run": True}, _research_inbox_process),
+    "preference_candidate_record": EveTool("preference_candidate_record", "Regista uma preferencia candidata da Eve com origem, evidencia, confiança e relacao aos gostos do Sandro.", {"topic": "memoria de agentes", "source": "research", "evidence": "sinal observado", "sentiment": "positive", "confidence": 0.5, "relation_to_sandro": "adjacent"}, _preference_candidate_record),
+    "preference_mature": EveTool("preference_mature", "Matura preferencias candidatas para preferencias estaveis quando a confianca e evidencia passam o limiar.", {"min_confidence": 0.75}, _preference_mature),
+    "error_review": EveTool("error_review", "Revê erros recentes e transforma-os em licoes e candidatos de melhoria sem aplicar patches automaticamente.", {"limit": 50, "dry_run": True}, _error_review),
+    "lab_review": EveTool("lab_review", "Revê candidatos do lab, pontua-os e propõe promoções em dry-run por defeito.", {"max_candidates": 5, "dry_run": True}, _lab_review),
+    "daily_research_collection": EveTool("daily_research_collection", "Gera o plano diario de pesquisa e, fora de dry-run, adiciona itens simulados/controlados a research inbox.", {"dry_run": True, "max_items": 10}, _daily_research_collection),
     "lab_candidate_result": EveTool("lab_candidate_result", "Regista resultado, metrica e decisao de um candidato do lab.", {"title": "experiencia", "metric_value": 0.9, "threshold": 0.8, "notes": ""}, _lab_candidate_result),
     "research_lab_decision": EveTool("research_lab_decision", "Decide se uma pesquisa vira candidato no lab, fica em watch, aplica apos revisao ou e ignorada.", {"title": "paper", "summary": "agent memory benchmark", "confidence": 0.8}, _research_lab_decision),
     "improvement_plan": EveTool("improvement_plan", "Cria plano deterministico de melhorias a partir dos 17 pontos e erros recentes.", {"target_score": 8.5, "max_items": 3, "approved": True}, _improvement_plan),
